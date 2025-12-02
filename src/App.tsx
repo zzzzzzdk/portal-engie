@@ -5,6 +5,7 @@ import APPRouter from '@/router'
 import { useSystemStore } from '@/store'
 import { useStore } from '@/store/useStore'
 import { getToken } from '@/utils/cookie'
+import { ThemeProvider } from '@/theme'
 import '@/assets/css/index.scss'
 
 /**
@@ -144,11 +145,13 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <HashRouter>
-      <LoginGuard>
-        <AppInitializer>
-          <APPRouter />
-        </AppInitializer>
-      </LoginGuard>
+      <ThemeProvider>
+        <LoginGuard>
+          <AppInitializer>
+            <APPRouter />
+          </AppInitializer>
+        </LoginGuard>
+      </ThemeProvider>
     </HashRouter>
   )
 }

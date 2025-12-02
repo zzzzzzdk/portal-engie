@@ -1,0 +1,132 @@
+
+* {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.15));
+    border-radius: 4px;
+    transition: background 0.3s ease;
+
+    &:hover {
+      background: var(--aurora-color-border, rgba(0, 0, 0, 0.25));
+    }
+
+    &:active {
+      background: var(--aurora-color-text-tertiary, rgba(0, 0, 0, 0.35));
+    }
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.15))
+                   var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+}
+
+
+[data-theme="dark"] {
+  * {
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+
+      &:active {
+        background: rgba(255, 255, 255, 0.35);
+      }
+    }
+
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.06);
+  }
+}
+
+
+.scrollbar-thin {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+.scrollbar-thick {
+  &::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none; // Firefox
+
+  &::-webkit-scrollbar {
+    display: none; // Webkit/Blink
+  }
+}
+
+.scrollbar-always {
+  &::-webkit-scrollbar {
+    display: block;
+  }
+}
+
+
+.scrollbar-primary {
+  &::-webkit-scrollbar-thumb {
+    background: var(--aurora-color-primary-bg, rgba(24, 144, 255, 0.3));
+
+    &:hover {
+      background: var(--aurora-color-primary-border, rgba(24, 144, 255, 0.5));
+    }
+
+    &:active {
+      background: var(--aurora-color-primary, rgba(24, 144, 255, 0.7));
+    }
+  }
+
+  scrollbar-color: var(--aurora-color-primary-bg, rgba(24, 144, 255, 0.3))
+                   var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+}
+
+
+.widget-content {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+.dashboard-container {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+.ant-modal-body,
+.ant-drawer-body {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  * {
+    scrollbar-width: none; // Firefox
+
+    &::-webkit-scrollbar {
+      display: none; // Webkit/Blink
+    }
+  }
+}
