@@ -1,0 +1,77 @@
+export interface RouteConfig {
+  path?: string;
+  index?: boolean;
+  redirect?: string;
+  element?: React.LazyExoticComponent<React.ComponentType<any>> | (() => Promise<{ default: React.ComponentType<any> }>);
+  children?: RouteConfig[];
+  meta?: {
+    requiresAuth?: boolean;
+    title?: string;
+  };
+}
+
+/**
+ * 路由配置
+ * - requiresAuth: 是否需要登录认证
+ * - title: 页面标题
+ *
+ * 路由层级说明：
+ * - Layout: 页面布局层（Header、导航、页面框架等）
+ * - Page: 具体页面内容层
+ */
+const routeConfig: RouteConfig[] = [
+  {
+    path: '/login',
+    element: () => import('@/components/Login'),
+    meta: {
+      requiresAuth: false,
+      title: '登录 - Portal Engine',
+    },
+  },
+  {
+    path: '/',
+    element: () => import('@/components/Layout'),
+    meta: {
+      requiresAuth: true,
+      title: 'Portal Engine',
+    },
+    children: [
+      {
+        index: true,
+        redirect: '/dashboard',
+      },
+      {
+        path: 'dashboard',
+        element: () => import('@/components/Dashboard'),
+        meta: {
+          requiresAuth: true,
+          title: '仪表盘 - Portal Engine',
+        },
+      },
+    ],
+  },
+  {
+    path: '/404',
+    element: () => import('@/components/_404'),
+    meta: {
+      title: '页面不存在',
+      // layout: false,
+    },
+  },
+  // 403 页面
+  {
+    path: '/403',
+    element: () => import('@/components/_403'),
+    meta: {
+      title: '无权限访问',
+      // layout: false,
+    },
+  },
+  // 匹配所有未定义的路由到 404
+  {
+    path: '*',
+    redirect: '/404',
+  },
+];
+
+export default routeConfig;

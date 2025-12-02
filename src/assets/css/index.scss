@@ -1,0 +1,61 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: rgba(24, 144, 255, 0.2) !important;
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+.dashboard-container {
+  transition: background-image 0.3s ease;
+  
+  &.grid-background {
+    min-height: 100%;
+    /* 
+      Grid Unit Size:
+      Width: (100% - 10px) / 12  -> One column width + one gutter (10px)
+      Height: 130px -> One row height (120px) + one gutter (10px)
+    */
+    background-size: calc((100% - 10px) / 12) 130px;
+    background-position: 10px 10px; /* Offset to match RGL container padding/margin */
+    background-origin: content-box;
+    background-repeat: repeat;
+
+    /* 
+      Draw a filled rectangle for each grid cell using conic-gradient.
+      The cell content area is (TileWidth - 10px) wide and 120px high.
+      Center of conic gradient is set to the bottom-right corner of the content area.
+      We fill the top-left quadrant (270deg to 360deg/0deg) relative to that center.
+    */
+    background-image: conic-gradient(
+      from 270deg at calc(100% - 10px) 120px,
+      rgba(0, 0, 0, 0.05) 90deg,
+      transparent 0
+    );
+  }
+
+  &.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background-color: #f5f5f5; /* Ensure background is opaque in fullscreen */
+    padding: 20px !important; /* Maintain padding */
+    overflow-y: auto;
+  }
+}

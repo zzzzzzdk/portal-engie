@@ -1,0 +1,10 @@
+.dashboard-fullscreen-exit {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1001;
+}
+
+.react-grid-item > .react-resizable-handle.react-resizable-handle-se {
+  user-select: none;
+}

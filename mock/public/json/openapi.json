@@ -1,0 +1,429 @@
+{
+  "info": {
+    "title": "视频解码算法",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "servers": [{
+    "url": "",
+    "description": "默认环境",
+    "variables": {}
+  }],
+  "paths": {
+    "/api/video/add": {
+      "post": {
+        "summary": "添加视频任务接口",
+        "description": "",
+        "tags": ["视频解析算法"],
+        "parameters": [{
+          "name": "Content-Type",
+          "in": "header",
+          "description": "",
+          "required": true,
+          "example": "",
+          "schema": {
+            "type": "string"
+          }
+        }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "example": "",
+                    "description": "任务id"
+                  },
+                  "video_url": {
+                    "type": "string",
+                    "example": "",
+                    "description": "视频地址"
+                  },
+                  "postback_url": {
+                    "type": "string",
+                    "example": "",
+                    "description": "信息回传地址，所有视频解析的结果将会以POST的方式发送到此地址"
+                  },
+                  "private_data": {
+                    "type": "string",
+                    "example": "",
+                    "description": "回传信息，离线视频解析需包含{\"TYPE\":\"LX\"}，解析不限速时可实现不丢帧，默认视频解析是在线"
+                  },
+                  "max_fps": {
+                    "type": "string",
+                    "example": "",
+                    "description": "最大分析帧数/秒，用于离线视频分析"
+                  },
+                  "frame_interval": {
+                    "type": "string",
+                    "example": "",
+                    "description": "分析帧间隔；ot关闭时，frame_interval取值范围为25-15000；ot开启时，frame_interval固定为5"
+                  },
+                  "switch_od": {
+                    "type": "string",
+                    "example": "",
+                    "description": "开启目标检测功能，默认开启"
+                  },
+                  "switch_ot": {
+                    "type": "string",
+                    "example": "",
+                    "description": "开启目标追踪功能，仅分析图片时可关闭"
+                  },
+                  "enable_person_analysis": {
+                    "type": "string",
+                    "example": "",
+                    "description": "开启行人分析"
+                  },
+                  "max_analysis_per": {
+                    "type": "string",
+                    "example": "",
+                    "description": "最大行人检出数量，0为不限制数量"
+                  },
+                  "person_det_prob_threshold": {
+                    "type": "string",
+                    "example": "",
+                    "description": "行人检测置信度阈值"
+                  },
+                  "enable_vehicle_analysis": {
+                    "type": "string",
+                    "example": "",
+                    "description": "开启汽车分析"
+                  },
+                  "max_analysis_veh": {
+                    "type": "string",
+                    "example": "",
+                    "description": "最大汽车检出数量"
+                  },
+                  "vehicle_det_prob_threshold": {
+                    "type": "string",
+                    "example": "",
+                    "description": "机动车检测置信度阈值"
+                  },
+                  "switch_fd": {
+                    "type": "string",
+                    "example": "",
+                    "description": "开启人脸检测功能"
+                  }
+                },
+                "required": ["task_id", "video_url", "postback_url", "frame_interval", "switch_od", "switch_ot", "enable_person_analysis", "max_analysis_per", "enable_vehicle_analysis", "max_analysis_veh", "switch_fd"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$schema": "http://json-schema.org/draft-04/schema#",
+                  "required": ["decoder_info"],
+                  "properties": {
+                    "objects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type_id": {
+                            "type": "number",
+                            "description": "目标类型 "
+                          },
+                          "abnormal": {
+                            "type": "number",
+                            "description": "是否为异常跟踪目标"
+                          },
+                          "track_id": {
+                            "type": "number",
+                            "description": "目标跟踪对象id"
+                          },
+                          "detection": {
+                            "type": "object",
+                            "properties": {
+                              "h": {
+                                "type": "number",
+                                "description": "目标框高度"
+                              },
+                              "w": {
+                                "type": "number",
+                                "description": "目标框宽度"
+                              },
+                              "x": {
+                                "type": "number",
+                                "description": "目标框左上角x坐标"
+                              },
+                              "y": {
+                                "type": "number",
+                                "description": "目标框左上角y坐标"
+                              },
+                              "type_id": {
+                                "type": "number",
+                                "description": "目标类型 {0:误检目标,1:车头,2:车尾,3:车侧,4:二轮车,5:三轮车,7:行人,8:人体,99:人脸}"
+                              },
+                              "det_prob": {
+                                "type": "number",
+                                "description": "概率"
+                              }
+                            },
+                            "description": "目标检测框"
+                          },
+                          "detections": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": ["det_prob", "h", "type_id", "w", "x", "y"],
+                              "properties": {
+                                "h": {
+                                  "type": "number"
+                                },
+                                "w": {
+                                  "type": "number"
+                                },
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                },
+                                "type_id": {
+                                  "type": "number"
+                                },
+                                "det_prob": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          },
+                          "object_uuid": {
+                            "type": "string",
+                            "description": "目标id"
+                          },
+                          "tracking_boxes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "h": {
+                                  "type": "number"
+                                },
+                                "w": {
+                                  "type": "number"
+                                },
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                },
+                                "type_id": {
+                                  "type": "number"
+                                },
+                                "det_prob": {
+                                  "type": "number"
+                                },
+                                "frame_idx": {
+                                  "type": "number"
+                                }
+                              }
+                            },
+                            "description": "目标跟踪历史框"
+                          }
+                        }
+                      }
+                    },
+                    "decoder_info": {
+                      "type": "object",
+                      "required": ["decoder_frame_counter", "decoder_frame_depth", "decoder_frame_height", "decoder_frame_width", "decoder_timestamp", "frame_idx", "frames_per_second"],
+                      "properties": {
+                        "frame_idx": {
+                          "type": "number",
+                          "description": "帧号"
+                        },
+                        "decoder_timestamp": {
+                          "type": "number",
+                          "description": "解码时间戳（解码时获取的服务器时间）"
+                        },
+                        "frames_per_second": {
+                          "type": "number",
+                          "description": "帧率信息"
+                        },
+                        "decoder_frame_depth": {
+                          "type": "number",
+                          "description": "图像通道数，3表示3通道即RGB彩色"
+                        },
+                        "decoder_frame_width": {
+                          "type": "number",
+                          "description": "解码帧宽度"
+                        },
+                        "decoder_frame_height": {
+                          "type": "number",
+                          "description": "解码帧高度"
+                        },
+                        "decoder_frame_counter": {
+                          "type": "number",
+                          "description": "帧号"
+                        }
+                      },
+                      "description": "当前解码帧信息"
+                    }
+                  }
+                },
+                "example": "{\n\t\"decoder_info\": {\n\t\t\"decoder_frame_counter\": \"\",\n\t\t\"decoder_frame_depth\": \"\",\n\t\t\"decoder_frame_height\": \"\",\n\t\t\"decoder_frame_width\": \"\",\n\t\t\"decoder_timestamp\": \"\",\n\t\t\"frame_idx\": \"\",\n\t\t\"frames_per_second\": \"\"\n\t},\n\t\"objects\": [\n\t\t{\n\t\t\t\"abnormal\": \"\",\n\t\t\t\"detection\": {\n\t\t\t\t\"det_prob\": \"\",\n\t\t\t\t\"h\": \"\",\n\t\t\t\t\"type_id\": \"\",\n\t\t\t\t\"w\": \"\",\n\t\t\t\t\"x\": \"\",\n\t\t\t\t\"y\": \"\"\n\t\t\t},\n\t\t\t\"detections\": [\n\t\t\t\t{\n\t\t\t\t\t\"det_prob\": \"\",\n\t\t\t\t\t\"h\": \"\",\n\t\t\t\t\t\"type_id\": \"\",\n\t\t\t\t\t\"w\": \"\",\n\t\t\t\t\t\"x\": \"\",\n\t\t\t\t\t\"y\": \"\"\n\t\t\t\t}\n\t\t\t],\n\t\t\t\"object_uuid\": \"\",\n\t\t\t\"track_id\": \"\",\n\t\t\t\"tracking_boxes\": [\n\t\t\t\t{\n\t\t\t\t\t\"det_prob\": \"\",\n\t\t\t\t\t\"frame_idx\": \"\",\n\t\t\t\t\t\"h\": \"\",\n\t\t\t\t\t\"type_id\": \"\",\n\t\t\t\t\t\"w\": \"\",\n\t\t\t\t\t\"x\": \"\",\n\t\t\t\t\t\"y\": \"\"\n\t\t\t\t}\n\t\t\t],\n\t\t\t\"type_id\": \"\"\n\t\t}\n\t]\n}"
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "example": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/check": {
+      "get": {
+        "summary": "检测接口状态",
+        "description": "",
+        "tags": ["视频解析算法"],
+        "parameters": [{
+          "name": "Content-Type",
+          "in": "header",
+          "description": "",
+          "required": true,
+          "example": "",
+          "schema": {
+            "type": "string"
+          }
+        }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              },
+              "example": ""
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "default": "OK"
+                },
+                "example": "OK"
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "example": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/video/delete": {
+      "post": {
+        "summary": "删除视频任务接口",
+        "description": "",
+        "tags": ["视频解析算法"],
+        "parameters": [{
+          "name": "Content-Type",
+          "in": "header",
+          "description": "",
+          "required": true,
+          "example": "",
+          "schema": {
+            "type": "string"
+          }
+        }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "example": "",
+                    "description": "要删除的任务id"
+                  },
+                  "video_url": {
+                    "type": "string",
+                    "example": "",
+                    "description": "需要删除的视频地址串，中间用英文逗号分隔；若不指定视频流，则删除该任务下所有视频流"
+                  }
+                },
+                "required": ["task_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$schema": "http://json-schema.org/draft-04/schema#",
+                  "required": ["data", "error_message"],
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "description": "返回1表示删除成功；返回0表示删除失败"
+                    },
+                    "error_message": {
+                      "type": "string",
+                      "description": "删除成功则为空；删除失败会返回具体原因"
+                    }
+                  }
+                },
+                "example": "{\n\t\"data\": \"\",\n\t\"error_message\": \"\"\n}"
+              }
+            }
+          },
+          "404": {
+            "description": "失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "example": ""
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [{
+    "name": "视频解析算法",
+    "description": ""
+  }]
+}

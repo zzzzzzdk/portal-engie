@@ -1,0 +1,36 @@
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px #f0f1f2;
+  z-index: 10;
+}
+
+.app-header__logo {
+  font-size: 20px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .anticon {
+    color: #1890ff;
+  }
+}
+
+.app-content {
+  padding: 24px;
+  height: calc(100vh - 64px);
+  // overflow: hidden;
+  overflow-x: hidden;
+
+  &--preview {
+    padding: 0;
+  }
+}
