@@ -30,9 +30,9 @@ export const toKebabCase = (str: string): string => {
 /**
  * 注入调色板到 CSS 变量
  * @param palette 调色板
- * @param prefix CSS 变量前缀（默认 'aurora'）
+ * @param prefix CSS 变量前缀（默认 'ant'）
  */
-export const injectColorPalette = (palette: IColorPalette, prefix = 'aurora') => {
+export const injectColorPalette = (palette: IColorPalette, prefix = 'ant') => {
   const root = document.documentElement
 
   Object.entries(palette).forEach(([colorName, colors]) => {
@@ -56,7 +56,7 @@ export const injectColorPalette = (palette: IColorPalette, prefix = 'aurora') =>
  */
 export const injectCSSVariables = (
   obj: Record<string, any>,
-  prefix = 'aurora',
+  prefix = 'ant',
   parentKey = ''
 ) => {
   const root = document.documentElement

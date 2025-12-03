@@ -1,17 +1,17 @@
 .app-layout {
   min-height: 100vh;
-  background: var(--aurora-color-bg-layout, #f5f5f5);
+  background: var(--ant-color-bg-layout, #f5f5f5);
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--aurora-color-bg-container, #fff);
+  background: var(--ant-color-bg-container, #fff);
   padding: 0 24px;
-  box-shadow: 0 2px 8px var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.06));
+  box-shadow: 0 2px 8px var(--ant-color-border-secondary, rgba(0, 0, 0, 0.06));
   z-index: 10;
-  border-bottom: 1px solid var(--aurora-color-border, rgba(5, 5, 5, 0.06));
+  border-bottom: 1px solid var(--ant-color-border, rgba(5, 5, 5, 0.06));
 }
 
 .app-header__logo {
@@ -20,10 +20,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--aurora-color-text, rgba(0, 0, 0, 0.88));
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
 
   .anticon {
-    color: var(--aurora-color-primary, #1890ff);
+    color: var(--ant-color-primary, #1890ff);
   }
 }
 
@@ -31,7 +31,7 @@
   padding: 24px;
   height: calc(100vh - 64px);
   overflow-x: hidden;
-  background: var(--aurora-color-bg-layout, #f5f5f5);
+  background: var(--ant-color-bg-layout, #f5f5f5);
 
   &--preview {
     padding: 0;

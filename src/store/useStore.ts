@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, Widget, WidgetType, WidgetConfig, UserInfo } from '@/types';
+import { AppState, Widget, WidgetType, WidgetConfig, UserInfo, MicroAppModule } from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 
@@ -39,6 +39,15 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
       return { ...baseConfig, title: 'Chart' };
+    case 'microApp':
+      return {
+        ...baseConfig,
+        title: '微应用',
+        systemId: '',
+        moduleId: '',
+        sync: false,
+        alive: true,
+      };
     default:
       return baseConfig;
   }
@@ -95,6 +104,40 @@ export const useStore = create<AppState>()(
           title: type.charAt(0).toUpperCase() + type.slice(1),
           layout: sanitizeLayout({ ...DEFAULT_LAYOUT, i: id, y: Infinity }),
           config: getDefaultConfig(type),
+        };
+
+        set((state) => ({
+          widgets: [...state.widgets, newWidget],
+        }));
+      },
+
+      addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule) => {
+        const id = uuidv4();
+        const defaultSize = module.defaultSize || { w: 6, h: 4 };
+        const newWidget: Widget = {
+          id,
+          type: 'microApp',
+          title: module.name,
+          layout: sanitizeLayout({
+            i: id,
+            x: 0,
+            y: Infinity,
+            w: defaultSize.w,
+            h: defaultSize.h,
+            minW: 2,
+            minH: 2,
+          }),
+          config: {
+            title: module.name,
+            showTitle: true,
+            refreshInterval: 60,
+            systemId,
+            moduleId,
+            microAppUrl: module.url,
+            microAppEntry: module.entry,
+            sync: true,
+            alive: true,
+          },
         };
 
         set((state) => ({

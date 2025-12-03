@@ -5,6 +5,7 @@ import APPRouter from '@/router'
 import { useSystemStore } from '@/store'
 import { useStore } from '@/store/useStore'
 import { getToken } from '@/utils/cookie'
+import { microAppCommunication } from '@/utils/microAppCommunication'
 import { ThemeProvider } from '@/theme'
 import '@/assets/css/index.scss'
 
@@ -82,6 +83,11 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
       loadDashboard()
       setEditMode(true)
       setDashboardInitialized(true)
+
+      // 初始化微应用事件监听器
+      setTimeout(() => {
+        microAppCommunication.setupEventListeners()
+      }, 500)
     }
   }, [initialized, isPublicPath, dashboardInitialized, loadDashboard, setEditMode])
 

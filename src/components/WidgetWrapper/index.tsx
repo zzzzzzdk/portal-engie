@@ -3,10 +3,12 @@ import { Widget } from '@/types';
 import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';
 import { Settings, Trash2, RefreshCw } from 'lucide-react';
-import { Button, App, Dropdown } from 'antd';
+import { Button, App, Dropdown, Modal } from 'antd';
 import type { MenuProps } from 'antd';
 import clsx from 'clsx';
 import './index.scss';
+
+const { confirm } = Modal;
 
 interface WidgetWrapperProps {
   widget: Widget;
@@ -22,10 +24,9 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
   ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, ...props }, ref) => {
     const { removeWidget, isEditMode } = useStore();
     const [isConfigOpen, setIsConfigOpen] = useState(false);
-    const { modal } = App.useApp();
 
     const handleDelete = () => {
-      modal.confirm({
+      confirm({
         title: '删除小部件',
         content: '确定要删除这个小部件吗？',
         okText: '删除',

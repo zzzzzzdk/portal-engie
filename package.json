@@ -29,7 +29,8 @@
     "react-grid-layout": "^1.4.0",
     "react-router-dom": "^7.9.6",
     "uuid": "^9.0.0",
-    "wujie-react": "^1.0.29",
+    "wujie": "^1.0.28",
+    "wujie-react": "^1.0.28",
     "zustand": "^4.4.0"
   },
   "devDependencies": {

@@ -73,7 +73,7 @@ export const useTheme = () => {
     setCustomTokens(tokens)
   }, [setCustomTokens])
 
-  const getCSSVar = useCallback((path: string, prefix = 'aurora') => {
+  const getCSSVar = useCallback((path: string, prefix = 'ant') => {
     return `var(--${prefix}-${path.replace(/\./g, '-')})`
   }, [])
 

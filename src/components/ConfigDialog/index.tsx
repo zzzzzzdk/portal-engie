@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Switch } from 'antd';
-import { Widget } from '@/types';
+import { Widget, MicroAppModule } from '@/types';
 import { useStore } from '@/store/useStore';
+import { microAppCommunication } from '@/utils/microAppCommunication';
 import FormFieldBuilder from '../FormFieldBuilder';
+import MicroAppSelector from '../MicroAppSelector';
+import EventRouteConfig from '../EventRouteConfig';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -17,32 +20,67 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
   useEffect(() => {
     if (isOpen) {
-      form.setFieldsValue({
-        title: widget.title,
-        refreshInterval: widget.config.refreshInterval,
-        apiEndpoint: widget.config.apiEndpoint,
-        // showTitle 默认为 true，只有显式设置为 false 时才为 false
-        showTitle: widget.config.showTitle !== false,
-        ...widget.config,
-      });
+      // 对于微应用类型,需要特殊处理配置
+      if (widget.type === 'microApp') {
+        form.setFieldsValue({
+          title: widget.title,
+          showTitle: widget.config.showTitle !== false,
+          refreshInterval: widget.config.refreshInterval,
+          systemId: widget.config.systemId,
+          moduleId: widget.config.moduleId,
+          sync: widget.config.sync !== false,
+          alive: widget.config.alive !== false,
+          eventRoutes: widget.config.eventRoutes || [],
+        });
+      } else {
+        form.setFieldsValue({
+          title: widget.title,
+          refreshInterval: widget.config.refreshInterval,
+          apiEndpoint: widget.config.apiEndpoint,
+          showTitle: widget.config.showTitle !== false,
+          ...widget.config,
+        });
+      }
     }
   }, [isOpen, widget, form]);
 
   const handleOk = () => {
     form.validateFields().then((values) => {
-      const { title, showTitle, refreshInterval, apiEndpoint, ...restConfig } = values;
+      if (widget.type === 'microApp') {
+        // 微应用配置
+        const { title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes } = values;
+        updateWidget(widget.id, {
+          title,
+          config: {
+            ...widget.config,
+            showTitle,
+            refreshInterval,
+            systemId,
+            moduleId,
+            sync,
+            alive,
+            eventRoutes: eventRoutes || [],
+          },
+        });
 
-      // Update generic widget props
-      updateWidget(widget.id, {
-        title,
-        config: {
-          ...widget.config,
-          showTitle,
-          refreshInterval,
-          apiEndpoint,
-          ...restConfig,
-        },
-      });
+        // 重新设置事件监听器
+        setTimeout(() => {
+          microAppCommunication.setupEventListeners();
+        }, 100);
+      } else {
+        // 其他小部件配置
+        const { title, showTitle, refreshInterval, apiEndpoint, ...restConfig } = values;
+        updateWidget(widget.id, {
+          title,
+          config: {
+            ...widget.config,
+            showTitle,
+            refreshInterval,
+            apiEndpoint,
+            ...restConfig,
+          },
+        });
+      }
 
       onClose();
     });
@@ -94,6 +132,78 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <Form.Item name="fields" label="Form Fields">
              <FormFieldBuilder />
           </Form.Item>
+        )}
+
+        {/* 微应用特定配置 */}
+        {widget.type === 'microApp' && (
+          <>
+            <Form.Item
+              name="microAppSelector"
+              label="微应用配置"
+              rules={[
+                {
+                  validator: async () => {
+                    const systemId = form.getFieldValue('systemId');
+                    const moduleId = form.getFieldValue('moduleId');
+                    if (!systemId || !moduleId) {
+                      return Promise.reject(new Error('请选择系统和模块'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
+            >
+              <MicroAppSelector
+                systemId={widget.config.systemId}
+                moduleId={widget.config.moduleId}
+                onChange={(config: { systemId: string; moduleId: string; module: MicroAppModule | null }) => {
+                  form.setFieldsValue({
+                    systemId: config.systemId,
+                    moduleId: config.moduleId,
+                  });
+                  // 触发表单验证
+                  form.validateFields(['microAppSelector']);
+                }}
+              />
+            </Form.Item>
+
+            <Form.Item name="systemId" hidden>
+              <Input />
+            </Form.Item>
+
+            <Form.Item name="moduleId" hidden>
+              <Input />
+            </Form.Item>
+
+            <Form.Item
+              name="sync"
+              label="同步路由"
+              valuePropName="checked"
+              tooltip="是否同步主应用路由到微应用"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              name="alive"
+              label="保持存活"
+              valuePropName="checked"
+              tooltip="切换到其他页面时是否保持微应用状态"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item
+              name="eventRoutes"
+              label="事件路由配置"
+            >
+              <EventRouteConfig
+                currentWidgetId={widget.id}
+                currentSystemId={widget.config.systemId}
+                currentModuleId={widget.config.moduleId}
+              />
+            </Form.Item>
+          </>
         )}
       </Form>
     </Modal>

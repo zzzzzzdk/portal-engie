@@ -6,27 +6,27 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+    background: var(--ant-color-bg-layout, rgba(0, 0, 0, 0.04));
     border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.15));
+    background: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.15));
     border-radius: 4px;
     transition: background 0.3s ease;
 
     &:hover {
-      background: var(--aurora-color-border, rgba(0, 0, 0, 0.25));
+      background: var(--ant-color-border, rgba(0, 0, 0, 0.25));
     }
 
     &:active {
-      background: var(--aurora-color-text-tertiary, rgba(0, 0, 0, 0.35));
+      background: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.35));
     }
   }
 
   scrollbar-width: thin;
-  scrollbar-color: var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.15))
-                   var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+  scrollbar-color: var(--ant-color-border-secondary, rgba(0, 0, 0, 0.15))
+                   var(--ant-color-bg-layout, rgba(0, 0, 0, 0.04));
 }
 
 
@@ -84,19 +84,19 @@
 
 .scrollbar-primary {
   &::-webkit-scrollbar-thumb {
-    background: var(--aurora-color-primary-bg, rgba(24, 144, 255, 0.3));
+    background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.3));
 
     &:hover {
-      background: var(--aurora-color-primary-border, rgba(24, 144, 255, 0.5));
+      background: var(--ant-color-primary-border, rgba(24, 144, 255, 0.5));
     }
 
     &:active {
-      background: var(--aurora-color-primary, rgba(24, 144, 255, 0.7));
+      background: var(--ant-color-primary, rgba(24, 144, 255, 0.7));
     }
   }
 
-  scrollbar-color: var(--aurora-color-primary-bg, rgba(24, 144, 255, 0.3))
-                   var(--aurora-color-bg-layout, rgba(0, 0, 0, 0.04));
+  scrollbar-color: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.3))
+                   var(--ant-color-bg-layout, rgba(0, 0, 0, 0.04));
 }
 
 

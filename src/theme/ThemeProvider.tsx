@@ -28,21 +28,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 延迟执行，确保在 Ant Design ConfigProvider 注入变量之后
     const timeoutId = setTimeout(() => {
-      // 1. 注入调色板（--aurora-color-primary-1 ~ --aurora-color-primary-10 等）
-      injectColorPalette(palette, 'aurora')
+      // 1. 注入调色板（--ant-color-primary-1 ~ --ant-color-primary-10 等）
+      injectColorPalette(palette, 'ant')
 
-      // 2. 注入基础 Token（--aurora-spacing-xs, --aurora-font-size-sm 等）
+      // 2. 注入基础 Token（--ant-spacing-xs, --ant-font-size-sm 等）
       Object.entries(baseTokens).forEach(([category, values]) => {
         Object.entries(values).forEach(([key, value]) => {
-          const cssVarName = `--aurora-${category}-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
+          const cssVarName = `--ant-${category}-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
           const cssValue = typeof value === 'number' ? `${value}px` : String(value)
           root.style.setProperty(cssVarName, cssValue)
         })
       })
 
-      // 3. 注入自定义 Token（--aurora-layout-header-gradient-bg 等）
+      // 3. 注入自定义 Token（--ant-layout-header-gradient-bg 等）
       // 使用 important 优先级，确保覆盖 Ant Design 的默认值
-      injectCSSVariables(customTokens.layout, 'aurora', 'layout')
+      injectCSSVariables(customTokens.layout, 'ant', 'layout')
 
       // 4. 设置主题模式到 data 属性（供 CSS 选择器使用）
       root.dataset.theme = themeMode
@@ -58,8 +58,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return {
       cssVar: {
-        key: 'aurora',
-        prefix: 'aurora',
+        key: 'ant',
+        prefix: 'ant',
       },
       hashed: false,
       algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -85,7 +85,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         Layout: {
           headerHeight: customTokens.layout.header.height,
           // 注意：不在这里设置 headerBg 和 siderBg，
-          // 因为我们使用自定义 CSS 变量 --aurora-layout-header-gradient-bg
+          // 因为我们使用自定义 CSS 变量 --ant-layout-header-gradient-bg
         },
         Menu: {
           // 让 Ant Design 根据 algorithm 自动适配菜单颜色

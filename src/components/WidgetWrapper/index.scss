@@ -2,13 +2,13 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--aurora-color-bg-container, #fff);
+  background: var(--ant-color-bg-container, #fff);
   border-radius: 8px;
-  box-shadow: 0 1px 3px var(--aurora-color-border, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 1px 3px var(--ant-color-border, rgba(0, 0, 0, 0.1));
   transition: box-shadow 0.3s;
 
   &:hover {
-    box-shadow: 0 4px 12px var(--aurora-color-border-secondary, rgba(0, 0, 0, 0.15));
+    box-shadow: 0 4px 12px var(--ant-color-border-secondary, rgba(0, 0, 0, 0.15));
   }
 
   .widget-header {
@@ -16,7 +16,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--aurora-color-border, #f0f0f0);
+    border-bottom: 1px solid var(--ant-color-border, #f0f0f0);
     cursor: grab;
     user-select: none;
     transition: all 0.3s ease;
@@ -43,8 +43,8 @@
 
     // 极简模式：无标题但在编辑模式下显示的拖拽条
     &.widget-header--minimal {
-      background: var(--aurora-color-primary-bg, rgba(24, 144, 255, 0.08)); // 淡蓝色半透明背景
-      border-bottom: 1px dashed var(--aurora-color-primary-border, rgba(24, 144, 255, 0.3)); // 虚线边框
+      background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.08)); // 淡蓝色半透明背景
+      border-bottom: 1px dashed var(--ant-color-primary-border, rgba(24, 144, 255, 0.3)); // 虚线边框
       padding: 6px 12px;
       justify-content: flex-end; // 操作按钮靠右
       position: relative;
@@ -56,18 +56,18 @@
         left: 8px;
         top: 50%;
         transform: translateY(-50%);
-        color: var(--aurora-color-primary-border-hover, rgba(24, 144, 255, 0.5));
+        color: var(--ant-color-primary-border-hover, rgba(24, 144, 255, 0.5));
         font-size: 16px;
         line-height: 1;
         letter-spacing: 2px;
       }
 
       &:hover {
-        background: var(--aurora-color-primary-bg-hover, rgba(24, 144, 255, 0.12));
-        border-bottom-color: var(--aurora-color-primary-border-hover, rgba(24, 144, 255, 0.5));
+        background: var(--ant-color-primary-bg-hover, rgba(24, 144, 255, 0.12));
+        border-bottom-color: var(--ant-color-primary-border-hover, rgba(24, 144, 255, 0.5));
 
         &::before {
-          color: var(--aurora-color-primary, rgba(24, 144, 255, 0.8));
+          color: var(--ant-color-primary, rgba(24, 144, 255, 0.8));
         }
       }
 

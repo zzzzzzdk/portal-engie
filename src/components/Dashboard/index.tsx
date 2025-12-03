@@ -17,6 +17,7 @@ import SearchWidget from '../widgets/SearchWidget';
 import DataTableWidget from '../widgets/DataTableWidget';
 import CardGridWidget from '../widgets/CardGridWidget';
 import CustomFormWidget from '../widgets/CustomFormWidget';
+import MicroAppWidget from '../widgets/MicroAppWidget';
 import WidgetErrorBoundary from '../WidgetErrorBoundary';
 import './index.scss';
 
@@ -73,6 +74,8 @@ const Dashboard: React.FC = () => {
         return <CardGridWidget {...commonProps} />;
       case 'customForm':
         return <CustomFormWidget {...commonProps} />;
+      case 'microApp':
+        return <MicroAppWidget {...commonProps} />;
       default:
         return <div>{widget.type} Widget</div>;
     }

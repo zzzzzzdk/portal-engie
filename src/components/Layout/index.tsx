@@ -3,9 +3,10 @@ import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as 
 import type { MenuProps } from 'antd'
 import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
-import { WidgetType } from '@/types';
+import { WidgetType, MicroAppModule } from '@/types';
 import { Outlet, useNavigate } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
+import MicroAppMarket from '@/components/MicroAppMarket'
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
 import './index.scss';
@@ -17,6 +18,7 @@ const Layout: React.FC = () => {
     isEditMode,
     setEditMode,
     addWidget,
+    addMicroAppWidget,
     saveDashboard,
     toggleFullScreen,
     logout
@@ -25,8 +27,15 @@ const Layout: React.FC = () => {
   const { message } = AntdApp.useApp();
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
+  const [microAppMarketOpen, setMicroAppMarketOpen] = useState(false)
 
   const handleAddWidget = (key: string) => {
+    // 如果是微应用类型,打开微应用市场
+    if (key === 'microApp') {
+      setMicroAppMarketOpen(true);
+      return;
+    }
+
     addWidget(key as WidgetType);
     const widgetNames: Record<string, string> = {
       clock: '时钟',
@@ -43,17 +52,43 @@ const Layout: React.FC = () => {
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
 
-  const items = [
-    { label: '时钟', key: 'clock' },
-    { label: '统计卡片', key: 'stats' },
-    { label: '图表', key: 'chart' },
-    { label: '快捷链接', key: 'link' },
-    { label: '新闻动态', key: 'news' },
-    { label: '排行榜', key: 'topList' },
-    { label: '搜索', key: 'search' },
-    { label: '数据表格', key: 'dataTable' },
-    { label: '卡片网格', key: 'cardGrid' },
-    { label: '自定义表单', key: 'customForm' },
+  const handleSelectMicroApp = (systemId: string, moduleId: string, module: MicroAppModule) => {
+    addMicroAppWidget(systemId, moduleId, module);
+    message.success(`已添加微应用: ${module.name}`);
+  };
+
+  // 分组的小部件菜单
+  const items: MenuProps['items'] = [
+    {
+      type: 'group',
+      label: '基础小部件',
+      children: [
+        { label: '时钟', key: 'clock' },
+        { label: '统计卡片', key: 'stats' },
+        { label: '图表', key: 'chart' },
+        { label: '快捷链接', key: 'link' },
+        { label: '新闻动态', key: 'news' },
+        { label: '排行榜', key: 'topList' },
+        { label: '搜索', key: 'search' },
+        { label: '数据表格', key: 'dataTable' },
+        { label: '卡片网格', key: 'cardGrid' },
+        { label: '自定义表单', key: 'customForm' },
+      ]
+    },
+    {
+      type: 'divider',
+    },
+    {
+      type: 'group',
+      label: '微应用小部件',
+      children: [
+        {
+          label: '微应用',
+          key: 'microApp',
+          icon: <AppstoreOutlined />
+        },
+      ]
+    }
   ];
 
   const handleSave = () => {
@@ -116,6 +151,14 @@ const Layout: React.FC = () => {
 
         {/* 自定义主题配置器 */}
         <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />
+
+        {/* 微应用市场 */}
+        <MicroAppMarket
+          open={microAppMarketOpen}
+          onClose={() => setMicroAppMarketOpen(false)}
+          onSelectModule={handleSelectMicroApp}
+        />
+
         <Space size="middle">
           {/* 主题切换按钮 - 仅在开发环境显示 */}
           {isDevelopment() && (

@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--aurora-color-primary, #667eea) 0%, var(--aurora-color-brand, #764ba2) 100%);
+  background: linear-gradient(135deg, var(--ant-color-primary, #667eea) 0%, var(--ant-color-brand, #764ba2) 100%);
 
   .login-content {
     width: 100%;
@@ -24,13 +24,13 @@
 
         .anticon {
           font-size: 44px;
-          color: var(--aurora-color-primary, #1890ff);
+          color: var(--ant-color-primary, #1890ff);
           margin-right: 16px;
         }
 
         .title {
           font-size: 33px;
-          color: var(--aurora-color-text-heading, rgba(0, 0, 0, 0.88));
+          color: var(--ant-color-text-heading, rgba(0, 0, 0, 0.88));
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
           font-weight: 600;
           position: relative;
@@ -40,7 +40,7 @@
 
       .desc {
         font-size: 14px;
-        color: var(--aurora-color-text-secondary, rgba(0, 0, 0, 0.65));
+        color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
         margin-top: 12px;
         margin-bottom: 40px;
       }
@@ -64,7 +64,7 @@
         font-size: 14px;
 
         a {
-          color: var(--aurora-color-text-tertiary, rgba(0, 0, 0, 0.45));
+          color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
           transition: all 0.3s;
 
           &:not(:last-child) {
@@ -72,13 +72,13 @@
           }
 
           &:hover {
-            color: var(--aurora-color-text-secondary, rgba(0, 0, 0, 0.65));
+            color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
           }
         }
       }
 
       .copyright {
-        color: var(--aurora-color-text-tertiary, rgba(0, 0, 0, 0.45));
+        color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
         font-size: 14px;
       }
     }

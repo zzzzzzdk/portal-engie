@@ -85,7 +85,7 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `aurora-theme-${Date.now()}.json`
+    a.download = `ant-theme-${Date.now()}.json`
     a.click()
     URL.revokeObjectURL(url)
     message.success('主题配置已导出')
