@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "apps": [
+    {
+      "id": "system-fusion",
+      "name": "表单组件",
+      "description": "提交融合数据到其他系统",
+      "icon": "UserOutlined",
+      "category": "融合",
+      "modules": [
+        {
+          "id": "input-only",
+          "name": "表单",
+          "description": "输入框",
+          "url": "http://localhost:8083/#/input-only",
+          "entry": "http://localhost:8083/",
+          "icon": "http://localhost:8083/static/images/gongan.png",
+          "defaultSize": {
+            "w": 6,
+            "h": 4
+          },
+          "emittableEvents": [
+            {
+              "type": "data:submit:input-only",
+              "name": "数据提交",
+              "description": "提交融合数据到其他系统"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "system-finance",
+      "name": "接收方",
+      "description": "接受数据进行操作",
+      "icon": "AccountBookOutlined",
+      "category": "结果",
+      "modules": [
+        {
+          "id": "table-only",
+          "name": "结果页",
+          "description": "结果页",
+          "url": "http://localhost:8083/#/table-only",
+          "entry": "http://localhost:8083/",
+          "icon": "https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表",
+          "defaultSize": {
+            "w": 6,
+            "h": 6
+          },
+          "listenableEvents": [
+            {
+              "type": "data:submit:table-only",
+              "name": "数据提交",
+              "description": "接收数据提交事件"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "system-crm",
+      "name": "万象",
+      "description": "万象",
+      "icon": "CustomerServiceOutlined",
+      "category": "万象",
+      "modules": [
+        {
+          "id": "crm-customer",
+          "name": "万象",
+          "description": "万象",
+          "url": "http://192.168.11.16:8088/#/home",
+          "entry": "http://192.168.11.16:8088",
+          "icon": "http://192.168.11.16:8088/static/images/logo.png",
+          "defaultSize": {
+            "w": 8,
+            "h": 5
+          },
+          "emittableEvents": [
+            {
+              "type": "data:submit",
+              "name": "数据提交",
+              "description": "提交客户数据"
+            },
+            {
+              "type": "user:select",
+              "name": "客户选择",
+              "description": "用户选择了客户"
+            },
+            {
+              "type": "data:query",
+              "name": "数据查询",
+              "description": "查询相关数据"
+            }
+          ]
+        }
+        
+      ]
+    }
+  ]
+}

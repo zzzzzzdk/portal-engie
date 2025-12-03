@@ -1,0 +1,46 @@
+.event-route-config {
+  margin-top: 16px;
+
+  .event-route-config-header {
+    margin-bottom: 16px;
+
+    .event-route-config-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.88);
+      margin-bottom: 4px;
+    }
+
+    .event-route-config-description {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+
+  .event-route-config-footer {
+    margin-top: 12px;
+
+    .event-route-config-hint {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      text-align: center;
+    }
+  }
+
+  // Table样式优化
+  .ant-table {
+    .ant-table-thead > tr > th {
+      background-color: #fafafa;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: 8px 12px;
+    }
+  }
+}
