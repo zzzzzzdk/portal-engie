@@ -1,0 +1,437 @@
+/**
+ * FloatingModule 样式文件
+ *
+ * 性能优化策略：
+ * 1. 使用 transform 代替 top/left（GPU 加速）
+ * 2. 使用 will-change 提示浏览器优化
+ * 3. 使用 contain 属性隔离渲染
+ * 4. 避免复杂的 box-shadow，使用简单阴影
+ * 5. 使用硬件加速的属性（transform, opacity）
+ */
+
+// 外层容器 - 负责定位和尺寸过渡
+.floating-module-container {
+  // 启用 GPU 加速
+  will-change: transform, width, height;
+  
+  // 平滑过渡 - 默认状态
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+              top 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+              height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  // 拖拽中 - 禁用过渡，确保跟手
+  &.react-draggable-dragging {
+    transition: none !important;
+    z-index: 10000 !important;
+
+    // 拖拽时显示遮罩 - 防止 iframe 吞噬事件
+    .drag-mask {
+      display: block !important;
+    }
+  }
+
+  // 调整大小中 - 禁用过渡
+  &.react-resizable-resizing {
+    transition: none !important;
+  }
+}
+
+.floating-module {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  user-select: none;
+
+  // 性能优化：启用 GPU 加速和渲染隔离
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
+
+  // 注意：position 由组件动态设置（absolute）
+
+  // 平滑过渡
+  transition: box-shadow 0.3s ease;
+
+  // 悬停效果
+  &:hover {
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  // ==================== 展开状态 ====================
+  &.expanded {
+    // 调整大小时的平滑过渡
+    &.resizing {
+      transition: none;
+    }
+  }
+
+  // ==================== 折叠状态 ====================
+  &.collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      transform: translateZ(0) scale(1.05);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    &:active {
+      transform: translateZ(0) scale(0.95);
+    }
+
+    .icon-text {
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  // ==================== 主题 ====================
+
+  // 亮色主题（默认）
+  &.theme-light {
+    background: #ffffff;
+    color: #333333;
+
+    .floating-module-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .floating-module-content {
+      background: #ffffff;
+    }
+  }
+
+  // 暗色主题
+  &.theme-dark {
+    background: #1f1f1f;
+    color: #e5e5e5;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+    .floating-module-header {
+      background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+      color: #e5e5e5;
+      border-bottom: 1px solid rgba(127, 90, 90, 0.1);
+    }
+
+    .floating-module-content {
+      background: #1f1f1f;
+    }
+
+    .action-btn {
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #e5e5e5;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .error-message {
+      color: #a0a0a0;
+    }
+  }
+
+  // ==================== 头部 ====================
+  .floating-module-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 8px;
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+
+    // 性能优化
+    will-change: transform;
+    transform: translateZ(0);
+
+    .drag-icon {
+      font-size: 14px;
+      opacity: 0.8;
+      cursor: move;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    .title {
+      flex: 1;
+      font-weight: 600;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+
+      .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 6px;
+        color: inherit;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+        // 性能优化
+        will-change: transform, background-color;
+        transform: translateZ(0);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.6);
+          transform: translateZ(0) scale(1.05);
+        }
+
+        &:active {
+          transform: translateZ(0) scale(0.95);
+        }
+
+        // 配置按钮
+        &.config-btn {
+          &:hover {
+            background: rgba(255, 255, 255, 0.25);
+          }
+        }
+
+        // 最小化按钮
+        &.minimize-btn {
+          &:hover {
+            background: rgba(255, 255, 255, 0.25);
+          }
+        }
+
+        // 关闭按钮
+        &.close-btn {
+          &:hover {
+            background: rgba(255, 77, 79, 0.2);
+            border-color: #ff4d4f;
+            color: #ff4d4f;
+          }
+        }
+
+        // 删除按钮（编辑模式）
+        &.delete-btn {
+          border-color: rgba(255, 77, 79, 0.6);
+
+          &:hover {
+            background: rgba(255, 77, 79, 0.2);
+            border-color: #ff4d4f;
+            color: #ff4d4f;
+          }
+        }
+      }
+    }
+  }
+
+  // ==================== 内容区 ====================
+  .floating-module-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+
+    // 性能优化
+    contain: strict;
+    will-change: contents;
+
+    // 拖拽遮罩 - 防止 iframe 干扰
+    .drag-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      background: transparent;
+      cursor: move;
+      display: none; // 默认隐藏
+    }
+
+    // 错误消息
+    .error-message {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 20px;
+      color: #999999;
+      text-align: center;
+      font-size: 14px;
+    }
+  }
+
+  // ==================== 调整大小手柄 ====================
+
+
+  // ==================== 拖拽状态（旧的，可能废弃，但保留兼容） ====================
+  &.react-draggable-dragging {
+    cursor: move;
+    opacity: 0.9;
+    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.25);
+
+    // 拖拽时禁用过渡
+    transition: none;
+
+    // 提升层级
+    z-index: 10000 !important;
+  }
+
+  // ==================== 调整大小状态 ====================
+  &.react-resizable-resizing {
+    // 调整大小时禁用过渡
+    transition: none;
+  }
+}
+
+// ==================== 响应式设计 ====================
+@media (max-width: 768px) {
+  .floating-module {
+    // 移动端上限制最大宽度
+    max-width: calc(100vw - 40px) !important;
+    max-height: calc(100vh - 40px) !important;
+
+    &.collapsed {
+      width: 50px !important;
+      height: 50px !important;
+      font-size: 20px;
+    }
+
+    .floating-module-header {
+      padding: 10px 12px;
+
+      .title {
+        font-size: 13px;
+      }
+
+      .actions .action-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 11px;
+      }
+    }
+  }
+}
+
+// ==================== 动画优化 ====================
+
+// 减少动画的重绘区域
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: translateZ(0) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translateZ(0) scale(1);
+    opacity: 1;
+  }
+}
+
+// ==================== 打印样式 ====================
+@media print {
+  .floating-module {
+    display: none !important;
+  }
+}
+
+// ==================== 可访问性 ====================
+.floating-module {
+  // 键盘焦点样式
+  &:focus-within {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+  }
+
+  .action-btn {
+    &:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ==================== 高对比度模式 ====================
+@media (prefers-contrast: high) {
+  .floating-module {
+    border: 2px solid currentColor;
+
+    .floating-module-header {
+      border-bottom: 2px solid currentColor;
+    }
+
+    .action-btn {
+      border-width: 2px;
+    }
+  }
+}
+
+// ==================== 减少动画模式 ====================
+@media (prefers-reduced-motion: reduce) {
+  .floating-module,
+  .floating-module *,
+  .action-btn {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-position: bottom right;
+  box-sizing: border-box;
+  padding: 0 3px 3px 0;
+  // opacity: 0.4;
+  transition: opacity 0.2s ease;
+  z-index: 10000;
+
+
+  // &:hover {
+  //   opacity: 1;
+  // }
+
+}

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
 import type { MenuProps } from 'antd'
-import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, MessageOutlined, BellOutlined, RobotOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { WidgetType, MicroAppModule } from '@/types';
 import { Outlet, useNavigate } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
+import GlobalMicroAppContainer from './GlobalMicroAppContainer'
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
 import './index.scss';
@@ -19,6 +20,8 @@ const Layout: React.FC = () => {
     setEditMode,
     addWidget,
     addMicroAppWidget,
+    addFloatingModuleLocal,
+    addFloatingModuleMicroApp,
     saveDashboard,
     toggleFullScreen,
     logout
@@ -28,10 +31,80 @@ const Layout: React.FC = () => {
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [microAppMarketOpen, setMicroAppMarketOpen] = useState(false)
+  const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
 
   const handleAddWidget = (key: string) => {
     // 如果是微应用类型,打开微应用市场
     if (key === 'microApp') {
+      setMicroAppMarketMode('widget');
+      setMicroAppMarketOpen(true);
+      return;
+    }
+
+    // 处理悬浮模块 - 本地组件
+    if (key === 'floating-chat') {
+      addFloatingModuleLocal(
+        'chat',
+        '在线客服',
+        {
+          botName: 'AI 智能助手',
+          welcomeMessage: '您好！我是 AI 智能助手，有什么可以帮您的吗？',
+          onSendMessage: async (msg: string) => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (msg.includes('你好') || msg.includes('您好')) {
+              return '您好！很高兴为您服务！';
+            } else if (msg.includes('帮助')) {
+              return '我可以帮您解答问题、提供建议等。请告诉我您需要什么帮助？';
+            }
+            return `收到您的消息："${msg}"。我会尽快为您处理！`;
+          },
+        },
+        {
+          width: 380,
+          height: 400,
+          defaultPosition: 'bottom-right',
+        }
+      );
+      message.success('已添加在线客服悬浮模块');
+      return;
+    }
+
+    if (key === 'floating-notification') {
+      addFloatingModuleLocal(
+        'notification',
+        '通知中心',
+        {
+          notifications: [
+            {
+              id: '1',
+              type: 'info' as const,
+              title: '欢迎使用',
+              content: '欢迎使用通知中心功能！',
+              time: new Date(),
+              read: false,
+            }
+          ],
+        },
+        {
+          width: 400,
+          height: 400,
+          defaultPosition: 'top-right',
+        }
+      );
+      message.success('已添加通知中心悬浮模块');
+      return;
+    }
+
+    // 悬浮模块 - 微应用（打开微应用市场，以悬浮模式添加）
+    if (key === 'floating-microApp') {
+      setMicroAppMarketMode('floating');
+      setMicroAppMarketOpen(true);
+      return;
+    }
+
+    // 全局微应用 - 适用于自带窗口管理的机器人等
+    if (key === 'global-microApp') {
+      setMicroAppMarketMode('global');
       setMicroAppMarketOpen(true);
       return;
     }
@@ -53,8 +126,32 @@ const Layout: React.FC = () => {
   };
 
   const handleSelectMicroApp = (systemId: string, moduleId: string, module: MicroAppModule) => {
-    addMicroAppWidget(systemId, moduleId, module);
-    message.success(`已添加微应用: ${module.name}`);
+    if (microAppMarketMode === 'floating') {
+      // 以悬浮模块形式添加
+      addFloatingModuleMicroApp(
+        systemId,
+        moduleId,
+        module,
+        {
+          width: 400,
+          height: 400,
+          defaultPosition: 'bottom-right',
+        }
+      );
+      message.success(`已添加悬浮模块: ${module.name}`);
+    } else if (microAppMarketMode === 'global') {
+      // 以全局无边框模式添加
+      useStore.getState().addGlobalMicroApp(
+        systemId,
+        moduleId,
+        module
+      );
+      message.success(`已添加全局微应用: ${module.name}`);
+    } else {
+      // 以小部件形式添加到网格
+      addMicroAppWidget(systemId, moduleId, module);
+      message.success(`已添加微应用: ${module.name}`);
+    }
   };
 
   // 分组的小部件菜单
@@ -87,6 +184,35 @@ const Layout: React.FC = () => {
           key: 'microApp',
           icon: <AppstoreOutlined />
         },
+      ]
+    },
+    {
+      type: 'divider',
+    },
+    {
+      type: 'group',
+      label: '悬浮模块',
+      children: [
+        // {
+        //   label: '在线客服',
+        //   key: 'floating-chat',
+        //   icon: <MessageOutlined />
+        // },
+        // {
+        //   label: '通知中心',
+        //   key: 'floating-notification',
+        //   icon: <BellOutlined />
+        // },
+        {
+          label: '微应用（悬浮）',
+          key: 'floating-microApp',
+          icon: <RobotOutlined />
+        },
+        // {
+        //   label: '微应用（无边框）',
+        //   key: 'global-microApp',
+        //   icon: <RobotOutlined style={{ color: '#faad14' }} />
+        // },
       ]
     }
   ];
@@ -157,6 +283,7 @@ const Layout: React.FC = () => {
           open={microAppMarketOpen}
           onClose={() => setMicroAppMarketOpen(false)}
           onSelectModule={handleSelectMicroApp}
+          mode={microAppMarketMode}
         />
 
         <Space size="middle">
@@ -209,6 +336,8 @@ const Layout: React.FC = () => {
 
       <Content className="app-content">
         <Outlet />
+        {/* 全局无边框微应用挂载点 */}
+        <GlobalMicroAppContainer />
       </Content>
     </AntdLayout>
   );

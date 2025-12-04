@@ -11,7 +11,8 @@ export type WidgetType =
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
-  | 'microApp'; // 微应用小部件类型
+  | 'microApp'         // 微应用小部件类型
+  | 'floatingModule';  // 悬浮模块
 
 export interface WidgetConfig {
   title?: string;
@@ -44,6 +45,8 @@ export interface AppState {
   isFullScreen: boolean;
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
+  floatingModules: Widget[];  // 悬浮模块列表
+  globalMicroApps: Widget[];  // 全局无边框微应用列表
   login: (userInfo?: UserInfo) => void;
   logout: () => void;
   addWidget: (type: WidgetType) => void;
@@ -56,6 +59,33 @@ export interface AppState {
   resetDashboard: () => void;
   saveDashboard: () => void;
   loadDashboard: () => void;
+  // 悬浮模块方法
+  addFloatingModuleMicroApp: (
+    systemId: string,
+    moduleId: string,
+    module: MicroAppModule,
+    config?: Partial<FloatingModuleConfig>
+  ) => void;
+  addFloatingModuleLocal: (
+    componentType: LocalComponentType,
+    title: string,
+    componentProps?: Record<string, any>,
+    config?: Partial<FloatingModuleConfig>
+  ) => void;
+  removeFloatingModule: (id: string) => void;
+  updateFloatingModule: (id: string, updates: Partial<Widget>) => void;
+  updateFloatingModuleConfig: (id: string, config: Partial<FloatingModuleConfig>) => void;
+  updateFloatingModulePosition: (id: string, position: { x: number; y: number }) => void;
+  updateFloatingModuleSize: (id: string, size: { width: number; height: number }) => void;
+  toggleFloatingModuleExpanded: (id: string) => void;
+  // 全局微应用方法
+  addGlobalMicroApp: (
+    systemId: string,
+    moduleId: string,
+    module: MicroAppModule,
+    config?: Partial<MicroAppWidgetConfig>
+  ) => void;
+  removeGlobalMicroApp: (id: string) => void;
 }
 
 // Form builder types
@@ -130,6 +160,7 @@ export interface MicroAppWidgetConfig extends WidgetConfig {
   alive?: boolean;               // 是否保持存活
   props?: Record<string, any>;   // 传递给子应用的props
   eventRoutes?: EventRouteConfig[]; // 事件路由配置 - 发送方配置(当前应用的事件发送给谁)
+  mode?: 'default' | 'global';   // 显示模式: default-标准容器, global-无边框全局
 }
 
 // ============================================
@@ -282,3 +313,82 @@ export interface ThemeChangePayload {
  * 事件监听器回调函数类型
  */
 export type MicroAppEventListener<T = any> = (message: MicroAppEventMessage<T>) => void | Promise<void>;
+
+// ============================================
+// 悬浮模块相关类型定义
+// ============================================
+
+/**
+ * 悬浮模块内容类型
+ */
+export type FloatingModuleContentType = 'microApp' | 'localComponent';
+
+/**
+ * 本地组件类型枚举
+ */
+export type LocalComponentType =
+  | 'chat'           // 聊天组件
+  | 'notification'   // 通知中心
+  | 'help'           // 帮助文档
+  | 'calendar'       // 日历
+  | 'notes'          // 笔记
+  | 'custom';        // 自定义组件
+
+/**
+ * 悬浮模块配置
+ */
+export interface FloatingModuleConfig extends WidgetConfig {
+  // 内容类型配置
+  contentType: FloatingModuleContentType;  // 内容类型: 微应用 或 本地组件
+
+  // 微应用配置 (当 contentType = 'microApp' 时使用)
+  microApp?: {
+    systemId: string;
+    moduleId: string;
+    url: string;
+    entry: string;
+    props?: Record<string, any>;
+    sync?: boolean;
+    alive?: boolean;
+  };
+
+  // 本地组件配置 (当 contentType = 'localComponent' 时使用)
+  localComponent?: {
+    componentType: LocalComponentType;  // 组件类型
+    componentProps?: Record<string, any>;  // 传递给组件的 props
+  };
+
+  // 位置配置
+  position?: {
+    x: number;      // X 坐标(像素)
+    y: number;      // Y 坐标(像素)
+  };
+  defaultPosition?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
+
+  // 尺寸配置
+  width?: number;        // 宽度(像素)
+  height?: number;       // 高度(像素)
+  minWidth?: number;     // 最小宽度
+  minHeight?: number;    // 最小高度
+  maxWidth?: number;     // 最大宽度
+  maxHeight?: number;    // 最大高度
+
+  // 显示配置
+  isExpanded?: boolean;     // 是否展开
+  collapsedWidth?: number;  // 折叠时宽度
+  collapsedHeight?: number; // 折叠时高度
+
+  // 行为配置
+  draggable?: boolean;      // 是否可拖拽(非编辑模式)
+  resizable?: boolean;      // 是否可调整大小
+  collapsible?: boolean;    // 是否可折叠
+  closable?: boolean;       // 是否可关闭
+
+  // 样式配置
+  theme?: 'light' | 'dark' | 'auto' | 'custom';  // auto: 跟随主应用主题
+  borderRadius?: number;    // 圆角大小
+  showHeader?: boolean;     // 是否显示头部
+  headerColor?: string;     // 头部颜色
+  icon?: React.ReactNode;   // 折叠时显示的图标
+  zIndex?: number;          // 层级
+}

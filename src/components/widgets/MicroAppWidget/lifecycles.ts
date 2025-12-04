@@ -15,7 +15,30 @@ const lifecycles = {
     console.log(`[Wujie] ${getAppName(appWindow)} beforeLoad`);
   },
   beforeMount: (appWindow: WujieWindow) => {
-    console.log(`[Wujie] ${getAppName(appWindow)} beforeMount`);
+    const appName = getAppName(appWindow);
+    console.log(`[Wujie] ${appName} beforeMount`);
+    
+    // 诊断代码：检查 DOM 结构
+    try {
+      const rootElement = appWindow.document.getElementById('root');
+      console.log(`[Wujie 诊断] ${appName} #root 元素状态:`, rootElement ? '存在' : '不存在');
+      
+      if (!rootElement) {
+        console.warn(`[Wujie 诊断] ${appName} 警告: 找不到 #root 元素!`);
+        console.log(`[Wujie 诊断] ${appName} body 内容预览:`, appWindow.document.body.innerHTML.slice(0, 500));
+        
+        // 自动修复逻辑已移除，建议在子应用中处理挂载点问题
+        // const newRoot = appWindow.document.createElement('div'); ...
+
+        // 尝试查找其他可能的挂载点
+        const appElement = appWindow.document.getElementById('app');
+        if (appElement) {
+          console.log(`[Wujie 诊断] ${appName} 发现 #app 元素，可能是挂载点 ID 不匹配`);
+        }
+      }
+    } catch (e) {
+      console.error(`[Wujie 诊断] ${appName} 检查 DOM 失败:`, e);
+    }
   },
   afterMount: (appWindow: WujieWindow) => {
     console.log(`[Wujie] ${getAppName(appWindow)} afterMount`);
