@@ -86,12 +86,13 @@ if (!token && !isLogin) return false
 1. Cookie (via `js-cookie`) - SOURCE OF TRUTH
 2. Zustand state (`isAuthenticated`, `isLogin`) - derived state
 
-### State Management - Dual Store Pattern
+### State Management - Multi-Store Pattern
 
-**Two separate Zustand stores**:
+**Three separate Zustand stores** for different concerns:
 
-1. **useStore** (`src/store/useStore.ts`) - Dashboard state
+1. **useStore** (`src/store/useStore.ts`) - Dashboard & Widget state
    - Widget management: `widgets` array with layout and config
+   - FloatingModule management: `floatingModules` array
    - Edit mode, fullscreen mode
    - Persisted to localStorage (key: `portal-engine-storage`)
    - Auth state synchronized with cookies
@@ -100,6 +101,13 @@ if (!token && !isLogin) return false
    - User info, system config, initialization status
    - Water mark configuration from system settings
    - Route permissions in `userInfo.route` array
+
+3. **useConfigStore** (`src/store/useConfigStore.ts`) - Theme & Config state
+   - Theme mode (light/dark) and preset management
+   - Base colors and semantic tokens
+   - Sidebar collapsed state
+   - Locale settings
+   - Persisted to localStorage (keys: `themeMode`, `themePreset`, `locale`)
 
 ### Router Permission Checking
 
@@ -153,6 +161,172 @@ Each widget has a `config` object:
 3. Import and add case in `Dashboard.tsx` `renderWidgetContent()`
 4. Add to dropdown items in `Layout/index.tsx`
 5. (Optional) Add defaults in `store/useStore.ts` `getDefaultConfig()`
+
+## FloatingModule System
+
+**Draggable floating windows** supporting micro-apps and local components.
+
+### Key Features
+
+- Drag & drop positioning with **RAF optimization** for smooth performance
+- Resizable windows (react-resizable)
+- Expand/collapse with smart position calculation
+- Two content types:
+  - **MicroApp**: Embedded micro-frontends via Wujie
+  - **LocalComponent**: Built-in components (chat, notifications)
+- Theme support (auto/light/dark)
+- Persistent position/size storage
+
+### Performance Optimization Pattern - CRITICAL
+
+FloatingModule uses **requestAnimationFrame (RAF)** to optimize drag performance:
+
+```typescript
+const handleDrag = useCallback((_e: any, data: any) => {
+  // Cache position in ref to avoid frequent state updates
+  pendingPositionRef.current = { x: data.x, y: data.y };
+
+  // Cancel previous RAF
+  if (rafRef.current) {
+    cancelAnimationFrame(rafRef.current);
+  }
+
+  // Batch updates using RAF
+  rafRef.current = requestAnimationFrame(() => {
+    if (pendingPositionRef.current) {
+      setPosition(pendingPositionRef.current);
+    }
+  });
+}, []);
+```
+
+**Why this matters**:
+- Prevents UI lag during fast mouse movements
+- Reduces render count by ~80%
+- Syncs updates with browser refresh rate (60fps)
+- Uses controlled position mode (`position` prop) instead of `defaultPosition`
+
+### Adding FloatingModule
+
+```typescript
+const { addFloatingModuleLocal, addFloatingModuleMicroApp } = useStore();
+
+// Add local component
+addFloatingModuleLocal('chat', '在线客服', { /* props */ }, { /* config */ });
+
+// Add micro-app
+addFloatingModuleMicroApp('systemId', 'moduleId', { url, entry }, { /* config */ });
+```
+
+### Smart Expand Position
+
+When expanding from collapsed state, position is calculated based on screen region:
+- **Bottom-right**: Expands toward top-left
+- **Bottom-left**: Expands toward top-right
+- **Top-right**: Expands toward bottom-left
+- **Top-left**: Expands toward bottom-right (default)
+
+This ensures the expanded window stays within viewport bounds.
+
+## Micro-App Integration (Wujie)
+
+**Micro-frontend architecture** using [Wujie](https://wujie-micro.github.io/doc/) for module isolation.
+
+### Architecture Pattern
+
+```typescript
+// Widget mode: Embedded in dashboard grid
+<MicroAppWidget config={{
+  systemId: 'system-id',
+  moduleId: 'module-id',
+  microAppUrl: 'http://localhost:3001',
+  microAppEntry: 'http://localhost:3001/index.html',
+  mode: 'widget'  // Embedded mode
+}} />
+
+// Global mode: Full container takeover
+<MicroAppWidget config={{
+  mode: 'global',  // Renders in GlobalMicroAppContainer
+  alive: true      // Keep alive when navigating
+}} />
+```
+
+### Configuration Loading
+
+Micro-app configs are loaded from `public/config/micro-apps.json`:
+
+```typescript
+// Centralized config loader
+import { microAppConfigLoader } from '@/utils/microAppConfig';
+
+const module = await microAppConfigLoader.getModule('systemId', 'moduleId');
+// Returns: { id, name, url, entry, icon, description, ... }
+```
+
+### Lifecycle Hooks
+
+File: `src/components/widgets/MicroAppWidget/lifecycles.ts`
+
+```typescript
+export default {
+  beforeLoad: (appWindow: Window) => {
+    console.log('Before load');
+  },
+  afterMount: (appWindow: Window) => {
+    console.log('Mounted, close loading');
+  },
+  activated: (appWindow: Window) => {
+    console.log('Activated from keep-alive');
+  },
+  loadError: (url: string, e: Error) => {
+    console.error('Load failed:', url, e);
+  }
+};
+```
+
+### Communication Pattern
+
+```typescript
+import { bus } from 'wujie-react';
+
+// Main app → Sub app
+bus.$emit('subApp:setToken', getToken());
+
+// Sub app → Main app
+bus.$on('mainApp:navigate', (path) => {
+  navigate(path);
+});
+```
+
+### Degradation Mode
+
+Automatically degrades to iframe mode when:
+- `localStorage.getItem('degrade') === 'true'`
+- Browser lacks `Proxy` or `CustomElementRegistry` support
+
+### MicroAppMarket Component
+
+**Modal UI** for browsing and selecting micro-apps from the catalog:
+
+```typescript
+import MicroAppMarket from '@/components/MicroAppMarket';
+
+<MicroAppMarket
+  open={isOpen}
+  onClose={handleClose}
+  mode="widget"  // 'widget' | 'floating' | 'global'
+  onSelectModule={(systemId, moduleId, module) => {
+    // Add selected module to dashboard
+    addMicroAppWidget(systemId, moduleId, module);
+  }}
+/>
+```
+
+**Features**:
+- Groups systems by category
+- Displays module cards with name, icon, description
+- Supports three modes: widget (grid), floating (window), global (full-screen)
+- Loads from `public/config/micro-apps.json`
 
 ## Offline Environment Requirements
 
@@ -325,14 +499,127 @@ const token = getToken()
 if (!token && !isLogin) return false
 ```
 
+## ConfigDialog Pattern
+
+**Unified configuration dialog** for both widgets and floating modules.
+
+### Usage
+
+```typescript
+import ConfigDialog from '@/components/ConfigDialog';
+
+<ConfigDialog
+  isOpen={isConfigOpen}
+  onClose={handleClose}
+  widget={widget}  // Widget or FloatingModule data
+/>
+```
+
+### How it Works
+
+1. Detects widget type automatically (`widget.type === 'floating-module'`)
+2. Renders appropriate configuration form
+3. Updates store on save (`updateWidget` or `updateFloatingModuleConfig`)
+4. Validates inputs before saving
+
+### Adding Custom Config Fields
+
+When adding new widget types, add config fields in ConfigDialog:
+
+```typescript
+// In ConfigDialog/index.tsx
+{widgetType === 'your-widget' && (
+  <Form.Item label="Custom Field" name="customField">
+    <Input />
+  </Form.Item>
+)}
+```
+
+## Performance Patterns
+
+### RAF (RequestAnimationFrame) Optimization
+
+Use RAF for high-frequency updates (drag, scroll, resize):
+
+```typescript
+const rafRef = useRef<number | null>(null);
+const pendingDataRef = useRef<T | null>(null);
+
+const handleHighFrequencyEvent = (data: T) => {
+  pendingDataRef.current = data;
+
+  if (rafRef.current) {
+    cancelAnimationFrame(rafRef.current);
+  }
+
+  rafRef.current = requestAnimationFrame(() => {
+    if (pendingDataRef.current) {
+      setState(pendingDataRef.current);
+    }
+  });
+};
+
+// Cleanup
+useEffect(() => {
+  return () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
+  };
+}, []);
+```
+
+**When to use RAF**:
+- ✅ Drag & drop position updates
+- ✅ Scroll position tracking
+- ✅ Mouse move events
+- ✅ Resize events
+- ❌ User input (typing)
+- ❌ Click events
+
+### useMemo for Expensive Calculations
+
+```typescript
+// Good: Cache expensive calculations
+const complexData = useMemo(() => {
+  return expensiveOperation(props.data);
+}, [props.data]);
+
+// Good: Cache derived styles
+const moduleStyle = useMemo(() => ({
+  width: isExpanded ? size.width : collapsedWidth,
+  height: isExpanded ? size.height : collapsedHeight,
+  zIndex: config.zIndex || 9999,
+}), [isExpanded, size, config]);
+```
+
+### useCallback for Event Handlers
+
+```typescript
+// Good: Prevent recreation of drag handlers
+const handleDrag = useCallback((_e: any, data: any) => {
+  // Handler logic
+}, [dependencies]);
+
+// Good: Prevent unnecessary child re-renders
+const handleClick = useCallback(() => {
+  doSomething();
+}, []);
+```
+
 ## Development Workflow
 
-1. **New feature**: Check if widget-based or system-level
-2. **Widget feature**: Update widget component + config type
-3. **System feature**: Update appropriate store (useStore vs useSystemStore)
-4. **New route**: Add to `router.config.tsx`, handle permissions
-5. **New API**: Add mock endpoint in `./mock/routes/`
-6. **Styling**: Use SCSS with `@` alias for imports
+1. **New feature**: Check if widget-based, floating-module, or system-level
+2. **Widget feature**: Update widget component + config type + ConfigDialog
+3. **FloatingModule local component**:
+   - Create component in `src/components/FloatingModule/components/`
+   - Register in `LocalComponentRegistry`
+   - Add type to `LocalComponentType`
+4. **System feature**: Update appropriate store (useStore vs useSystemStore vs useConfigStore)
+5. **New route**: Add to `router.config.tsx`, handle permissions
+6. **New API**: Add mock endpoint in `./mock/routes/`
+7. **Styling**: Use SCSS with `@` alias for imports
+8. **Performance-critical features**: Consider RAF optimization for high-frequency events
 
 ## Path Alias Configuration
 
