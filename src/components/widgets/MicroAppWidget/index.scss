@@ -19,4 +19,36 @@
     height: 100%;
     display: block;
   }
+
+  // 全局无边框模式
+  &.global-mode {
+    width: 1px;
+    height: 1px;
+    overflow: visible;
+    background: transparent;
+    position: absolute; // 或者 fixed，取决于父容器
+    top: 0;
+    left: 0;
+    z-index: 9999; // 确保在最上层
+
+    // 去除 wujie 容器的尺寸限制，允许内部 fixed 元素定位
+    wujie-app {
+      width: 1px;
+      height: 1px;
+      display: block;
+    }
+  }
+}
+
+.micro-app-widget-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: var(--ant-color-bg-layout, #f5f5f5); // 使用不透明背景遮挡加载过程中的杂乱内容
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

@@ -3,7 +3,7 @@ import { Widget } from '@/types';
 import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';
 import { Settings, Trash2, RefreshCw } from 'lucide-react';
-import { Button, App, Dropdown, Modal } from 'antd';
+import { Button, Dropdown, Modal } from 'antd';
 import type { MenuProps } from 'antd';
 import clsx from 'clsx';
 import './index.scss';

@@ -4,9 +4,7 @@ import { getPageDestroy, setPageDestroy } from './axios.config'
 // import TileColorLayer from '@yisa/TileColorLayer'
 // @ts-ignore - leaflet types not installed
 import L from 'leaflet'
-import 'proj4/dist/proj4-src'
-// @ts-ignore - proj4leaflet types not installed
-import 'proj4leaflet/src/proj4leaflet'
+
 
 export function isObject(params: any) {
   return Object.prototype.toString.call(params) === '[object Object]'

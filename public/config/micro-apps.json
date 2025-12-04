@@ -68,8 +68,8 @@
           "id": "crm-customer",
           "name": "万象",
           "description": "万象",
-          "url": "http://192.168.11.16:8088/#/home",
-          "entry": "http://192.168.11.16:8088",
+          "url": "http://localhost:3010/#/home",
+          "entry": "http://localhost:3010",
           "icon": "http://192.168.11.16:8088/static/images/logo.png",
           "defaultSize": {
             "w": 8,

@@ -15,15 +15,15 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
-  console.log(config)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
   const appName = `${config.systemId}-${config.moduleId}`;
 
+  // 检查模式
+  const isGlobalMode = config.mode === 'global';
+
   // 检测是否需要降级模式
-  // 如果子应用未适配 Wujie,强制使用 iframe 降级模式
-  // const degrade = true; // 强制使用 iframe 降级模式,确保兼容性
   const degrade = window.localStorage.getItem('degrade') === 'true' || !window.Proxy || !window.CustomElementRegistry;
 
   const initMicroApp = async () => {
@@ -33,9 +33,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
     try {
       // 检查配置是否完整
       if (!config.systemId || !config.moduleId) {
-        setError('微应用配置不完整,请在设置中选择系统和模块');
-        setLoading(false);
-        return;
+        throw new Error('微应用配置不完整,请在设置中选择系统和模块');
       }
 
       // 从配置中心获取模块详细信息
@@ -44,36 +42,25 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
         config.moduleId
       );
       if (!module) {
-        setError('未找到对应的微应用模块配置');
-        setLoading(false);
-        return;
+        throw new Error('未找到对应的微应用模块配置');
       }
 
       setModuleConfig(module);
 
-      // 设置微应用名称
-
-      setupApp({
-        name: appName,
-        url: module.url,
-        exec: true,
-        alive: true,
-        degrade,
-        ...lifecycles
-      });
-
+      // 执行预加载
       if (window.localStorage.getItem("preload") !== "false") {
         console.log("执行预加载")
         preloadApp({
           name: appName,
+          url: module.url, 
           exec: true
         });
       }
 
       // 注入 token
       bus.$emit('subApp:setToken', getToken());
-
-      setLoading(false);
+      
+      // 注意：这里不设置 loading(false)，等待子应用 afterMount 生命周期触发
     } catch (err: any) {
       console.error('Failed to initialize micro app:', err);
       setError(err.message || '微应用初始化失败');
@@ -83,29 +70,43 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
 
   useEffect(() => {
     initMicroApp();
-
-    // }, [config.systemId, config.moduleId]);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.systemId, config.moduleId]);
 
   const handleRetry = () => {
     initMicroApp();
   };
 
-  if (loading) {
-    return (
-      <div className="micro-app-widget-loading">
-        <Spin size="large" tip="加载微应用中..." />
-      </div>
-    );
+  // 生命周期处理
+  const handleAfterMount = (appWindow: Window) => {
+    console.log(`[Wujie] ${appName} 挂载完成，关闭 Loading`);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    lifecycles.afterMount?.(appWindow);
+  };
+
+  const handleActivated = (appWindow: Window) => {
+    console.log(`[Wujie] ${appName} 激活，确保 Loading 关闭`);
+    setLoading(false);
+    lifecycles.activated?.(appWindow);
+  };
+
+  const handleLoadError = (url: string, e: Error) => {
+    console.error(`[Wujie] ${url} 加载失败`, e);
+    setError(`加载失败: ${e.message}`);
+    setLoading(false);
+    lifecycles.loadError?.(url, e);
   }
 
-  if (error || !moduleConfig) {
+  // 如果有严重错误导致无法尝试渲染
+  if (error && !moduleConfig) {
     return (
       <div className="micro-app-widget-error">
         <Result
           status="error"
           title="微应用加载失败"
-          subTitle={error || '未知错误'}
+          subTitle={error}
           extra={
             <Button type="primary" icon={<ReloadOutlined />} onClick={handleRetry}>
               重试
@@ -117,23 +118,48 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
   }
 
   return (
-    <div className="micro-app-widget-container">
-      <WujieReact
-        width="100%"
-        height="100%"
-        name={appName}  // 必须与 setupApp 的 name 一致
-        url={moduleConfig.url}
-        // sync={config.sync !== false}
-        sync={false}
-        alive={true}
-        // alive={config.alive !== false}
-        degrade={degrade}
-        props={{
-          ...config.props,
-          token: getToken(),
-          appId: appName,
-        }}
-      />
+    <div className={`micro-app-widget-container ${isGlobalMode ? 'global-mode' : ''}`} style={{ position: 'relative' }}>
+      {/* Loading 遮罩：覆盖在容器之上 */}
+      {loading && (
+        <div 
+          className="micro-app-widget-loading" 
+        >
+          <Spin size="large" tip="应用加载中..." />
+        </div>
+      )}
+
+      {/* Wujie 容器 */}
+      {moduleConfig && (
+        <div style={{ width: '100%', height: '100%', opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}>
+        <WujieReact
+          width="100%"
+          height="100%"
+          name={appName} 
+          url={moduleConfig.url}
+          sync={config.sync}
+          alive={config.alive ?? true}
+          degrade={degrade}
+          props={{
+            ...config.props,
+            token: getToken(),
+            appId: appName,
+          }}
+          // 绑定生命周期
+          {...lifecycles}
+          // 覆盖特定生命周期以控制 Loading
+          afterMount={handleAfterMount}
+          activated={handleActivated}
+          loadError={handleLoadError}
+        />
+        </div>
+      )}
+      
+      {/* 如果渲染过程中出错（Wujie 内部错误），显示错误信息 */}
+      {error && moduleConfig && (
+         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 101 }}>
+            <Result status="error" title="加载异常" subTitle={error} />
+         </div>
+      )}
     </div>
   );
 };

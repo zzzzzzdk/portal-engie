@@ -11,9 +11,10 @@ interface MicroAppMarketProps {
   open: boolean;
   onClose: () => void;
   onSelectModule: (systemId: string, moduleId: string, module: MicroAppModule) => void;
+  mode?: 'widget' | 'floating' | 'global'; // 添加模式：小部件、悬浮模块或全局无边框
 }
 
-const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelectModule }) => {
+const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelectModule, mode = 'widget' }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [systemsByCategory, setSystemsByCategory] = useState<Record<string, MicroAppSystem[]>>({});
@@ -154,11 +155,19 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
     );
   };
 
+  const getModeText = () => {
+    switch (mode) {
+      case 'floating': return '(悬浮模式)';
+      case 'global': return '(全局挂载模式)';
+      default: return '';
+    }
+  };
+
   return (
     <Modal
       title={
         <div className="market-title">
-          <AppstoreOutlined /> 微应用市场
+          <AppstoreOutlined /> 微应用市场 <span style={{ fontSize: 14, color: '#999' }}>{getModeText()}</span>
         </div>
       }
       open={open}

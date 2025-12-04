@@ -87,7 +87,7 @@ function APPRouter() {
    * 渲染单个路由
    */
   const renderRoute = useCallback((route: RouteConfig, parentPath = ''): React.ReactElement | null => {
-    const { path, redirect, index, element, children, meta } = route
+    const { path, redirect, index, element, children } = route
     const fullPath = path ? (path.startsWith('/') ? path : `${parentPath}/${path}`) : parentPath
     const key = fullPath || 'index'
 

@@ -19,6 +19,7 @@ import CardGridWidget from '../widgets/CardGridWidget';
 import CustomFormWidget from '../widgets/CustomFormWidget';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import WidgetErrorBoundary from '../WidgetErrorBoundary';
+import FloatingModule from '../FloatingModule';
 import './index.scss';
 
 
@@ -39,7 +40,7 @@ const sanitizeLayout = (layout: Layout): Layout => {
 };
 
 const Dashboard: React.FC = () => {
-  const { widgets, updateLayout, isEditMode, isFullScreen, toggleFullScreen } = useStore();
+  const { widgets, updateLayout, isEditMode, isFullScreen, toggleFullScreen, floatingModules } = useStore();
 
   const onLayoutChange = (layout: Layout[]) => {
     updateLayout(layout);
@@ -125,6 +126,11 @@ const Dashboard: React.FC = () => {
           </div>
         ))}
       </ResponsiveReactGridLayout>
+
+      {/* Render all floating modules */}
+      {floatingModules.map(module => (
+        <FloatingModule key={module.id} widget={module} />
+      ))}
     </div>
   );
 };
