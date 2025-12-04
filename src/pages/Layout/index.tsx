@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
 import type { MenuProps } from 'antd'
-import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, MessageOutlined, BellOutlined, RobotOutlined } from '@ant-design/icons';
+import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { WidgetType, MicroAppModule } from '@/types';
 import { Outlet, useNavigate } from 'react-router-dom';
@@ -301,6 +301,12 @@ const Layout: React.FC = () => {
             </Dropdown>
           )}
 
+          {/* 微应用配置按钮 - 仅在开发环境显示 */}
+          {isDevelopment() && (
+            <Tooltip title="微应用配置">
+              <a href="#/micro-app-config"  target='_blank' className="utility-btn"><SettingOutlined /></a>
+            </Tooltip>
+          )}
 
           <Space>
             <span>编辑模式</span>

@@ -9,7 +9,7 @@ var dataBoard = require("./routes/dataBoard");
 var homeRouter = require("./routes/home");
 var systemSettingsRouter = require("./routes/system-settings");
 
-var baseApi = "/api";
+var baseApi = "/";
 var app = express();
 
 // view engine setup

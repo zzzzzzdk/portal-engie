@@ -1,12 +1,12 @@
 import React, { useEffect, memo } from 'react';
 import WujieReact from 'wujie-react';
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import lifecycles from './lifecycles';
 import { getToken } from '@/utils';
 import { MicroAppWidgetConfig } from '@/types';
 import "./index.scss"
 
-const { bus, setupApp, preloadApp, destroyApp } = WujieReact;
+const { setupApp, preloadApp } = WujieReact;
 
 export interface MicroAppConfigProps {
   baseRouter?: string;
@@ -43,7 +43,7 @@ interface MicroAppProps {
   onChange?: (action: string, data: any) => void;
 }
 
-const MicroApp: React.FC<MicroAppProps> = memo(({ onChange, microAppConfig: propsConfig, config: widgetConfig }) => {
+const MicroApp: React.FC<MicroAppProps> = memo(({ onChange: _onChange, microAppConfig: propsConfig, config: widgetConfig }) => {
   const navigation = useNavigate();
 
   // 适配逻辑：如果传了 config (WidgetConfig)，将其转换为 MicroAppConfigProps
@@ -61,7 +61,7 @@ const MicroApp: React.FC<MicroAppProps> = memo(({ onChange, microAppConfig: prop
   // 调试配置（保留用户习惯的本地调试地址作为默认值）
   // 当外部未传入配置时，使用此默认配置
   const defaultConfig: MicroAppConfigProps = {
-    url: 'http://localhost:3010/#/home',
+    url: 'http://192.168.13.31:3010/#/home',
     name: 'sssss', // 建议改为更有意义的名字，如 'portal-demo'
     alive: true
   };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '@/store/useStore';
-import MicroAppWidget from '../widgets/MicroAppWidget';
+import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import { MicroAppWidgetConfig } from '@/types';
 
 /**

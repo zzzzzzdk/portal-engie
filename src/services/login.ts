@@ -33,7 +33,7 @@ export interface LoginResponse {
 export const loginApi = async (params: LoginParams) => {
   return ajax<LoginResponse>({
     method: 'post',
-    url: '/api/login',
+    url: '/login',
     data: params,
   });
 }

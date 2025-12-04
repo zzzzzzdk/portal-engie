@@ -124,8 +124,8 @@ const FloatingModuleExample: React.FC = () => {
       {
         id: 'chatbot-module',
         name: '智能客服机器人',
-        url: 'http://localhost:3001',
-        entry: 'http://localhost:3001/index.html',
+        url: 'http://192.168.13.31:3001',
+        entry: 'http://192.168.13.31:3001/index.html',
         defaultSize: { w: 6, h: 4 },
       },
       {

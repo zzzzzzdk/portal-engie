@@ -60,6 +60,7 @@ const Login: React.FC = () => {
             <Form.Item
               name="username"
               rules={[{ required: true, message: '请输入用户名！' }]}
+              initialValue={"admin"}
             >
               <Input
                 prefix={<UserOutlined className="site-form-item-icon" />}
@@ -69,6 +70,7 @@ const Login: React.FC = () => {
             <Form.Item
               name="password"
               rules={[{ required: true, message: '请输入密码！' }]}
+              initialValue={'123456'}
             >
               <Input
                 prefix={<LockOutlined className="site-form-item-icon" />}

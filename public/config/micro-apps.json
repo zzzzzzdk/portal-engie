@@ -12,9 +12,9 @@
           "id": "input-only",
           "name": "表单",
           "description": "输入框",
-          "url": "http://localhost:8083/#/input-only",
-          "entry": "http://localhost:8083/",
-          "icon": "http://localhost:8083/static/images/gongan.png",
+          "url": "http://www.baidu.com",
+          "entry": "http://www.baidu.com",
+          "icon": "http://192.168.13.31:8083/static/images/gongan.png",
           "defaultSize": {
             "w": 6,
             "h": 4
@@ -40,8 +40,8 @@
           "id": "table-only",
           "name": "结果页",
           "description": "结果页",
-          "url": "http://localhost:8083/#/table-only",
-          "entry": "http://localhost:8083/",
+          "url": "http://192.168.13.31:8083/#/table-only",
+          "entry": "http://192.168.13.31:8083/",
           "icon": "https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表",
           "defaultSize": {
             "w": 6,
@@ -68,8 +68,8 @@
           "id": "crm-customer",
           "name": "万象",
           "description": "万象",
-          "url": "http://localhost:3010/#/home",
-          "entry": "http://localhost:3010",
+          "url": "http://192.168.13.31:3010/#/home",
+          "entry": "http://192.168.13.31:3010",
           "icon": "http://192.168.11.16:8088/static/images/logo.png",
           "defaultSize": {
             "w": 8,
@@ -93,7 +93,6 @@
             }
           ]
         }
-        
       ]
     }
   ]

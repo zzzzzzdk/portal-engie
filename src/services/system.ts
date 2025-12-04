@@ -131,7 +131,7 @@ export interface UserInfoResponse {
 export const getSysConfig = () => {
   return ajax<SysConfigResponse>({
     method: 'get',
-    url: '/api/common/get-sys-config'
+    url: '/v1/common/get-sysconfig'
   });
 };
 
@@ -142,6 +142,6 @@ export const getSysConfig = () => {
 export const getUserInfo = () => {
   return ajax<UserInfoResponse>({
     method: 'post',
-    url: '/api/iam-api/user/get-user-info'
+    url: '/v1/user/info'
   });
 };

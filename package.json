@@ -21,6 +21,7 @@
     "echarts": "^5.4.0",
     "echarts-for-react": "^3.0.5",
     "framer-motion": "^10.16.0",
+    "gridstack": "^12.3.3",
     "js-cookie": "^3.0.5",
     "jsencrypt": "^3.3.0",
     "leaflet": "^1.9.4",

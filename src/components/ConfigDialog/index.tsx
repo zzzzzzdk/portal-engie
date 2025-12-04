@@ -56,8 +56,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           maxWidth: widget.config.maxWidth || 800,
           maxHeight: widget.config.maxHeight || 900,
           // 行为配置
-          draggable: widget.config.draggable !== false,
-          resizable: widget.config.resizable !== false,
           collapsible: widget.config.collapsible !== false,
           closable: widget.config.closable !== false,
           showHeader: widget.config.showHeader !== false,
@@ -89,8 +87,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           maxWidth,
           maxHeight,
           // 行为配置
-          draggable,
-          resizable,
           collapsible,
           closable,
           // 样式配置
@@ -125,8 +121,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             maxWidth,
             maxHeight,
             // 行为配置
-            draggable,
-            resizable,
             collapsible,
             closable,
             showHeader: showTitle, // showHeader 使用 showTitle 的值
@@ -166,8 +160,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             maxWidth,
             maxHeight,
             // 行为配置
-            draggable,
-            resizable,
             collapsible,
             closable,
             showHeader: showTitle, // showHeader 使用 showTitle 的值
@@ -249,7 +241,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           name="showTitle"
           label="显示标题"
           valuePropName="checked"
-          tooltip="关闭后小部件将不显示头部标题栏"
+          tooltip={
+            isFloatingModule
+              ? "关闭后将显示透明拖拽条，编辑模式下仍可进行操作"
+              : "关闭后小部件将不显示头部标题栏"
+          }
         >
           <Switch />
         </Form.Item>
@@ -435,24 +431,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             </Form.Item>
 
             {/* 行为配置 */}
-            <Form.Item
-              name="draggable"
-              label="允许拖拽"
-              valuePropName="checked"
-              tooltip="非编辑模式下是否允许拖拽"
-            >
-              <Switch />
-            </Form.Item>
-
-            <Form.Item
-              name="resizable"
-              label="允许调整大小"
-              valuePropName="checked"
-              tooltip="编辑模式下是否允许调整大小"
-            >
-              <Switch />
-            </Form.Item>
-
             <Form.Item
               name="collapsible"
               label="允许折叠"

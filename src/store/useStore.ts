@@ -161,6 +161,14 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      refreshWidget: (id: string) => {
+        set((state) => ({
+          widgets: state.widgets.map((w) =>
+            w.id === id ? { ...w, refreshCount: (w.refreshCount || 0) + 1 } : w
+          ),
+        }));
+      },
+
       updateLayout: (layouts: Layout[]) => {
         set((state) => {
           // Map new layout positions to existing widgets
@@ -187,7 +195,11 @@ export const useStore = create<AppState>()(
         // Zustand persist middleware handles localStorage automatically.
         // This function could be used to sync with a backend API.
         const state = get();
-        console.log('Saving dashboard config:', state.widgets);
+        console.log('Saving dashboard config:', {
+          widgets: state.widgets,
+          floatingModules: state.floatingModules,
+          // globalMicroApps: state.globalMicroApps
+        });
         // Here you would call an API
       },
 

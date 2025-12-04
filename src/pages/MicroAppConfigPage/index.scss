@@ -1,0 +1,68 @@
+.micro-app-config-page {
+  padding: 24px;
+  height: 100%;
+  overflow: auto;
+
+  .modules-section {
+    padding: 16px 0;
+
+    .modules-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+    }
+
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 16px;
+
+      .module-card {
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        transition: all 0.3s;
+
+        &:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        p {
+          margin: 8px 0;
+          font-size: 13px;
+          color: var(--color-text-secondary);
+
+          strong {
+            color: var(--color-text);
+            margin-right: 8px;
+          }
+        }
+
+        .events-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 8px;
+
+          .ant-tag {
+            margin: 0;
+          }
+        }
+      }
+    }
+  }
+
+  // 暗色主题适配
+  .dark & {
+    .module-card {
+      background-color: var(--color-bg-container);
+      border-color: var(--color-border);
+    }
+  }
+}

@@ -39,8 +39,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   // ==================== 状态管理 ====================
   const [isExpanded, setIsExpanded] = useState(config.isExpanded ?? true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
+  const [_isDragging, setIsDragging] = useState(false);
+  const [_isResizing, setIsResizing] = useState(false);
   const [size, setSize] = useState({
     width: config.width || 380,
     height: config.height || 400,
@@ -118,15 +118,15 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     [config.headerColor]
   );
 
-  // 计算权限
+  // 计算权限 - 只在编辑模式下允许拖拽和调整大小
   const isDraggable = useMemo(() =>
-    isEditMode || (config.draggable !== false),
-    [isEditMode, config.draggable]
+    isEditMode,  // 只在编辑模式下可拖拽
+    [isEditMode]
   );
 
   const isResizable = useMemo(() =>
-    isExpanded && (isEditMode || (config.resizable !== false)),
-    [isExpanded, isEditMode, config.resizable]
+    isExpanded && isEditMode,  // 只在编辑模式下可调整大小
+    [isExpanded, isEditMode]
   );
 
   // ==================== 事件处理 ====================
@@ -232,7 +232,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     // 判断折叠位置在屏幕的哪个区域
     const isRight = currentPos.x > viewportWidth / 2;
     const isBottom = currentPos.y > viewportHeight / 2;
-  
+
     let newX = currentPos.x;
     let newY = currentPos.y;
 
@@ -304,6 +304,31 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     }
   }, [widget.id, toggleFloatingModuleExpanded, isExpanded, calculateExpandPosition]);
 
+  // 点击外部区域自动收起（仅非编辑模式）
+  useEffect(() => {
+    // 只在非编辑模式、展开状态、允许折叠时启用
+    if (isEditMode || !isExpanded || config.collapsible === false) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // 检查点击是否在悬浮模块内部
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        // 点击在外部，收起悬浮模块
+        toggleExpand();
+      }
+    };
+
+    // 添加延迟以避免刚展开就被收起
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditMode, isExpanded, config.collapsible, toggleExpand]);
 
   // 关闭（删除）
   const handleClose = useCallback((e?: React.MouseEvent) => {
@@ -441,7 +466,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                   transition={{
                     duration: 0.35,
                     ease: [0.4, 0, 0.2, 1],
-                    scale: { 
+                    scale: {
                       type: "spring",
                       damping: 25,
                       stiffness: 300,
@@ -456,8 +481,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                     transformOrigin: `${alignment.x} ${alignment.y}`,
                   }}
                 >
-                  {/* 头部 */}
-                  {config.showHeader !== false && (
+                  {/* 头部 - 根据 showTitle 配置显示完整头部或透明拖拽条 */}
+                  {config.showTitle !== false ? (
+                    // 完整头部（默认）
                     <div className="floating-module-header drag-handle" style={headerStyle}>
                       {isDraggable && <DragOutlined className="drag-icon" />}
                       <span className="title">{widget.title}</span>
@@ -506,6 +532,40 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                         )}
                       </div>
                     </div>
+                  ) : (
+                    // 透明拖拽条（无标题模式）
+                    isEditMode && (
+                      <div className="floating-module-header-transparent drag-handle">
+                        {isDraggable && <DragOutlined className="drag-icon-transparent" />}
+                        {/* 编辑模式下显示操作按钮 */}
+                        <div className="actions-transparent">
+                          <button
+                            onClick={handleOpenConfig}
+                            title="设置"
+                            className="action-btn-transparent"
+                          >
+                            <SettingOutlined />
+                          </button>
+                          {config.collapsible !== false && (
+                            <button
+                              onClick={toggleExpand}
+                              title="最小化"
+                              className="action-btn-transparent"
+                            >
+                              <MinusOutlined />
+                            </button>
+                          )}
+                          <button
+                            onClick={handleDelete}
+                            title="删除"
+                            className="action-btn-transparent delete-btn"
+                          >
+                            <CloseOutlined />
+                          </button>
+                        </div>
+                      </div>
+
+                    )
                   )}
 
                   {/* 内容 */}

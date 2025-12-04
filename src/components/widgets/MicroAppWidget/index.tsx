@@ -8,7 +8,7 @@ import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
 import './index.scss';
 
-const { bus, setupApp, preloadApp } = WujieReact;
+const { bus, preloadApp } = WujieReact;
 
 interface MicroAppWidgetProps {
   config: MicroAppWidgetConfig;

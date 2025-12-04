@@ -22,8 +22,9 @@ interface WidgetWrapperProps {
 
 const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
   ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, ...props }, ref) => {
-    const { removeWidget, isEditMode } = useStore();
+    const { removeWidget, refreshWidget, isEditMode } = useStore();
     const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const handleDelete = () => {
       confirm({
@@ -41,8 +42,12 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     };
 
     const handleRefresh = () => {
-      // Trigger refresh logic here if needed
-      console.log('Refreshing widget:', widget.id);
+      setIsRefreshing(true);
+      refreshWidget(widget.id);
+      // 刷新动画持续 600ms
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 600);
     };
 
     // 右键菜单配置
@@ -50,8 +55,9 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       {
         key: 'refresh',
         label: '刷新',
-        icon: <RefreshCw size={14} />,
+        icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
         onClick: handleRefresh,
+        disabled: isRefreshing,
       },
       {
         key: 'config',
@@ -111,8 +117,9 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
                   <Button
                     type="text"
                     size="small"
-                    icon={<RefreshCw size={14} />}
+                    icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
                     onClick={handleRefresh}
+                    disabled={isRefreshing}
                   />
                   <Button
                     type="text"

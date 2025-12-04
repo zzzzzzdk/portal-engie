@@ -28,6 +28,7 @@ export interface Widget {
   title: string;
   layout: Layout; // React Grid Layout item properties
   config: WidgetConfig;
+  refreshCount?: number; // 刷新计数器，用于触发小部件重新加载数据
 }
 
 // 用户信息接口
@@ -53,6 +54,7 @@ export interface AppState {
   addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<Widget>) => void;
+  refreshWidget: (id: string) => void;
   updateLayout: (layouts: Layout[]) => void;
   setEditMode: (isEditMode: boolean) => void;
   toggleFullScreen: () => void;
