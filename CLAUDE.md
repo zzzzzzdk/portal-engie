@@ -128,6 +128,138 @@ const hasPermission = (route: RouteConfig): boolean => {
 }
 ```
 
+## Dashboard Grid Systems
+
+The project supports **two grid layout implementations** for the dashboard:
+
+### 1. React Grid Layout (Original - `src/pages/Dashboard/`)
+
+**URL**: `/dashboard`
+
+The original implementation using `react-grid-layout`:
+
+**Features**:
+- React-native drag & drop
+- 12-column responsive grid
+- Row height: 120px, margin: 10px
+- Edit/preview mode toggle
+- Drag handle: `.grid-drag-handle`
+- No auto-compacting (`compactType: null`)
+- Collision prevention
+
+**File structure**:
+```
+src/pages/Dashboard/
+├── index.tsx          # Main Dashboard component
+└── index.scss         # Styles
+```
+
+**Grid configuration**:
+```typescript
+<ResponsiveReactGridLayout
+  cols={12}
+  rowHeight={120}
+  margin={[10, 10]}
+  compactType={null}
+  preventCollision={true}
+  isDraggable={isEditMode}
+  isResizable={isEditMode}
+  draggableHandle=".grid-drag-handle"
+  onLayoutChange={onLayoutChange}
+/>
+```
+
+### 2. GridStack.js (New - `src/pages/DashboardGridStack/`)
+
+**URL**: `/dashboard-gridstack`
+
+New implementation using `gridstack.js` v12.3.3:
+
+**Features**:
+- Framework-neutral TypeScript library
+- All features from react-grid-layout
+- **Additional capabilities**:
+  - Nested grids support
+  - Better TypeScript support
+  - No external dependencies
+
+**File structure**:
+```
+src/pages/DashboardGridStack/
+├── index.tsx          # GridStack Dashboard component
+└── index.scss         # Styles with gridstack overrides
+```
+
+**Grid configuration**:
+```typescript
+GridStack.init({
+  column: 12,
+  cellHeight: 120,
+  margin: 10,
+  float: false,  // Equivalent to compactType: null
+  draggable: { handle: '.grid-drag-handle' },
+  resizable: { handles: 'se' },
+  animate: true,
+}, gridRef.current);
+```
+
+**React integration pattern**:
+```typescript
+// 1. Use useRef to manage GridStack instance
+const gridRef = useRef<HTMLDivElement>(null);
+const gridInstanceRef = useRef<GridStack | null>(null);
+
+// 2. Initialize in useEffect
+useEffect(() => {
+  gridInstanceRef.current = GridStack.init(options, gridRef.current);
+
+  // Listen to layout changes
+  gridInstanceRef.current.on('change', (event, items) => {
+    updateLayout(items);
+  });
+
+  return () => gridInstanceRef.current?.destroy();
+}, []);
+
+// 3. Sync edit mode
+useEffect(() => {
+  gridInstanceRef.current?.enable/disable(isEditMode);
+}, [isEditMode]);
+
+// 4. Render widgets using React Portal
+widgets.forEach(widget => {
+  const el = createWidgetElement(widget);
+  gridInstanceRef.current?.addWidget(el);
+
+  // Use createRoot to render React components
+  const root = createRoot(el.querySelector('.grid-stack-item-content'));
+  root.render(<WidgetWrapper widget={widget}>...</WidgetWrapper>);
+});
+```
+
+**Key differences from react-grid-layout**:
+
+| Aspect | react-grid-layout | gridstack.js |
+|--------|-------------------|--------------|
+| Framework | React-specific | Framework-neutral |
+| TypeScript | Partial support | Full TypeScript |
+| Nested grids | ❌ | ✅ |
+| DOM management | React virtual DOM | Direct DOM |
+| React integration | Native components | Portal + createRoot |
+| Dependencies | Multiple | Zero external deps |
+
+**When to use which**:
+- **React Grid Layout**: Simpler React integration, more React-like
+- **GridStack.js**: Need nested grids, better TypeScript, framework-neutral
+
+**Shared components**:
+Both implementations share:
+- `WidgetWrapper` - Widget container with controls
+- All widget components (`ClockWidget`, `StatsWidget`, etc.)
+- `useStore` - Zustand state management
+- `FloatingModule` - Independent of grid layout
+- Layout data structure (`Widget` type with `layout` property)
+
 ## Widget System
 
 ### Widget Lifecycle
@@ -366,6 +498,37 @@ const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number
   return minValue !== undefined ? Math.max(num, minValue) : num
 }
 ```
+
+### GridStack.js 迁移项目（已封存）
+
+⚠️ **状态**：实验性项目已放弃 - 难度过大，于 2025-12-05 封存
+
+曾尝试将 react-grid-layout 迁移到 GridStack.js，但由于集成复杂度超出预期而中止。
+
+**已完成的功能**：
+- GridStack 基础初始化和 widget 渲染
+- React 18 createRoot 集成
+- DOM 生命周期管理
+
+**未完成的功能**：
+- 拖拽/调整大小功能
+- 与 Zustand 的状态同步
+- 添加/删除 widgets
+- 编辑/预览模式切换
+- 所有交互功能
+
+**封存原因**：
+- GridStack 的命令式 API 与 React 声明式模型冲突
+- 状态同步复杂度高（可能出现循环更新）
+- 时间成本超过收益
+- react-grid-layout 已满足所有需求
+
+**推荐方案**：**继续使用 react-grid-layout** 实现 Dashboard。
+
+**参考文件**（仅供未来调研）：
+- `src/pages/DashboardGridStack/` - 封存的实验性代码
+- `GRIDSTACK_MIGRATION_ARCHIVE.md` - 详细的开发日志和技术分析
+- `demo/react-hooks.html` - GridStack React 集成示例
 
 ## API Layer
 

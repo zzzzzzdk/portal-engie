@@ -274,7 +274,8 @@ router.post("/v1/user/info", async function (req, res, next) {
     route: [
       "/",
       "/dashboard",
-      '/micro-app-config'
+      '/micro-app-config',
+      '/dashboard-gridstack'
     ],
   };
 

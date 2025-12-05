@@ -49,6 +49,14 @@ const routeConfig: RouteConfig[] = [
         },
       },
       {
+        path: 'dashboard-gridstack',
+        element: () => import('@/pages/DashboardGridStack'),
+        meta: {
+          requiresAuth: true,
+          title: '仪表盘 (GridStack) - Portal Engine',
+        },
+      },
+      {
         path: 'micro-app-config',
         element: () => import('@/pages/MicroAppConfigPage'),
         meta: {
