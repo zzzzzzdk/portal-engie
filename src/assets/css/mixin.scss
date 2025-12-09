@@ -39,3 +39,11 @@ $screen-xxl: 1600px;
     background: transparent;
   }
 }
+
+
+// 优设标题黑字体
+@font-face {
+  font-family: "YouSheBiaoTiHei"; /*定义字体的名称*/
+  src: url("./YSBTH.TTF"); /*定义字体文件的路径*/
+  font-weight: normal; /*定义字体的粗细程度*/
+}

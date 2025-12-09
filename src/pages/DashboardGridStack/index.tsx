@@ -41,20 +41,15 @@ import {
   useGridStackContext,
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
-import { Button, Tooltip, Select } from 'antd';
-import {
-  FullscreenExitOutlined,
-} from '@ant-design/icons';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
-import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS, GridDensityKey } from '@/types';
+import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS } from '@/types';
 
 import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
 
-const COLUMN_COUNT = 12;
 const SUBGRID_LISTENER_REGISTRY = new WeakSet<GridStack>();
 type PersistHelpers = {
   hasHydrated?: () => boolean;
@@ -70,7 +65,6 @@ const DashboardInner: React.FC = () => {
     groups,
     isEditMode,
     isFullScreen,
-    toggleFullScreen,
     floatingModules,
     updateLayout,
     dashboardConfig,
@@ -259,6 +253,7 @@ const DashboardInner: React.FC = () => {
   useEffect(() => {
     if (!gridStack) return;
     const preset = GRID_DENSITY_PRESETS[gridDensity];
+    gridStack.column(preset.columnCount);
     gridStack.cellHeight(preset.cellHeight);
     gridStack.margin(preset.margin);
     updateNestedGridDensity(gridStack, preset);
@@ -495,7 +490,7 @@ const DashboardGridStack: React.FC = () => {
     const preset = GRID_DENSITY_PRESETS.standard;
     const children = buildInitialChildren(widgets, groups, preset);
     return {
-      column: COLUMN_COUNT,
+      column: preset.columnCount,
       cellHeight: preset.cellHeight,
       margin: preset.margin,
       float: true,
@@ -649,6 +644,7 @@ function createGroupGridWidget(
       // itemClass: 'grid-stack-group-wrap',
       class: 'grid-stack-group-wrap',
       // handle: true,
+      subGridDynamic: true,
       children,
     },
   };
@@ -672,11 +668,12 @@ function buildInitialChildren(
 
 function updateNestedGridDensity(
   grid: GridStack | null,
-  preset: { cellHeight: number; margin: number }
+  preset: { cellHeight: number; margin: number; columnCount: number }
 ) {
   if (!grid?.engine?.nodes) return;
   grid.engine.nodes.forEach((node: any) => {
     if (node?.subGrid) {
+      // 嵌套网格使用 'auto' 列模式，不需要更新 column
       node.subGrid.cellHeight(preset.cellHeight);
       node.subGrid.margin(preset.margin);
       updateNestedGridDensity(node.subGrid, preset);

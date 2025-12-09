@@ -1,17 +1,16 @@
 import React, { useRef } from 'react';
 import Draggable from 'react-draggable';
-import { Button, Dropdown, Space, Switch, Tooltip, Select } from 'antd';
-import { 
-  PlusOutlined, 
-  SettingOutlined, 
-  FullscreenExitOutlined, 
+import { Button, Dropdown, Space, Switch, Tooltip } from 'antd';
+import {
+  PlusOutlined,
+  SettingOutlined,
+  FullscreenExitOutlined,
   DragOutlined,
   AppstoreOutlined,
   SaveOutlined
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useStore } from '@/store/useStore';
-import { GRID_DENSITY_PRESETS, GridDensityKey } from '@/types';
 
 interface FloatingControlPanelProps {
   onAdd: (key: string) => void;
@@ -31,8 +30,6 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
   const {
     isEditMode,
     setEditMode,
-    gridDensity,
-    setGridDensity,
     toggleFullScreen,
     floatingPanelPosition,
     setFloatingPanelPosition,
@@ -98,7 +95,7 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
                 <Button icon={<SettingOutlined />} size="small" onClick={onOpenSettings} >页面设置</Button>
               </Tooltip>
 
-              <Select
+              {/* <Select
                 value={gridDensity}
                 onChange={(value) => setGridDensity(value as GridDensityKey)}
                 style={{ width: 100 }}
@@ -109,7 +106,7 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
                     {preset.label}
                   </Select.Option>
                 ))}
-              </Select>
+              </Select> */}
 
               {onOpenMicroAppConfig && (
                 <Tooltip title="微应用配置">

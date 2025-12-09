@@ -18,11 +18,14 @@ interface WidgetWrapperProps {
   onMouseDown?: React.MouseEventHandler;
   onMouseUp?: React.MouseEventHandler;
   onTouchEnd?: React.TouchEventHandler;
+  isPreviewMode?: boolean; // 预览模式，禁用所有编辑功能
 }
 
 const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
-  ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, ...props }, ref) => {
-    const { removeWidget, refreshWidget, isEditMode } = useStore();
+  ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, isPreviewMode = false, ...props }, ref) => {
+    const { removeWidget, refreshWidget, isEditMode: storeEditMode } = useStore();
+    // 预览模式下强制禁用编辑
+    const isEditMode = isPreviewMode ? false : storeEditMode;
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -91,7 +94,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = widget.config;
 
     if (backgroundType === 'image' && backgroundImage) {
-      backgroundStyle.backgroundImage = `url(${backgroundImage})`;
+      backgroundStyle.background = `url(${backgroundImage})`;
       backgroundStyle.backgroundSize = 'cover';
       backgroundStyle.backgroundPosition = 'center';
       backgroundStyle.backgroundRepeat = 'no-repeat';
@@ -101,6 +104,29 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       backgroundStyle.backgroundColor = backgroundColor;
     }
 
+    // 预览模式下不显示右键菜单
+    if (isPreviewMode) {
+      return (
+        <div
+          ref={ref}
+          style={{ ...style }}
+          className={clsx('widget-wrapper', className, widget.type, {
+            'no-header': !showTitle,
+          })}
+          {...props}
+        >
+          {showTitle && (
+            <div className="widget-header">
+              <h3 className="widget-title">{widget.title}</h3>
+            </div>
+          )}
+          <div className="widget-content" style={{ ...backgroundStyle }}>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <Dropdown
         menu={{ items: contextMenuItems }}
@@ -108,11 +134,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       >
         <div
           ref={ref}
-          style={{ ...style, ...backgroundStyle }}
+          style={{ ...style }}
           className={clsx('widget-wrapper', className, widget.type, {
             'edit-mode': isEditMode,
             'no-header': !showTitle && !isEditMode,
-
           })}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}
@@ -158,7 +183,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
               )}
             </div>
           )}
-          <div className="widget-content">{children}</div>
+          <div 
+          className="widget-content"
+          style={{ ...backgroundStyle }}
+          >{children}</div>
 
           <ConfigDialog
             isOpen={isConfigOpen}

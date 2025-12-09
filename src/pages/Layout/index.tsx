@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp, Select } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
-import { WidgetType, MicroAppModule, GRID_DENSITY_PRESETS, GridDensityKey } from '@/types';
+import { useSystemStore } from '@/store/useSystemStore'
+import { WidgetType, MicroAppModule } from '@/types';
 import { Outlet, useNavigate } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
@@ -12,6 +13,7 @@ import DashboardConfigDialog from '@/components/DashboardConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
+import { publishDashboard } from '@/services'
 import './index.scss';
 
 const { Header, Content } = AntdLayout;
@@ -24,14 +26,16 @@ const Layout: React.FC = () => {
     addMicroAppWidget,
     addFloatingModuleLocal,
     addFloatingModuleMicroApp,
-    saveDashboard,
     createEmptyGroup,
     isFullScreen,
     toggleFullScreen,
-    gridDensity,
-    setGridDensity,
-    logout
+    logout,
+    widgets,
+    groups,
+    floatingModules,
+    dashboardConfig,
   } = useStore();
+  const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
   const themeSystem = useTheme()
@@ -157,6 +161,7 @@ const Layout: React.FC = () => {
         {
           width: 400,
           height: 400,
+          icon: module.icon,
           defaultPosition: 'bottom-right',
         }
       );
@@ -193,6 +198,7 @@ const Layout: React.FC = () => {
       type: 'group',
       label: '基础小部',
       children: [
+        { label: '文本', key: 'typography' },
         { label: '时钟', key: 'clock' },
         { label: '统计卡片', key: 'stats' },
         { label: '图表', key: 'chart' },
@@ -250,14 +256,27 @@ const Layout: React.FC = () => {
     }
   ];
 
-  const handleSave = () => {
-    saveDashboard();
-    message.success('仪表盘保存成功');
+  const handlePublish = async () => {
+    try {
+      const res = await publishDashboard({
+        id: '',
+        widgets,
+        groups,
+        floatingModules,
+        dashboardConfig,
+      });
+      console.log(res)
+      message.success('仪表盘发布成功');
+    } catch (error) {
+      console.log(error)
+      message.error('发布失败');
+    }
   };
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    window.location.href = sysConfig?.logout_url || ''
+    // navigate('/login');
   };
 
   const handleThemeChange: MenuProps['onClick'] = ({ key }) => {
@@ -268,6 +287,10 @@ const Layout: React.FC = () => {
 
     // 使用新的主题系统切换预设
     themeSystem.applyPreset(key as 'light' | 'dark' | 'blue' | 'purple', true)
+  }
+
+  const handleGoHome = () => {
+    navigate('/')
   }
 
   // 主题切换菜单
@@ -304,7 +327,7 @@ const Layout: React.FC = () => {
     <AntdLayout className="app-layout">
       {!isFullScreen && (
         <Header className="app-header">
-          <div className="app-header__logo">
+          <div className="app-header__logo" onClick={handleGoHome}>
             <AppstoreOutlined />
             Portal Engine
           </div>
@@ -349,11 +372,11 @@ const Layout: React.FC = () => {
 
             {isEditMode && (
               <>
-                 <Tooltip title="页面设置">
+                <Tooltip title="页面设置">
                   <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} >页面设置</Button>
                 </Tooltip>
 
-                <Select
+                {/* <Select
                   value={gridDensity}
                   onChange={(value) => setGridDensity(value as GridDensityKey)}
                   style={{ width: 100 }}
@@ -363,12 +386,12 @@ const Layout: React.FC = () => {
                       {preset.label}
                     </Select.Option>
                   ))}
-                </Select>
+                </Select> */}
               </>
             )}
 
-            <Button icon={<SaveOutlined />} onClick={handleSave}>
-              保存
+            <Button icon={<CloudUploadOutlined />} onClick={handlePublish}>
+              发布
             </Button>
 
             <Tooltip title="全屏模式">
@@ -388,7 +411,7 @@ const Layout: React.FC = () => {
           addMenuItems={items}
           onOpenSettings={() => setDashboardConfigOpen(true)}
           onOpenMicroAppConfig={() => window.open('#/micro-app-config', '_blank')}
-          onSave={handleSave}
+          onSave={handlePublish}
         />
       )}
 

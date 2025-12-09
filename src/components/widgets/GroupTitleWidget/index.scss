@@ -1,17 +1,69 @@
 .group-title-widget {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  // padding: 0 16px;
+  padding: 0 16px;
+  position: relative;
+  overflow: hidden;
 
-  // 默认内容区域样式，可以被覆盖
+  // 默认内容区域样式
   .group-title-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    width: 100%;
     height: 100%;
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    
+    // 标题区域
+    .title-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1;
+      // 确保文字不换行并显示省略号
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      .ant-typography {
+        font-size: 38px;
+        font-weight: 400;
+        color: #fff;
+        font-family: YouSheBiaoTiHei;
+      }
+    }
+
+    // 用户个人中心区域
+    .user-profile-section {
+      line-height: 60px;
+      margin-left: auto; // 自动推到最右侧
+      z-index: 2; // 确保在标题之上（如果有重叠）
+      display: flex;
+      align-items: center;
+      color: #fff;
+    }
+  }
+
+  // 居中对齐修饰符
+  &.align-center {
+    .group-title-content {
+      justify-content: center;
+
+      .title-section {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        // 确保不会覆盖到右侧的用户信息（简单处理：设置最大宽度）
+        max-width: calc(100% - 200px); 
+      }
+      
+      // 用户信息仍然在右侧，因为 margin-left: auto 在 flex container 中
+      // 但这里我们已经在 parent 上用了 justify-content: center
+      // 所以 user-profile-section 需要绝对定位到右侧，或者 override parent 的 justify
+      
+      .user-profile-section {
+        position: absolute;
+        right: 0;
+      }
+    }
   }
 }

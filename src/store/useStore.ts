@@ -54,6 +54,8 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Chart' };
     case 'groupTitle':
       return { ...baseConfig, title: '分组标题', showTitle: false };
+    case 'typography':
+      return { ...baseConfig, title: '文本组件', content: '这是一段文本', showTitle: false };
     case 'microApp':
       return {
         ...baseConfig,
@@ -105,7 +107,7 @@ export const useStore = create<AppState>()(
         backgroundType: 'color',
         backgroundColor: '#f5f5f5',
       },
-      gridDensity: 'standard',
+      gridDensity: 'compact',
       setGridDensity: (density) => set({ gridDensity: density }),
       floatingPanelPosition: { x: 100, y: 100 },
       setFloatingPanelPosition: (position) => set({ floatingPanelPosition: position }),

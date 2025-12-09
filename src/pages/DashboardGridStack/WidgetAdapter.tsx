@@ -22,6 +22,7 @@ import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import GroupTitleWidget from '@/components/widgets/GroupTitleWidget';
+import TypographyWidget from '@/components/widgets/TypographyWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import { WidgetType } from '@/types';
 import type { Layout } from 'react-grid-layout';
@@ -109,6 +110,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <CustomFormWidget {...commonProps} />;
       case 'groupTitle':
         return <GroupTitleWidget {...commonProps} />;
+      case 'typography':
+        return <TypographyWidget {...commonProps} />;
       case 'microApp':
         return <MicroAppWidget {...commonProps} />;
       default:
