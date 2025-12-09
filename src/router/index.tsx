@@ -33,8 +33,8 @@ function APPRouter() {
 
   // 生成水印文本
   const waterMarkText = useMemo(() => {
-    const systemName = sysConfig?.sys_info.sys_name || '极光训推用一体平台'
-    const userName = userInfo?.user_info.user_name || ''
+    const systemName = sysConfig?.sys_info?.sys_name || '极光训推用一体平台'
+    const userName = userInfo?.user_info?.user_name || ''
     return userName ? `${systemName} - ${userName}` : systemName
   }, [sysConfig, userInfo])
 

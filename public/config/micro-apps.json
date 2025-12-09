@@ -12,8 +12,8 @@
           "id": "input-only",
           "name": "表单",
           "description": "输入框",
-          "url": "http://www.baidu.com",
-          "entry": "http://www.baidu.com",
+          "url": "http://localhost:8083/#/input-only",
+          "entry": "http://localhost:8083/#/input-only",
           "icon": "http://192.168.13.31:8083/static/images/gongan.png",
           "defaultSize": {
             "w": 6,

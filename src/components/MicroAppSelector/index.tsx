@@ -153,14 +153,14 @@ const MicroAppSelector: React.FC<MicroAppSelectorProps> = ({
         />
       </div>
 
-      {selectedSystem && selectedModule && (
+      {/* {selectedSystem && selectedModule && (
         <Alert
           message="配置已选择"
           description={`系统: ${systems.find(s => s.id === selectedSystem)?.name} / 模块: ${modules.find(m => m.id === selectedModule)?.name}`}
           type="success"
           showIcon
         />
-      )}
+      )} */}
     </Space>
   );
 };

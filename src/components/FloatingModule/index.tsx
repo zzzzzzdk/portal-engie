@@ -3,9 +3,11 @@ import {
   DragOutlined,
   SettingOutlined,
   CloseOutlined,
-  MinusOutlined
+  MinusOutlined,
+  DeleteFilled,
+  DeleteOutlined
 } from '@ant-design/icons';
-import { Modal } from 'antd';
+import { Button, Modal } from 'antd';
 import Draggable from 'react-draggable';
 import { Resizable } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -106,12 +108,19 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   }, [initialPosition]);
 
   // 计算样式
+  const collapsedWidth = config.collapsedWidth || 60;
+  const collapsedHeight = config.collapsedHeight || 60;
+  const visibleSize = useMemo(() => ({
+    width: isExpanded ? size.width : collapsedWidth,
+    height: isExpanded ? size.height : collapsedHeight,
+  }), [isExpanded, size, collapsedWidth, collapsedHeight]);
+
   const moduleStyle = useMemo(() => ({
-    width: isExpanded ? size.width : (config.collapsedWidth || 60),
-    height: isExpanded ? size.height : (config.collapsedHeight || 60),
+    width: visibleSize.width,
+    height: visibleSize.height,
     zIndex: config.zIndex || 9999,
     borderRadius: config.borderRadius || 12,
-  }), [isExpanded, size, config]);
+  }), [visibleSize, config]);
 
   const headerStyle = useMemo(() =>
     config.headerColor ? { background: config.headerColor } : {},
@@ -223,44 +232,41 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const calculateExpandPosition = useCallback((currentPos: { x: number; y: number }) => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const collapsedWidth = config.collapsedWidth || 60;
-    const collapsedHeight = config.collapsedHeight || 60;
     const expandedWidth = size.width;
     const expandedHeight = size.height;
     const padding = 20;
 
-    // 判断折叠位置在屏幕的哪个区域
-    const isRight = currentPos.x > viewportWidth / 2;
-    const isBottom = currentPos.y > viewportHeight / 2;
+    const idealRight = currentPos.x + (expandedWidth - collapsedWidth);
+    const idealLeft = currentPos.x - (expandedWidth - collapsedWidth);
+    const idealBottom = currentPos.y + (expandedHeight - collapsedHeight);
+    const idealTop = currentPos.y - (expandedHeight - collapsedHeight);
 
     let newX = currentPos.x;
     let newY = currentPos.y;
 
-    // 根据位置调整展开方向
-    if (isRight && isBottom) {
-      // 右下角 → 朝左上展开
+    const fitsRight = idealRight + padding <= viewportWidth;
+    const fitsLeft = idealLeft >= padding;
+    const fitsBottom = idealBottom + padding <= viewportHeight;
+    const fitsTop = idealTop >= padding;
+
+    if (!fitsRight && fitsLeft) {
       newX = Math.max(padding, currentPos.x + collapsedWidth - expandedWidth);
-      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
-    } else if (isRight && !isBottom) {
-      // 右上角 → 朝左下展开
-      newX = Math.max(padding, currentPos.x + collapsedWidth - expandedWidth);
-      newY = currentPos.y; // 保持顶部对齐
-    } else if (!isRight && isBottom) {
-      // 左下角 → 朝右上展开
-      newX = currentPos.x; // 保持左侧对齐
-      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
-    } else {
-      // 左上角 → 朝右下展开（默认）
+    } else if (fitsRight) {
       newX = currentPos.x;
-      newY = currentPos.y;
+    } else {
+      newX = Math.max(padding, Math.min(currentPos.x, viewportWidth - expandedWidth - padding));
     }
 
-    // 确保不超出边界
-    newX = Math.max(padding, Math.min(newX, viewportWidth - expandedWidth - padding));
-    newY = Math.max(padding, Math.min(newY, viewportHeight - expandedHeight - padding));
+    if (!fitsBottom && fitsTop) {
+      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
+    } else if (fitsBottom) {
+      newY = currentPos.y;
+    } else {
+      newY = Math.max(padding, Math.min(currentPos.y, viewportHeight - expandedHeight - padding));
+    }
 
     return { x: newX, y: newY };
-  }, [size, config]);
+  }, [size, collapsedWidth, collapsedHeight]);
 
   // 展开/收起 - 带智能位置计算
   const toggleExpand = useCallback((e?: React.MouseEvent) => {
@@ -268,32 +274,22 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     e?.preventDefault();
 
     if (!isExpanded) {
-      // 折叠 → 展开：获取当前小圆圈位置并计算偏移
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const currentPos = {
-          x: rect.left,
-          y: rect.top
-        };
 
-        // 更新对齐方向
-        const isRight = rect.left > viewportWidth / 2;
-        const isBottom = rect.top > viewportHeight / 2;
         setAlignment({
-          x: isRight ? 'right' : 'left',
-          y: isBottom ? 'bottom' : 'top'
+          x: rect.left > viewportWidth / 2 ? 'right' : 'left',
+          y: rect.top > viewportHeight / 2 ? 'bottom' : 'top'
         });
-
-        const newPos = calculateExpandPosition(currentPos);
-
-        // 计算需要的偏移量
-        const offsetX = newPos.x - currentPos.x;
-        const offsetY = newPos.y - currentPos.y;
-
-        setExpandOffset({ x: offsetX, y: offsetY });
       }
+
+      const newPos = calculateExpandPosition(position);
+      const offsetX = newPos.x - position.x;
+      const offsetY = newPos.y - position.y;
+      setExpandOffset({ x: offsetX, y: offsetY });
+
       setIsExpanded(true);
       toggleFloatingModuleExpanded(widget.id);
     } else {
@@ -302,7 +298,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       setIsExpanded(false);
       toggleFloatingModuleExpanded(widget.id);
     }
-  }, [widget.id, toggleFloatingModuleExpanded, isExpanded, calculateExpandPosition]);
+  }, [widget.id, toggleFloatingModuleExpanded, isExpanded, calculateExpandPosition, position]);
 
   // 点击外部区域自动收起（仅非编辑模式）
   useEffect(() => {
@@ -424,8 +420,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
         bounds="body"
       >
         <Resizable
-          width={size.width}
-          height={size.height}
+          width={visibleSize.width}
+          height={visibleSize.height}
           onResize={handleResize}
           onResizeStart={handleResizeStart}
           onResizeStop={handleResizeStop}
@@ -446,10 +442,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
             className="floating-module-container"
             style={{
               position: 'absolute',
-              width: isExpanded ? size.width : (config.collapsedWidth || 60),
-              height: isExpanded ? size.height : (config.collapsedHeight || 60),
-              left: expandOffset.x,
-              top: expandOffset.y,
+              width: visibleSize.width,
+              height: visibleSize.height,
+              transform: `translate3d(${expandOffset.x}px, ${expandOffset.y}px, 0)`,
             }}
           >
             <AnimatePresence>
@@ -512,13 +507,14 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
                         {/* 关闭按钮 - 根据模式显示不同行为 */}
                         {isEditMode ? (
-                          <button
+                          <Button
                             onClick={handleDelete}
                             title="删除"
                             className="action-btn delete-btn"
+                            danger
                           >
-                            <CloseOutlined />
-                          </button>
+                            <DeleteOutlined />
+                          </Button>
                         ) : (
                           config.closable !== false && (
                             <button

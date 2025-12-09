@@ -141,7 +141,7 @@ export const getSysConfig = () => {
  */
 export const getUserInfo = () => {
   return ajax<UserInfoResponse>({
-    method: 'post',
+    method: 'get',
     url: '/v1/user/info'
   });
 };

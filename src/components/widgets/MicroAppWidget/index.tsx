@@ -3,7 +3,9 @@ import { Result, Spin, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import WujieReact from 'wujie-react';
 import { getToken } from '@/utils/cookie';
-import type { MicroAppWidgetConfig, MicroAppModule } from '@/types';
+import type { MicroAppWidgetConfig, MicroAppModule, Widget } from '@/types';
+import { getWidgetDisplayMode } from '@/utils/widgetHelpers';
+import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
 import './index.scss';
@@ -12,13 +14,23 @@ const { bus, preloadApp } = WujieReact;
 
 interface MicroAppWidgetProps {
   config: MicroAppWidgetConfig;
+  widget?: Widget;
 }
 
-const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
+const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
   const appName = `${config.systemId}-${config.moduleId}`;
+
+  // 计算尺寸信息
+  const sizeInfo: WidgetSizeInfo | undefined = widget ? {
+    grid: {
+      columns: widget.layout.w,
+      rows: widget.layout.h
+    },
+    displayMode: getWidgetDisplayMode(widget.layout.w, widget.layout.h)
+  } : undefined;
 
   // 检查模式
   const isGlobalMode = config.mode === 'global';
@@ -143,6 +155,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config }) => {
             ...config.props,
             token: getToken(),
             appId: appName,
+            __sizeInfo: sizeInfo,
           }}
           // 绑定生命周期
           {...lifecycles}

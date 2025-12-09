@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Switch, Select, Divider } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule } from '@/types';
 import { useStore } from '@/store/useStore';
 import { microAppCommunication } from '@/utils/microAppCommunication';
+import { microAppConfigLoader } from '@/utils/microAppConfig';
 import FormFieldBuilder from '../FormFieldBuilder';
 import MicroAppSelector from '../MicroAppSelector';
 import EventRouteConfig from '../EventRouteConfig';
+import BackgroundSettings from '@/components/BackgroundSettings';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -17,15 +20,61 @@ interface ConfigDialogProps {
 const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) => {
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules } = useStore();
   const [form] = Form.useForm();
+  const [fileList, setFileList] = useState<any[]>([]);
+  const [iconFileList, setIconFileList] = useState<any[]>([]);
 
   // 判断是否为悬浮模块
   const isFloatingModule = floatingModules.some(m => m.id === widget.id);
 
+  const updateIconPreview = useCallback((value?: string) => {
+    if (value && (value.startsWith('http') || value.startsWith('data:'))) {
+      setIconFileList([
+        {
+          uid: '-icon',
+          name: 'icon.png',
+          status: 'done',
+          url: value,
+        },
+      ]);
+    } else {
+      setIconFileList([]);
+    }
+  }, []);
+
+  const syncModuleIcon = useCallback(
+    async (systemId?: string, moduleId?: string, icon?: string) => {
+      if (!systemId || !moduleId) {
+        return;
+      }
+      try {
+        await microAppConfigLoader.updateModuleConfig(systemId, moduleId, { icon: icon || '' });
+      } catch (error) {
+        console.error('Failed to sync micro app icon:', error);
+        message.error('同步微应用图标失败，请稍后重试');
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (isOpen) {
+      // 初始化背景图片上传列表
+      if (widget.config.backgroundImage) {
+        setFileList([
+          {
+            uid: '-1',
+            name: 'current-bg.png',
+            status: 'done',
+            url: widget.config.backgroundImage,
+          },
+        ]);
+      } else {
+        setFileList([]);
+      }
+
       // 对于微应用类型,需要特殊处理配置
       if (widget.type === 'microApp') {
-        form.setFieldsValue({
+        const initialValues = {
           title: widget.title,
           showTitle: widget.config.showTitle !== false,
           refreshInterval: widget.config.refreshInterval,
@@ -34,15 +83,34 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           sync: widget.config.sync !== false,
           alive: widget.config.alive !== false,
           eventRoutes: widget.config.eventRoutes || [],
-        });
+          icon: widget.config.icon || '',
+        };
+        form.setFieldsValue(initialValues);
+        updateIconPreview(initialValues.icon);
+
+        if ((!widget.config.icon || widget.config.icon.length === 0) && widget.config.systemId && widget.config.moduleId) {
+          microAppConfigLoader
+            .getModule(widget.config.systemId, widget.config.moduleId)
+            .then(module => {
+              if (!module) return;
+              form.setFieldsValue({ icon: module.icon || '' });
+              updateIconPreview(module.icon);
+            })
+            .catch(error => console.warn('Failed to load module for icon:', error));
+        }
       } else {
         form.setFieldsValue({
           title: widget.title,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           showTitle: widget.config.showTitle !== false,
+          backgroundType: widget.config.backgroundType || 'color',
+          backgroundColor: widget.config.backgroundColor,
+          backgroundImage: widget.config.backgroundImage,
+          backgroundGradient: widget.config.backgroundGradient,
           ...widget.config,
         });
+        updateIconPreview('');
       }
 
       // 如果是悬浮模块，添加悬浮模块特有的配置
@@ -69,10 +137,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         });
       }
     }
-  }, [isOpen, widget, form, isFloatingModule]);
+  }, [isOpen, widget, form, isFloatingModule, updateIconPreview]);
 
-  const handleOk = () => {
-    form.validateFields().then((values) => {
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields();
       if (isFloatingModule) {
         // 悬浮模块配置
         const {
@@ -102,6 +171,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           sync,
           alive,
           eventRoutes,
+          icon,
           ...restConfig
         } = values;
 
@@ -138,14 +208,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               moduleId,
               sync,
               alive,
+              icon,
             },
             eventRoutes: eventRoutes || [],
+            icon,
           });
 
           // 重新设置事件监听器
           setTimeout(() => {
             microAppCommunication.setupEventListeners();
           }, 100);
+
+          await syncModuleIcon(systemId, moduleId, icon);
         } else {
           // 本地组件类型的悬浮模块
           updateFloatingModuleConfig(widget.id, {
@@ -177,7 +251,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         // 普通小部件配置
         if (widget.type === 'microApp') {
           // 微应用配置
-          const { title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes } = values;
+          const { title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon } = values;
           updateWidget(widget.id, {
             title,
             config: {
@@ -188,6 +262,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               moduleId,
               sync,
               alive,
+              icon,
               eventRoutes: eventRoutes || [],
             },
           });
@@ -196,9 +271,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           setTimeout(() => {
             microAppCommunication.setupEventListeners();
           }, 100);
+
+          await syncModuleIcon(systemId, moduleId, icon);
         } else {
           // 其他小部件配置
-          const { title, showTitle, refreshInterval, apiEndpoint, ...restConfig } = values;
+          const { title, showTitle, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
+          
+          // Normalize color
+          let normalizedColor = backgroundColor;
+          if (typeof normalizedColor === 'object' && normalizedColor?.toHexString) {
+            normalizedColor = normalizedColor.toHexString();
+          }
+
           updateWidget(widget.id, {
             title,
             config: {
@@ -206,6 +290,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               showTitle,
               refreshInterval,
               apiEndpoint,
+              backgroundType,
+              backgroundColor: normalizedColor,
+              backgroundImage,
+              backgroundGradient,
               ...restConfig,
             },
           });
@@ -213,7 +301,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       }
 
       onClose();
-    });
+    } catch (error) {
+      console.error('Failed to save widget config:', error);
+    }
   };
 
   return (
@@ -231,8 +321,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       <Form form={form} layout="vertical" size="small">
         <Form.Item
           name="title"
-          label="标题"
-          rules={[{ required: true, message: '请输入标题' }]}
+          label="文案"
+          // rules={[{ required: true, message: '请输入标题' }]}
         >
           <Input />
         </Form.Item>
@@ -250,13 +340,73 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <Switch />
         </Form.Item>
 
-        <Form.Item
-          name="refreshInterval"
-          label="刷新间隔 (秒)"
-          rules={[{ type: 'number', min: 0 }]}
-        >
-          <InputNumber />
-        </Form.Item>
+        {/* 仅在特定小部件类型显示刷新间隔 */}
+        {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp'].includes(widget.type) && (
+          <Form.Item
+            name="refreshInterval"
+            label="刷新间隔 (秒)"
+            rules={[{ type: 'number', min: 0 }]}
+          >
+            <InputNumber />
+          </Form.Item>
+        )}
+
+        <Divider>背景设置</Divider>
+        <BackgroundSettings 
+          form={form} 
+          initialValues={widget.config as any} 
+        />
+        <Divider />
+
+        {/* 分组标题特定配置 */}
+        {widget.type === 'groupTitle' && (
+          <>
+            <Form.Item
+              name="icon"
+              label="图标"
+              tooltip="输入 Ant Design 图标名称 (如: FolderOpenOutlined) 或iconfont自定义图标名称 (如: icon-home中的home)"
+            >
+              <Input placeholder="FolderOpenOutlined 或 home" />
+            </Form.Item>
+            <Form.Item
+              name="backgroundImage"
+              label="背景图片"
+              tooltip="输入图片URL或上传本地图片"
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <Input placeholder="https://example.com/bg.png" />
+                <Upload
+                  listType="picture"
+                  maxCount={1}
+                  fileList={fileList}
+                  beforeUpload={(file) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => {
+                      const base64 = reader.result as string;
+                      form.setFieldValue('backgroundImage', base64);
+                      setFileList([
+                        {
+                          uid: file.uid,
+                          name: file.name,
+                          status: 'done',
+                          url: base64,
+                        },
+                      ]);
+                    };
+                    return false; // 阻止自动上传
+                  }}
+                  onRemove={() => {
+                    setFileList([]);
+                    form.setFieldValue('backgroundImage', '');
+                  }}
+                >
+                  <Button icon={<UploadOutlined />}>上传图片</Button>
+                </Upload>
+              </div>
+            </Form.Item>
+          </>
+        )}
 
         {/* Add widget-specific configuration fields here based on widget.type */}
         {['chart', 'dataTable', 'stats', 'customForm'].includes(widget.type) && (
@@ -297,7 +447,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   form.setFieldsValue({
                     systemId: config.systemId,
                     moduleId: config.moduleId,
+                    icon: config.module?.icon || '',
                   });
+                  updateIconPreview(config.module?.icon || '');
                   // 触发表单验证
                   form.validateFields(['microAppSelector']);
                 }}
@@ -331,6 +483,44 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             </Form.Item>
 
             <Form.Item
+              name="icon"
+              label="图标"
+              tooltip="支持图片 URL 或上传图片，将同步到微应用配置"
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Input placeholder="https://example.com/icon.png 或 data:image/png;base64,..." />
+                <Upload
+                  listType="picture"
+                  maxCount={1}
+                  fileList={iconFileList}
+                  beforeUpload={(file) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => {
+                      const base64 = reader.result as string;
+                      form.setFieldValue('icon', base64);
+                      setIconFileList([
+                        {
+                          uid: file.uid,
+                          name: file.name,
+                          status: 'done',
+                          url: base64,
+                        },
+                      ]);
+                    };
+                    return false;
+                  }}
+                  onRemove={() => {
+                    setIconFileList([]);
+                    form.setFieldValue('icon', '');
+                  }}
+                >
+                  <Button icon={<UploadOutlined />}>上传图标</Button>
+                </Upload>
+              </div>
+            </Form.Item>
+
+            <Form.Item
               name="eventRoutes"
               label="事件路由配置"
             >
@@ -354,7 +544,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 <Form.Item
                   name="width"
                   noStyle
-                  rules={[{ type: 'number', min: 100, message: '宽度至少为100px' }]}
+                  rules={[{ type: 'number', min: 100, message: '宽度至少100px' }]}
                 >
                   <InputNumber
                     style={{ width: '50%' }}
@@ -463,7 +653,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
             <Form.Item
               name="borderRadius"
-              label="圆角大小"
+              label="角大小"
               rules={[{ type: 'number', min: 0, max: 50 }]}
             >
               <InputNumber

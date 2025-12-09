@@ -1,10 +1,71 @@
-// DashboardGridStack 样式 - 步骤 2：编辑模式切换
+// DashboardGridStack 样式 - 官方 GridStack React Wrapper
 
 .dashboard-container {
+  --grid-cell-width: 120px;
+  --grid-cell-height: 120px;
+  --grid-gutter: 10px;
+  --grid-line-color: #e5e7eb;
+
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   background: #f5f5f5;
   overflow: auto;
+  // padding: 20px;
+  position: relative;
+
+  &.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    padding: 0;
+  }
+
+  &.grid-background {
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+
+      background-image: linear-gradient(to right, var(--grid-line-color) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line-color) 1px, transparent 1px);
+      // GridStack 布局计算：
+      // - 列宽 = (容器宽度 - margin × (列数 - 1)) / 列数
+      // - 每个网格单元跨度 = cellWidth + margin
+      // - Item x 位置 = x × (cellWidth + margin)
+      background-size: calc(var(--grid-cell-width) + var(--grid-gutter))
+        calc(var(--grid-cell-height) + var(--grid-gutter));
+      // 使用 padding-box 确保背景从 padding 边界开始，与 GridStack 对齐
+      background-origin: padding-box;
+      background-position: 0 0;
+    }
+  }
+}
+
+.grid-density-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
+  z-index: 10;
+}
+
+.grid-density-panel__label {
+  color: #666;
+  font-size: 13px;
 }
 
 .dashboard-fullscreen-exit {
@@ -14,12 +75,18 @@
   z-index: 1001;
 }
 
+.dashboard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 16px;
+}
+
+// GridStack 容器
 .grid-stack {
   min-height: 80vh;
-  padding: 10px; // ✅ 关键！让 GridStack 内容从 (10, 10) 开始，匹配 RGL 行为
-  // RGL 的 margin: [10, 10] 会在容器边缘留出 10px 空间
-  // GridStack 需要用 padding 来模拟这个行为
-  box-sizing: content-box; // 确保 padding 不影响容器宽度计算
+  background: transparent;
 }
 
 // GridStack 默认样式已通过 import 'gridstack/dist/gridstack.min.css' 引入
@@ -28,19 +95,101 @@
 .grid-stack-item {
   border: none;
   background: transparent;
+
+  // 编辑模式下显示边框
+  .dashboard-container.grid-background & {
+  }
+
+  &.grid-stack-sub-grid {
+    border: 1px solid var(--ant-color-border);
+    &:hover {
+      // border: 1px solid var(--ant-color-primary, #1890ff);
+      border-color: var(--ant-color-primary);
+    }
+    .grid-stack-item-content {
+      overflow: hidden;
+    }
+  }
 }
 
 .grid-stack-item-content {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  border-radius: 4px;
 }
 
 // GridStack 拖拽占位符样式
-// 确保占位符与实际 widget 大小一致
 .grid-stack-placeholder {
   background: rgba(24, 144, 255, 0.1) !important;
   border: 2px dashed var(--ant-color-primary, #1890ff) !important;
   border-radius: 4px !important;
   opacity: 0.5 !important;
+}
+
+// 拖拽中的 item 样式
+.grid-stack-item.ui-draggable-dragging {
+  opacity: 0.8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 1000 !important;
+}
+
+// 调整大小中的 item 样式
+.grid-stack-item.ui-resizable-resizing {
+  opacity: 0.8;
+}
+
+// Widget 未找到样式
+.widget-not-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #ff4d4f;
+  background: #fff1f0;
+  border: 1px dashed #ffccc7;
+  border-radius: 4px;
+  padding: 16px;
+  text-align: center;
+}
+
+// 分组操作栏（仅包含删除按钮等）
+.group-header-wrapper {
+  width: 30px;
+  height: 30px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  height: 32px;
+  width: auto;
+  z-index: 10;
+  pointer-events: none; // 让点击穿透，除非点到按钮
+
+  .group-header {
+    display: flex;
+    justify-content: flex-end;
+    height: 100%;
+  }
+
+  .group-actions {
+    // opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: auto; // 恢复按钮点击
+
+    .group-delete-btn {
+      color: #ff4d4f;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid #ffccc7;
+
+      &:hover {
+        background: #fff1f0;
+        border-color: #ff4d4f;
+      }
+    }
+  }
+}
+
+// 仅在分组 hover 时显示操作按钮
+.grid-stack-group-wrap:hover .group-actions {
+  opacity: 1;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -25,42 +25,12 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { saveMicroAppConfig } from '@/services/microApp';
+import { microAppConfigLoader, MICRO_APP_CONFIG_CHANGED_EVENT, MicroAppConfigChangeDetail } from '@/utils/microAppConfig';
+import type { EmittableEvent, MicroAppModule, MicroAppSystem, MicroAppMetadata } from '@/types';
 import './index.scss';
 
-interface MicroAppEvent {
-  type: string;
-  name: string;
-  description: string;
-}
-
-interface MicroAppModule {
-  id: string;
-  name: string;
-  description: string;
-  url: string;
-  entry: string;
-  icon: string;
-  defaultSize?: {
-    w: number;
-    h: number;
-  };
-  emittableEvents?: MicroAppEvent[];
-  listenableEvents?: MicroAppEvent[];
-}
-
-interface MicroAppSystem {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  category: string;
-  modules: MicroAppModule[];
-}
-
-interface MicroAppConfig {
-  version: string;
-  apps: MicroAppSystem[];
-}
+// 使用 MicroAppMetadata 作为 MicroAppConfig 的别名
+type MicroAppConfig = MicroAppMetadata;
 
 const MicroAppConfigPage: React.FC = () => {
   const [config, setConfig] = useState<MicroAppConfig>({ version: '1.0.0', apps: [] });
@@ -75,12 +45,17 @@ const MicroAppConfigPage: React.FC = () => {
     systemId: string;
     moduleId: string;
     eventType: 'emittable' | 'listenable';
-    event: MicroAppEvent | null;
+    event: EmittableEvent | null;
   }>();
 
   const [systemForm] = Form.useForm();
   const [moduleForm] = Form.useForm();
   const [eventForm] = Form.useForm();
+
+  const updateConfigState = useCallback((nextConfig: MicroAppConfig) => {
+    setConfig(nextConfig);
+    microAppConfigLoader.setMetadata(nextConfig);
+  }, []);
 
   // 加载配置
   const loadConfig = async () => {
@@ -88,7 +63,7 @@ const MicroAppConfigPage: React.FC = () => {
     try {
       const response = await fetch('/config/micro-apps.json');
       const data = await response.json();
-      setConfig(data);
+      updateConfigState(data);
     } catch (error) {
       message.error('加载配置失败');
       console.error(error);
@@ -99,6 +74,42 @@ const MicroAppConfigPage: React.FC = () => {
 
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const handleExternalUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<MicroAppConfigChangeDetail>).detail;
+      if (!detail) {
+        return;
+      }
+      setConfig((prev) => {
+        const nextApps = prev.apps.map((system) => {
+          if (system.id !== detail.systemId) {
+            return system;
+          }
+          return {
+            ...system,
+            modules: system.modules.map((module) =>
+              module.id === detail.moduleId ? { ...module, ...detail.updates } : module
+            ),
+          };
+        });
+        return { ...prev, apps: nextApps };
+      });
+    };
+
+    window.addEventListener(
+      MICRO_APP_CONFIG_CHANGED_EVENT,
+      handleExternalUpdate as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        MICRO_APP_CONFIG_CHANGED_EVENT,
+        handleExternalUpdate as EventListener
+      );
   }, []);
 
   // 保存配置到服务器
@@ -134,7 +145,7 @@ const MicroAppConfigPage: React.FC = () => {
     reader.onload = (e) => {
       try {
         const importedConfig = JSON.parse(e.target?.result as string);
-        setConfig(importedConfig);
+        updateConfigState(importedConfig);
         message.success('配置已导入');
       } catch (error) {
         message.error('配置文件格式错误');
@@ -164,7 +175,7 @@ const MicroAppConfigPage: React.FC = () => {
         });
       }
 
-      setConfig({ ...config, apps: newApps });
+      updateConfigState({ ...config, apps: newApps });
       setSystemModalOpen(false);
       systemForm.resetFields();
       setEditingSystem(null);
@@ -177,7 +188,7 @@ const MicroAppConfigPage: React.FC = () => {
   // 删除系统
   const handleDeleteSystem = (systemId: string) => {
     const newApps = config.apps.filter(app => app.id !== systemId);
-    setConfig({ ...config, apps: newApps });
+    updateConfigState({ ...config, apps: newApps });
     message.success('系统已删除');
   };
 
@@ -212,7 +223,7 @@ const MicroAppConfigPage: React.FC = () => {
         }
       }
 
-      setConfig({ ...config, apps: newApps });
+      updateConfigState({ ...config, apps: newApps });
       setModuleModalOpen(false);
       moduleForm.resetFields();
       setEditingModule(undefined);
@@ -228,7 +239,7 @@ const MicroAppConfigPage: React.FC = () => {
     const system = newApps.find(app => app.id === systemId);
     if (system) {
       system.modules = system.modules.filter(m => m.id !== moduleId);
-      setConfig({ ...config, apps: newApps });
+      updateConfigState({ ...config, apps: newApps });
       message.success('模块已删除');
     }
   };
@@ -266,7 +277,7 @@ const MicroAppConfigPage: React.FC = () => {
         }
       }
 
-      setConfig({ ...config, apps: newApps });
+      updateConfigState({ ...config, apps: newApps });
       setEventModalOpen(false);
       eventForm.resetFields();
       setEditingEvent(undefined);
@@ -293,7 +304,7 @@ const MicroAppConfigPage: React.FC = () => {
         } else {
           module.listenableEvents = (module.listenableEvents || []).filter(e => e.type !== eventTypeValue);
         }
-        setConfig({ ...config, apps: newApps });
+        updateConfigState({ ...config, apps: newApps });
         message.success('事件已删除');
       }
     }

@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie'
 
 // 各个系统不重复
-const TokenKey = 'YSTOKEN'
+const TokenKey = 'JWT-TOKEN'
 const RefreshTokenKey = 'YISAREFRESHTOKEN'
 const IDKey = 'YISAUSERID'
 

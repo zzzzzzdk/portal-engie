@@ -13,10 +13,10 @@
 .floating-module-container {
   // 启用 GPU 加速
   will-change: transform, width, height;
+  transform: translate3d(0, 0, 0);
   
   // 平滑过渡 - 默认状态
-  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
-              top 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
               height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -276,7 +276,7 @@
     transform: translateZ(0);
 
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--ant-color-primary-1);
     }
 
     .drag-icon-transparent {
@@ -348,7 +348,7 @@
   &.theme-dark {
     .floating-module-header-transparent {
       &:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--ant-color-primary-1);
       }
 
       .drag-icon-transparent {

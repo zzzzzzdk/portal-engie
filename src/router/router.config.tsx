@@ -38,13 +38,13 @@ const routeConfig: RouteConfig[] = [
     children: [
       {
         index: true,
-        redirect: '/dashboard',
+        redirect: '/dashboard-gridstack',
       },
       {
         path: 'dashboard',
         element: () => import('@/pages/Dashboard'),
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
           title: '仪表盘 - Portal Engine',
         },
       },
@@ -52,7 +52,7 @@ const routeConfig: RouteConfig[] = [
         path: 'dashboard-gridstack',
         element: () => import('@/pages/DashboardGridStack'),
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
           title: '仪表盘 (GridStack) - Portal Engine',
         },
       },
@@ -60,7 +60,7 @@ const routeConfig: RouteConfig[] = [
         path: 'micro-app-config',
         element: () => import('@/pages/MicroAppConfigPage'),
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
           title: '微应用配置 - Portal Engine',
         },
       },

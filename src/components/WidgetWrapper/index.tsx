@@ -86,6 +86,21 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     // 在编辑模式下，即使隐藏标题也要显示拖拽条
     const shouldShowHeader = showTitle || isEditMode;
 
+    // 计算背景样式
+    const backgroundStyle: React.CSSProperties = {};
+    const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = widget.config;
+
+    if (backgroundType === 'image' && backgroundImage) {
+      backgroundStyle.backgroundImage = `url(${backgroundImage})`;
+      backgroundStyle.backgroundSize = 'cover';
+      backgroundStyle.backgroundPosition = 'center';
+      backgroundStyle.backgroundRepeat = 'no-repeat';
+    } else if (backgroundType === 'gradient' && backgroundGradient) {
+      backgroundStyle.background = backgroundGradient;
+    } else if (backgroundType === 'color' && backgroundColor) {
+      backgroundStyle.backgroundColor = backgroundColor;
+    }
+
     return (
       <Dropdown
         menu={{ items: contextMenuItems }}
@@ -93,10 +108,11 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       >
         <div
           ref={ref}
-          style={style}
-          className={clsx('widget-wrapper', className, {
+          style={{ ...style, ...backgroundStyle }}
+          className={clsx('widget-wrapper', className, widget.type, {
             'edit-mode': isEditMode,
-            'no-header': !showTitle && !isEditMode
+            'no-header': !showTitle && !isEditMode,
+
           })}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}
@@ -114,13 +130,17 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
                   className="widget-actions"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
-                    onClick={handleRefresh}
-                    disabled={isRefreshing}
-                  />
+                  {
+                    !!widget.config.refreshInterval ?
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                      />
+                      : ''
+                  }
                   <Button
                     type="text"
                     size="small"

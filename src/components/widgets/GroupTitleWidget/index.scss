@@ -1,0 +1,17 @@
+.group-title-widget {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  // padding: 0 16px;
+
+  // 默认内容区域样式，可以被覆盖
+  .group-title-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+  }
+}

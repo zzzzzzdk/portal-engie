@@ -1,11 +1,24 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, Widget, WidgetType, WidgetConfig, UserInfo, MicroAppModule, FloatingModuleConfig, LocalComponentType } from '@/types';
+import {
+  AppState,
+  Widget,
+  WidgetType,
+  WidgetConfig,
+  UserInfo,
+  MicroAppModule,
+  FloatingModuleConfig,
+  LocalComponentType,
+  WidgetGroup,
+  LayoutSyncOptions,
+} from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 
-const DEFAULT_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_GROUP_LAYOUT = { w: 6, h: 4, x: 0, y: Infinity, minW: 2, minH: 2 };
+const DEFAULT_TITLE_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
@@ -39,6 +52,8 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
       return { ...baseConfig, title: 'Chart' };
+    case 'groupTitle':
+      return { ...baseConfig, title: '分组标题', showTitle: false };
     case 'microApp':
       return {
         ...baseConfig,
@@ -79,12 +94,21 @@ export const useStore = create<AppState>()(
           config: { title: 'Chart', showTitle: true, refreshInterval: 60 },
         },
       ] as Widget[],
+      groups: [] as WidgetGroup[],
       isEditMode: true, // Default to edit mode for easier setup
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
       floatingModules: [] as Widget[], // 悬浮模块列表
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
+      dashboardConfig: {
+        backgroundType: 'color',
+        backgroundColor: '#f5f5f5',
+      },
+      gridDensity: 'standard',
+      setGridDensity: (density) => set({ gridDensity: density }),
+      floatingPanelPosition: { x: 100, y: 100 },
+      setFloatingPanelPosition: (position) => set({ floatingPanelPosition: position }),
 
       login: (userInfo?: UserInfo) => set({
         isAuthenticated: true,
@@ -100,11 +124,14 @@ export const useStore = create<AppState>()(
 
       addWidget: (type: WidgetType) => {
         const id = uuidv4();
+        // 使用特定的布局配置
+        const layoutConfig = type === 'groupTitle' ? DEFAULT_TITLE_LAYOUT : DEFAULT_LAYOUT;
+        
         const newWidget: Widget = {
           id,
           type,
           title: type.charAt(0).toUpperCase() + type.slice(1),
-          layout: sanitizeLayout({ ...DEFAULT_LAYOUT, i: id, y: Infinity }),
+          layout: sanitizeLayout({ ...layoutConfig, i: id, y: Infinity }),
           config: getDefaultConfig(type),
         };
 
@@ -126,8 +153,8 @@ export const useStore = create<AppState>()(
             y: Infinity,
             w: defaultSize.w,
             h: defaultSize.h,
-            minW: 2,
-            minH: 2,
+            minW: 1,
+            minH: 1,
           }),
           config: {
             title: module.name,
@@ -147,10 +174,129 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      createWidgetGroup: (title: string, widgetIds: string[]) => {
+        set((state) => {
+          const uniqueIds = Array.from(new Set(widgetIds));
+          const candidates = state.widgets.filter(
+            (widget) => uniqueIds.includes(widget.id) && !widget.groupId
+          );
+
+          if (candidates.length < 2) {
+            return {};
+          }
+
+          const normalizedLayouts = candidates.map((widget) => ({
+            id: widget.id,
+            x: Number.isFinite(widget.layout.x) ? (widget.layout.x as number) : 0,
+            y: Number.isFinite(widget.layout.y) ? (widget.layout.y as number) : 0,
+            w: Number.isFinite(widget.layout.w) ? (widget.layout.w as number) : 1,
+            h: Number.isFinite(widget.layout.h) ? (widget.layout.h as number) : 1,
+          }));
+
+          const minX = Math.min(...normalizedLayouts.map((item) => item.x));
+          const minY = Math.min(...normalizedLayouts.map((item) => item.y));
+          const maxRight = Math.max(...normalizedLayouts.map((item) => item.x + item.w));
+          const maxBottom = Math.max(...normalizedLayouts.map((item) => item.y + item.h));
+
+          const width = Math.max(maxRight - minX, 1);
+          const height = Math.max(maxBottom - minY, 1);
+
+          const groupId = `group-${Date.now()}`;
+          const groupTitle = title || `分组 ${state.groups.length + 1}`;
+          const orderedWidgetIds = normalizedLayouts
+            .slice()
+            .sort((a, b) => {
+              if (a.y === b.y) {
+                return a.x - b.x;
+              }
+              return a.y - b.y;
+            })
+            .map((item) => item.id);
+
+          const newGroup: WidgetGroup = {
+            id: groupId,
+            title: groupTitle,
+            widgetIds: orderedWidgetIds,
+            layout: sanitizeLayout({
+              i: groupId,
+              x: minX,
+              y: minY,
+              w: width,
+              h: height,
+              minW: Math.max(width, 2),
+              minH: Math.max(height, 2),
+            }),
+          };
+
+          const updatedWidgets = state.widgets.map((widget) =>
+            uniqueIds.includes(widget.id) ? { ...widget, groupId: groupId } : widget
+          );
+
+          return {
+            widgets: updatedWidgets,
+            groups: [...state.groups, newGroup],
+          };
+        });
+      },
+
+      createEmptyGroup: (title?: string) => {
+        let createdGroup: WidgetGroup | null = null;
+
+        set((state) => {
+          const groupId = `group-${Date.now()}`;
+          const groupTitle = title?.trim() || `分组 ${state.groups.length + 1}`;
+          const layout = sanitizeLayout({
+            ...DEFAULT_GROUP_LAYOUT,
+            i: groupId,
+          });
+
+          const newGroup: WidgetGroup = {
+            id: groupId,
+            title: groupTitle,
+            widgetIds: [],
+            layout,
+          };
+
+          createdGroup = newGroup;
+
+          return {
+            groups: [...state.groups, newGroup],
+          };
+        });
+
+        return createdGroup!;
+      },
+
+      removeGroup: (id: string) => {
+        set((state) => {
+          const group = state.groups.find((g) => g.id === id);
+          if (!group) return {};
+
+          // 删除分组时，同时删除分组内的所有 widget
+          const widgetIdsToRemove = new Set(group.widgetIds);
+
+          return {
+            groups: state.groups.filter((g) => g.id !== id),
+            widgets: state.widgets.filter((w) => !widgetIdsToRemove.has(w.id)),
+          };
+        });
+      },
+
       removeWidget: (id: string) => {
-        set((state) => ({
-          widgets: state.widgets.filter((w) => w.id !== id),
-        }));
+        set((state) => {
+          const remainingGroups = state.groups.map((group) => {
+            if (!group.widgetIds.includes(id)) {
+              return group;
+            }
+            const widgetIds = group.widgetIds.filter((widgetId) => widgetId !== id);
+            return { ...group, widgetIds };
+          });
+
+          return {
+            widgets: state.widgets.filter((w) => w.id !== id),
+            groups: remainingGroups,
+          };
+        });
       },
 
       updateWidget: (id: string, updates: Partial<Widget>) => {
@@ -169,19 +315,99 @@ export const useStore = create<AppState>()(
         }));
       },
 
-      updateLayout: (layouts: Layout[]) => {
+      updateLayout: (layouts: Layout[], options: LayoutSyncOptions = {}) => {
+        const {
+          groupLayouts = [],
+          widgetAssignments,
+          groupMemberships,
+        } = options;
+
         set((state) => {
-          // Map new layout positions to existing widgets
+          const layoutMap = new Map(layouts.map((layout) => [layout.i, layout]));
+          const assignmentMap = widgetAssignments || {};
+
           const updatedWidgets = state.widgets.map((widget) => {
-            const layoutItem = layouts.find((l) => l.i === widget.id);
-            if (layoutItem) {
-              // 使用 sanitizeLayout 确保所有布局数据都是有效的
-              const mergedLayout = { ...widget.layout, ...layoutItem };
-              return { ...widget, layout: sanitizeLayout(mergedLayout) };
+            const layoutItem = layoutMap.get(widget.id);
+            const hasAssignment = Object.prototype.hasOwnProperty.call(
+              assignmentMap,
+              widget.id
+            );
+
+            const nextLayout = layoutItem
+              ? sanitizeLayout({ ...widget.layout, ...layoutItem })
+              : widget.layout;
+
+            const nextGroupId = hasAssignment
+              ? assignmentMap[widget.id] || undefined
+              : widget.groupId;
+
+            if (nextLayout === widget.layout && nextGroupId === widget.groupId) {
+              return widget;
             }
-            return widget;
+
+            return {
+              ...widget,
+              layout: nextLayout,
+              groupId: nextGroupId,
+            };
           });
-          return { widgets: updatedWidgets };
+
+          const shouldSyncGroups =
+            groupLayouts.length > 0 || groupMemberships !== undefined;
+
+          if (!shouldSyncGroups) {
+            return { widgets: updatedWidgets, groups: state.groups };
+          }
+
+          const groupLayoutMap = new Map(groupLayouts.map((layout) => [layout.i, layout]));
+          const membershipEntries = groupMemberships
+            ? Object.entries(groupMemberships)
+            : [];
+          const targetGroupIds = new Set([
+            ...groupLayoutMap.keys(),
+            ...membershipEntries.map(([groupId]) => groupId),
+          ]);
+
+          const existingOrder = state.groups.map((group) => group.id);
+          const orderedGroupIds: string[] = [
+            ...existingOrder.filter((id) => targetGroupIds.has(id)),
+            ...Array.from(targetGroupIds).filter((id) => !existingOrder.includes(id)),
+          ];
+
+          const nextGroups: WidgetGroup[] = orderedGroupIds.map((groupId, index) => {
+            const existing = state.groups.find((group) => group.id === groupId);
+            const layoutItem = groupLayoutMap.get(groupId);
+            const widgetIds =
+              (groupMemberships && groupMemberships[groupId]) ||
+              existing?.widgetIds ||
+              [];
+
+            const fallbackLayout: Layout = existing?.layout || {
+              i: groupId,
+              x: 0,
+              y: 0,
+              w: 4,
+              h: 2,
+              minW: 1,
+              minH: 1,
+            };
+
+            const mergedLayout = layoutItem
+              ? sanitizeLayout({ ...fallbackLayout, ...layoutItem })
+              : sanitizeLayout(fallbackLayout);
+
+            return {
+              id: groupId,
+              title: existing?.title || `分组 ${index + 1}`,
+              widgetIds,
+              layout: mergedLayout,
+            };
+          });
+
+          return {
+            widgets: updatedWidgets,
+            groups: nextGroups,
+          };
         });
       },
 
@@ -189,7 +415,7 @@ export const useStore = create<AppState>()(
 
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
 
-      resetDashboard: () => set({ widgets: [] }),
+      resetDashboard: () => set({ widgets: [], groups: [] }),
 
       saveDashboard: () => {
         // Zustand persist middleware handles localStorage automatically.
@@ -197,6 +423,7 @@ export const useStore = create<AppState>()(
         const state = get();
         console.log('Saving dashboard config:', {
           widgets: state.widgets,
+          groups: state.groups,
           floatingModules: state.floatingModules,
           // globalMicroApps: state.globalMicroApps
         });
@@ -207,6 +434,14 @@ export const useStore = create<AppState>()(
         // This could fetch from API
         console.log('Loading dashboard config...');
       },
+
+      updateDashboardConfig: (config) =>
+        set((state) => ({
+          dashboardConfig: {
+            ...state.dashboardConfig,
+            ...config,
+          } as any,
+        })),
 
       // ============================================
       // 悬浮模块相关方法
@@ -424,8 +659,11 @@ export const useStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         widgets: state.widgets,
+        groups: state.groups,
         floatingModules: state.floatingModules, // 持久化悬浮模块
-        globalMicroApps: state.globalMicroApps  // 持久化全局微应用
+        globalMicroApps: state.globalMicroApps,  // 持久化全局微应用
+        dashboardConfig: state.dashboardConfig,
+        floatingPanelPosition: state.floatingPanelPosition,
       }),
       // 从 localStorage 恢复时验证和清理数据
       merge: (persistedState: any, currentState: AppState) => {
@@ -435,6 +673,12 @@ export const useStore = create<AppState>()(
           mergedState.widgets = mergedState.widgets.map((widget: Widget) => ({
             ...widget,
             layout: sanitizeLayout(widget.layout),
+          }));
+        }
+        if (mergedState.groups && Array.isArray(mergedState.groups)) {
+          mergedState.groups = mergedState.groups.map((group: WidgetGroup) => ({
+            ...group,
+            layout: sanitizeLayout(group.layout),
           }));
         }
         // 恢复悬浮模块

@@ -279,7 +279,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
   return (
     <div className="event-route-config">
       <div className="event-route-config-header">
-        <div className="event-route-config-title">事件路由配置</div>
+        {/* <div className="event-route-config-title">事件路由配置</div> */}
         <div className="event-route-config-description">
           配置当前微应用发送的事件要转发给哪些接收方
         </div>

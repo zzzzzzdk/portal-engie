@@ -177,7 +177,7 @@ router.get("/v1/common/get-sysconfig", function (req, res, next) {
  * @apiSuccess {Object[]} data.menus.children 子菜单
  * @apiSuccess {String[]} data.route 页面权限
  */
-router.post("/v1/user/info", async function (req, res, next) {
+router.all("/v1/user/info", async function (req, res, next) {
   await req.sleep(0);
 
   req.json.data = {
@@ -343,7 +343,7 @@ router.post("/login", async (req, res) => {
     const token = 'mock-token-' + new Date().getTime();
 
     // 模拟后端写入 Cookie
-    res.cookie('YSTOKEN', token, {
+    res.cookie('JWT-TOKEN', token, {
       httpOnly: false,  // 允许前端读取
       maxAge: 24 * 60 * 60 * 1000,  // 24小时过期
       path: '/'

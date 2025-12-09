@@ -1,5 +1,13 @@
 import { Layout } from 'react-grid-layout';
 
+export const GRID_DENSITY_PRESETS = {
+  compact: { label: '紧凑', cellHeight: 60, margin: 0 },
+  standard: { label: '标准', cellHeight: 120, margin: 0 },
+  spacious: { label: '宽松', cellHeight: 150, margin: 0 },
+} as const;
+
+export type GridDensityKey = keyof typeof GRID_DENSITY_PRESETS;
+
 export type WidgetType =
   | 'clock'
   | 'stats'
@@ -11,6 +19,7 @@ export type WidgetType =
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
+  | 'groupTitle'       // 分组标题
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule';  // 悬浮模块
 
@@ -19,6 +28,11 @@ export interface WidgetConfig {
   showTitle?: boolean; // 是否显示标题
   refreshInterval?: number; // in seconds
   apiEndpoint?: string;
+  // 背景配置
+  backgroundType?: 'color' | 'image' | 'gradient';
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundGradient?: string;
   [key: string]: any; // Allow custom properties for different widgets
 }
 
@@ -29,6 +43,20 @@ export interface Widget {
   layout: Layout; // React Grid Layout item properties
   config: WidgetConfig;
   refreshCount?: number; // 刷新计数器，用于触发小部件重新加载数据
+  groupId?: string;
+}
+
+export interface WidgetGroup {
+  id: string;
+  title: string;
+  widgetIds: string[];
+  layout: Layout;
+}
+
+export interface LayoutSyncOptions {
+  groupLayouts?: Layout[];
+  widgetAssignments?: Record<string, string | null>;
+  groupMemberships?: Record<string, string[]>;
 }
 
 // 用户信息接口
@@ -40,8 +68,21 @@ export interface UserInfo {
   avatar?: string;
 }
 
+export interface DashboardConfig {
+  backgroundType: 'color' | 'image' | 'gradient';
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundGradient?: string;
+}
+
 export interface AppState {
+  gridDensity: GridDensityKey;
+  setGridDensity: (density: GridDensityKey) => void;
+  floatingPanelPosition: { x: number; y: number };
+  setFloatingPanelPosition: (position: { x: number; y: number }) => void;
+  dashboardConfig?: DashboardConfig;
   widgets: Widget[];
+  groups: WidgetGroup[];
   isEditMode: boolean;
   isFullScreen: boolean;
   isAuthenticated: boolean;
@@ -55,12 +96,16 @@ export interface AppState {
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<Widget>) => void;
   refreshWidget: (id: string) => void;
-  updateLayout: (layouts: Layout[]) => void;
+  updateLayout: (layouts: Layout[], options?: LayoutSyncOptions) => void;
+  createWidgetGroup: (title: string, widgetIds: string[]) => void;
+  createEmptyGroup: (title?: string) => WidgetGroup;
+  removeGroup: (id: string) => void;
   setEditMode: (isEditMode: boolean) => void;
   toggleFullScreen: () => void;
   resetDashboard: () => void;
   saveDashboard: () => void;
   loadDashboard: () => void;
+  updateDashboardConfig: (config: Partial<DashboardConfig>) => void;
   // 悬浮模块方法
   addFloatingModuleMicroApp: (
     systemId: string,
@@ -394,3 +439,5 @@ export interface FloatingModuleConfig extends WidgetConfig {
   icon?: React.ReactNode;   // 折叠时显示的图标
   zIndex?: number;          // 层级
 }
+
+export * from './widget-size';

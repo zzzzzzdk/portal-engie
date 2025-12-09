@@ -1,251 +1,706 @@
 /**
- * DashboardGridStack - GridStack.js 集成实验（未完成，已封存）
+ * DashboardGridStack - 使用官方 GridStack React Wrapper
  *
  * ========================================
- * 项目状态：🚧 开发中断 - 难度过大，暂时封存
+ * 项目状态：✅ 重构完成 - 使用官方方案
  * 最后更新：2025-12-05
  * ========================================
  *
- * ## 已完成功能 ✅
- * 1. GridStack 基础初始化（12列网格，cellHeight 50，margin 10）
- * 2. 从 store 读取 widgets 并渲染
- * 3. 使用 React 18 createRoot 渲染真实组件
- * 4. 使用 'added' 事件解决 DOM 异步创建问题
- * 5. 使用 widgetsRef 解决事件监听器闭包问题
- * 6. React roots 生命周期管理（创建/卸载）
+ * ## 核心特性 ✅
+ * 1. 使用官方 GridStack React Wrapper（三层 Provider 架构）
+ * 2. 支持拖拽、调整大小、添加/删除 widgets
+ * 3. 支持嵌套网格（SubGrid）- 实现分组功能
+ * 4. 完美集成 Zustand store
+ * 5. 兼容现有所有 Widget 组件
+ * 6. 支持编辑/预览模式切换
  *
- * ## 未完成功能 ❌
- * 1. ❌ 拖拽和调整大小功能
- * 2. ❌ 布局变化同步到 Zustand store
- * 3. ❌ 编辑/预览模式切换
- * 4. ❌ 添加新 widget 功能
- * 5. ❌ 删除 widget 功能
- * 6. ❌ Widget 配置功能
- * 7. ❌ 右键菜单
- * 8. ❌ 布局持久化到 localStorage
- * 9. ❌ 拖拽手柄 `.grid-drag-handle` 支持
- * 10. ❌ 全屏模式
- * 11. ❌ Widget 刷新功能
- * 12. ❌ 样式适配（网格背景、hover 效果等）
+ * ## 架构设计
+ * GridStackProvider (状态管理)
+ *   → GridStackRenderProvider (渲染层)
+ *     → GridStackRender (Portal 渲染)
+ *       → WidgetAdapter (适配现有组件)
  *
- * ## 遇到的技术难点 ⚠️
- * 1. **DOM 异步创建问题**：
- *    - grid.load() 是异步的，无法用 requestAnimationFrame 解决
- *    - 解决方案：使用 GridStack 'added' 事件监听
+ * ## 与 Zustand 的集成
+ * - 从 store 读取 widgets 并转换为 GridStack 格式
+ * - 监听布局变化并同步回 store
+ * - 支持添加/删除/更新 widgets
  *
- * 2. **React 与 GridStack 集成复杂度**：
- *    - GridStack 直接操作 DOM，React 使用虚拟 DOM
- *    - 需要使用 React Portal 或 createRoot 桥接
- *    - 状态同步困难（GridStack → React → Zustand）
- *
- * 3. **闭包问题**：
- *    - 事件监听器中捕获的 widgets 是旧值
- *    - 解决方案：使用 useRef 保存最新引用
- *
- * 4. **双向数据流同步**：
- *    - Zustand store → GridStack（未实现）
- *    - GridStack → Zustand store（未实现）
- *    - 可能导致循环更新
- *
- * ## 为什么封存 🤔
- * - GridStack 与 React 集成的复杂度超出预期
- * - react-grid-layout 已经能满足需求
- * - 时间成本过高，性价比低
- * - 建议继续使用 react-grid-layout
- *
- * ## 参考资料 📚
- * - GridStack 官方文档：https://github.com/gridstack/gridstack.js
- * - React 集成示例：demo/react-hooks.html
- * - 序列化示例：demo/serialization.html
- * - 事件处理示例：demo/events.js
- *
- * ## 如需继续开发 🔧
- * 1. 研究 demo/react-hooks.html 中的 Controlled 模式
- * 2. 实现 grid.on('change') 事件同步布局到 store
- * 3. 使用 grid.batchUpdate() 避免多次重渲染
- * 4. 考虑使用 GridStack 的 save()/load() API 持久化
- *
- * ========================================
+ * ## 分组功能
+ * - 使用 SubGrid 实现分组
+ * - 分组可整体拖动
+ * - 分组内的 widgets 可独立拖动
  */
 
-import React, { useEffect, useRef } from 'react';
-import { createRoot, Root } from 'react-dom/client';
-import { GridStack, GridStackOptions, GridStackWidget } from "gridstack";
-import 'gridstack/dist/gridstack.min.css';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GridStack, GridStackOptions, GridStackWidget } from 'gridstack';
+import type { Layout } from 'react-grid-layout';
+import {
+  GridStackProvider,
+  GridStackRenderProvider,
+  GridStackRender,
+  useGridStackContext,
+} from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
-import WidgetWrapper from '@/components/WidgetWrapper';
-import ClockWidget from '@/components/widgets/ClockWidget';
-import StatsWidget from '@/components/widgets/StatsWidget';
-import ChartWidget from '@/components/widgets/ChartWidget';
-import LinkWidget from '@/components/widgets/LinkWidget';
-import NewsWidget from '@/components/widgets/NewsWidget';
-import TopListWidget from '@/components/widgets/TopListWidget';
-import SearchWidget from '@/components/widgets/SearchWidget';
-import DataTableWidget from '@/components/widgets/DataTableWidget';
-import CardGridWidget from '@/components/widgets/CardGridWidget';
-import CustomFormWidget from '@/components/widgets/CustomFormWidget';
-import MicroAppWidget from '@/components/widgets/MicroAppWidget';
-import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
-import { Widget } from '@/types';
+import { Button, Tooltip, Select } from 'antd';
+import {
+  FullscreenExitOutlined,
+} from '@ant-design/icons';
+import WidgetAdapter from './WidgetAdapter';
+import GroupAdapter from './GroupAdapter';
+import FloatingModule from '@/components/FloatingModule';
+import clsx from 'clsx';
+import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS, GridDensityKey } from '@/types';
+
+import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
 
-const DashboardGridStack: React.FC = () => {
-  const { widgets } = useStore();
-  const gridRef = useRef<HTMLDivElement>(null);
-  const gridInstanceRef = useRef<GridStack | null>(null);
-  const widgetRootsRef = useRef<Map<string, Root>>(new Map()); // 管理 React roots
-  const widgetsRef = useRef(widgets); // 保存最新的 widgets 引用
+const COLUMN_COUNT = 12;
+const SUBGRID_LISTENER_REGISTRY = new WeakSet<GridStack>();
+type PersistHelpers = {
+  hasHydrated?: () => boolean;
+  onFinishHydration?: (fn: (state?: AppState, error?: unknown) => void) => () => void;
+};
 
-  // 更新 widgetsRef
-  useEffect(() => {
-    widgetsRef.current = widgets;
-  }, [widgets]);
+/**
+ * Dashboard 内部组件（在 Provider 内部）
+ */
+const DashboardInner: React.FC = () => {
+  const {
+    widgets,
+    groups,
+    isEditMode,
+    isFullScreen,
+    toggleFullScreen,
+    floatingModules,
+    updateLayout,
+    dashboardConfig,
+    gridDensity,
+  } = useStore();
 
-  // 渲染 widget 内容
-  const renderWidgetContent = (widget: Widget) => {
-    const commonProps = { config: widget.config, widget };
-    switch (widget.type) {
-      case 'clock':
-        return <ClockWidget {...commonProps} />;
-      case 'stats':
-        return <StatsWidget {...commonProps} />;
-      case 'chart':
-        return <ChartWidget {...commonProps} />;
-      case 'link':
-        return <LinkWidget {...commonProps} />;
-      case 'news':
-        return <NewsWidget {...commonProps} />;
-      case 'topList':
-        return <TopListWidget {...commonProps} />;
-      case 'search':
-        return <SearchWidget {...commonProps} />;
-      case 'dataTable':
-        return <DataTableWidget {...commonProps} />;
-      case 'cardGrid':
-        return <CardGridWidget {...commonProps} />;
-      case 'customForm':
-        return <CustomFormWidget {...commonProps} />;
-      case 'microApp':
-        return <MicroAppWidget {...commonProps} />;
-      default:
-        return <div>Unknown Widget Type: {widget.type}</div>;
+  const densityPreset = GRID_DENSITY_PRESETS[gridDensity];
+  const [gridVisualMetrics, setGridVisualMetrics] = useState({
+    cellWidth: 120,
+    cellHeight: densityPreset.cellHeight,
+    margin: densityPreset.margin,
+  });
+
+  const {
+    gridStack,
+    saveOptions,
+    addWidget: addGridWidget,
+    addSubGrid,
+    removeWidget: removeGridWidget,
+    _rawWidgetMetaMap,
+  } = useGridStackContext();
+  const availableWidgets = useMemo(() => widgets.filter((widget) => !widget.groupId), [widgets]);
+  const widgetMap = useMemo(() => new Map(widgets.map((widget) => [widget.id, widget])), [widgets]);
+
+  const widgetIdsRef = useRef<Set<string>>(new Set(availableWidgets.map((w) => w.id)));
+  const allWidgetIdsRef = useRef<Set<string>>(new Set(widgets.map((w) => w.id))); // 追踪所有 widgets 以处理删除
+  const groupIdsRef = useRef<Set<string>>(new Set(groups.map((group) => group.id)));
+  const isApplyingStoreLayout = useRef(false);
+  const pendingSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const backgroundStyle = useMemo(() => {
+    const style: React.CSSProperties = {
+      '--grid-cell-width': `${gridVisualMetrics.cellWidth}px`,
+      '--grid-cell-height': `${gridVisualMetrics.cellHeight}px`,
+      '--grid-gutter': `${gridVisualMetrics.margin}px`,
+    } as React.CSSProperties;
+
+    if (dashboardConfig) {
+      if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
+        style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
+        style.backgroundSize = 'cover';
+        style.backgroundPosition = 'center';
+        style.backgroundRepeat = 'no-repeat';
+        style.backgroundAttachment = 'fixed';
+      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
+        style.background = dashboardConfig.backgroundGradient;
+      } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
+        style.backgroundColor = dashboardConfig.backgroundColor;
+      } else {
+        style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)'; 
+      }
+    } else {
+         style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)';
     }
-  };
 
-  // 初始化 GridStack（只运行一次）
-  useEffect(() => {
-    if (!gridRef.current || gridInstanceRef.current) return;
+    return style;
+  }, [isEditMode, gridVisualMetrics, dashboardConfig]);
 
-    console.log('[步骤 1] 初始化 GridStack');
+  const syncLayoutFromGrid = useCallback(() => {
+    if (pendingSyncTimeoutRef.current) {
+      return;
+    }
 
-    const grid = GridStack.init({
-      column: 12,
-      cellHeight: 50,
-      margin: 10,
-      float: true,
-    }, gridRef.current);
+    // 🔧 延迟调用，确保 GridStack 的 DOM 更新完成（特别是 SubGrid）
+    pendingSyncTimeoutRef.current = setTimeout(() => {
+      const currentLayout = saveOptions();
 
-    // 转换为 GridStack 格式
-    const gridItems = widgets.map(widget => ({
-      id: widget.id,
-      x: widget.layout.x,
-      y: widget.layout.y,
-      w: widget.layout.w,
-      h: widget.layout.h,
-      content: `<div id="widget-${widget.id}"></div>`, // 占位 div
-    }));
-    console.log(widgets)
-    // 使用 load API 一次性加载所有 widgets
-    // added 事件会自动触发，然后渲染 React 组件
-    grid.load(gridItems);
+      if (!currentLayout) {
+        pendingSyncTimeoutRef.current = null;
+        return;
+      }
 
+      const widgetLayouts: Layout[] = [];
+      const groupLayouts: Layout[] = [];
+      const widgetAssignments: Record<string, string | null> = {};
+      const groupMemberships: Record<string, string[]> = {};
 
-    gridInstanceRef.current = grid;
+      // 🔧 同步更新元数据 Map（修复拖入 SubGrid 后内容消失的问题）
+      // 保留旧的元数据作为后备，防止 content 丢失
+      const updatedMetaMap = new Map<string, GridStackWidget>(_rawWidgetMetaMap.value);
 
-    // 监听 widget 添加事件，当 DOM 真正创建后渲染 React 组件
-    grid.on('added', (_event, items) => {
-      console.log(_event, items)
-      if (!items) return;
+      const traverse = (
+        items: GridStackWidget[] | undefined,
+        parentGroupId: string | null = null,
+        offsetX = 0,
+        offsetY = 0
+      ) => {
+        if (!items) return;
 
-      items.forEach(item => {
-        const widgetId = item.id as string;
-        // 使用 ref 获取最新的 widgets
-        const widget = widgetsRef.current.find(w => w.id === widgetId);
-        if (!widget) return;
+        items.forEach((item) => {
+          if (!item || !item.id) return;
 
-        const container = document.getElementById(`widget-${widgetId}`);
-        if (container) {
-          console.log(`[步骤 2] 渲染 React 组件: ${widgetId} (${widget.type})`);
+          const id = String(item.id);
+          const absoluteLayout: Layout = {
+            i: id,
+            x: (item.x ?? 0) + offsetX,
+            y: (item.y ?? 0) + offsetY,
+            w: item.w ?? 4,
+            h: item.h ?? 2,
+          };
 
-          // 使用 React 18 的 createRoot 渲染真实组件
-          let root = widgetRootsRef.current.get(widgetId);
-          if (!root) {
-            root = createRoot(container);
-            widgetRootsRef.current.set(widgetId, root);
+          const hasSubGrid = !!item.subGridOpts;
+          const childItems =
+            item.subGridOpts && Array.isArray(item.subGridOpts.children)
+              ? (item.subGridOpts.children as GridStackWidget[])
+              : undefined;
+
+          // 🔧 更新或添加 widget 元数据 (包括分组)
+          if (item.content) {
+            updatedMetaMap.set(id, item);
           }
 
-          // 渲染 Widget 内容
-          root.render(
-            <WidgetErrorBoundary widgetId={widget.id} widgetType={widget.type}>
-              <WidgetWrapper widget={widget}>
-                {renderWidgetContent(widget)}
-              </WidgetWrapper>
-            </WidgetErrorBoundary>
-          );
-        } else {
-          console.warn(`[步骤 2] 找不到容器: widget-${widgetId}`);
-        }
-      });
-    });
+          if (hasSubGrid) {
+            groupLayouts.push(absoluteLayout);
+            if (!groupMemberships[id]) {
+              groupMemberships[id] = [];
+            }
+            traverse(childItems, id, absoluteLayout.x, absoluteLayout.y);
+            return;
+          }
+
+          widgetLayouts.push(absoluteLayout);
+          widgetAssignments[id] = parentGroupId;
+
+          if (parentGroupId) {
+            groupMemberships[parentGroupId] = groupMemberships[parentGroupId] || [];
+            groupMemberships[parentGroupId].push(id);
+          }
+        });
+      };
+
+      const rootItems = Array.isArray(currentLayout)
+        ? currentLayout
+        : currentLayout && 'children' in currentLayout && Array.isArray(currentLayout.children)
+          ? currentLayout.children
+          : [];
+
+      traverse(rootItems as GridStackWidget[]);
+
+      // 🔧 更新元数据 Map（确保 Portal 能正确渲染）
+      _rawWidgetMetaMap.set(updatedMetaMap);
+
+      isApplyingStoreLayout.current = true;
+      try {
+        updateLayout(widgetLayouts, {
+          groupLayouts,
+          widgetAssignments,
+          groupMemberships,
+        });
+      } finally {
+        requestAnimationFrame(() => {
+          isApplyingStoreLayout.current = false;
+        });
+      }
+
+      pendingSyncTimeoutRef.current = null;
+    }, 50); // 50ms 延迟，确保 DOM 更新完成
+  }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap]);
+
+  // 只监听用户拖拽和缩放事件，不监听 change（避免 addWidget 触发循环）
+  useEffect(() => {
+    if (!gridStack) return;
+
+    const handleLayoutChange = () => {
+      if (isApplyingStoreLayout.current) {
+        return;
+      }
+
+      syncLayoutFromGrid();
+    };
+
+    gridStack.on('change', handleLayoutChange);
+    gridStack.on('added', handleLayoutChange);
+    gridStack.on('removed', handleLayoutChange);
+    gridStack.on('dragstop', handleLayoutChange);
+    gridStack.on('resizestop', handleLayoutChange);
 
     return () => {
-      console.log('[步骤 2] 清理 GridStack 和 React roots');
-
-      // 卸载所有 React roots
-      widgetRootsRef.current.forEach((root, widgetId) => {
-        console.log(`[步骤 2] 卸载 root: ${widgetId}`);
-        root.unmount();
-      });
-      widgetRootsRef.current.clear();
-
-      // 销毁 GridStack
-      if (gridInstanceRef.current) {
-        gridInstanceRef.current.destroy(false);
-        gridInstanceRef.current = null;
-      }
+      gridStack.off('change');
+      gridStack.off('added');
+      gridStack.off('removed');
+      gridStack.off('dragstop');
+      gridStack.off('resizestop');
     };
-  }, []);
+  }, [gridStack, syncLayoutFromGrid]);
 
-  // 加载 widgets（使用 GridStack 的 load API）
   useEffect(() => {
-    const grid = gridInstanceRef.current;
-    if (!grid) return;
+    if (!gridStack) return;
+    const preset = GRID_DENSITY_PRESETS[gridDensity];
+    gridStack.cellHeight(preset.cellHeight);
+    gridStack.margin(preset.margin);
+    updateNestedGridDensity(gridStack, preset);
 
-    // console.log(`[步骤 1] 加载 ${widgets.length} 个 widgets`, widgets);
+    const calculatedCellWidth = gridStack.cellWidth();
+    setGridVisualMetrics((prev) => ({
+      ...prev,
+      cellHeight: preset.cellHeight,
+      margin: preset.margin,
+      cellWidth: calculatedCellWidth,
+    }));
+  }, [gridStack, gridDensity]);
 
+  useEffect(() => {
+    if (!gridStack?.el) return;
+    const updateWidth = () => {
+      setGridVisualMetrics((prev) => ({
+        ...prev,
+        cellWidth: gridStack.cellWidth(),
+      }));
+    };
+    updateWidth();
 
-    // console.log('[步骤 1] GridStack 加载完成，等待 added 事件...');
-  }, [widgets]);
+    const observer = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    observer.observe(gridStack.el);
+
+    return () => observer.disconnect();
+  }, [gridStack]);
+
+  // 同步 store widgets 变化到 GridStack
+  useEffect(() => {
+    if (!gridStack) {
+      return;
+    }
+
+    const currentWidgetIds = new Set(availableWidgets.map((w) => w.id));
+    const previousWidgetIds = widgetIdsRef.current;
+
+    const addedWidgets = availableWidgets.filter((w) => !previousWidgetIds.has(w.id));
+    const removedIds = Array.from(previousWidgetIds).filter((id) => !currentWidgetIds.has(id));
+
+    if (addedWidgets.length === 0 && removedIds.length === 0) {
+      return;
+    }
+
+    isApplyingStoreLayout.current = true;
+    try {
+      addedWidgets.forEach((widget) => {
+        // 🔧 修复：如果 widget 已经在 gridStack 中（例如从分组拖出来），不要重复添加
+        const existingNode = gridStack.engine.nodes.find((n) => n.id === widget.id);
+        if (existingNode) {
+          return;
+        }
+
+        const shouldAutoPosition = !Number.isFinite(widget.layout.y);
+        const normalizedX = Number.isFinite(widget.layout.x) ? widget.layout.x : 0;
+        const normalizedY = Number.isFinite(widget.layout.y) ? widget.layout.y : 0;
+        const gridWidget: GridStackWidget & { id: string } = {
+          id: widget.id,
+          x: normalizedX,
+          y: shouldAutoPosition ? undefined : normalizedY,
+          w: widget.layout.w,
+          h: widget.layout.h,
+          minW: widget.layout.minW || 1,
+          minH: widget.layout.minH || 1,
+          autoPosition: shouldAutoPosition ? true : undefined,
+          content: JSON.stringify({
+            name: 'WidgetAdapter',
+            props: {
+              widgetId: widget.id,
+              type: widget.type,
+            },
+          }),
+        };
+        addGridWidget(gridWidget);
+      });
+
+      removedIds.forEach((id) => {
+        // 🔧 修复：如果 widget 只是移到了分组（在 store 中有 groupId），且确实不在 root grid 的直接子节点中，则不要移除
+        // 注意：removeGridWidget 会尝试从 DOM 查找并移除，如果它已经在 SubGrid 中，我们不希望主 GridStack 干预
+        const widget = widgetMap.get(id);
+        if (widget && widget.groupId) {
+          const isDirectChild = gridStack.engine.nodes.find((n) => n.id === id);
+          if (!isDirectChild) {
+            return;
+          }
+        }
+
+        removeGridWidget(id);
+      });
+
+      syncLayoutFromGrid();
+    } finally {
+      isApplyingStoreLayout.current = false;
+    }
+
+    widgetIdsRef.current = currentWidgetIds;
+  }, [availableWidgets, gridStack, addGridWidget, removeGridWidget, syncLayoutFromGrid]);
+
+  // 🔧 新增：监听所有 widgets 的删除（包括分组内的 widgets）
+  useEffect(() => {
+    if (!gridStack) {
+      return;
+    }
+
+    const currentAllWidgetIds = new Set(widgets.map((w) => w.id));
+    const previousAllWidgetIds = allWidgetIdsRef.current;
+
+    const removedIds = Array.from(previousAllWidgetIds).filter((id) => !currentAllWidgetIds.has(id));
+
+    if (removedIds.length === 0) {
+      return;
+    }
+
+    // 这里只处理删除。添加操作由上面的 useEffect (availableWidgets) 和 initial load 处理。
+    isApplyingStoreLayout.current = true;
+    try {
+      removedIds.forEach((id) => {
+        // removeGridWidget 已经被增强，可以查找嵌套的 widget 并从其父 grid 中移除
+        removeGridWidget(id);
+      });
+
+      syncLayoutFromGrid();
+    } finally {
+      isApplyingStoreLayout.current = false;
+    }
+
+    allWidgetIdsRef.current = currentAllWidgetIds;
+  }, [widgets, gridStack, removeGridWidget, syncLayoutFromGrid]);
+
+  useEffect(() => {
+    if (!gridStack) return;
+
+    const previousIds = groupIdsRef.current;
+    const currentIds = new Set(groups.map((group) => group.id));
+
+    const addedGroups = groups.filter((group) => !previousIds.has(group.id));
+    const removedGroupIds = Array.from(previousIds).filter((id) => !currentIds.has(id));
+
+    if (addedGroups.length === 0 && removedGroupIds.length === 0) {
+      return;
+    }
+
+    isApplyingStoreLayout.current = true;
+    try {
+      removedGroupIds.forEach((id) => removeGridWidget(id));
+
+      addedGroups.forEach((group) => {
+        const groupNode = createGroupGridWidget(group, widgetMap, densityPreset);
+        if (groupNode) {
+          addSubGrid(groupNode);
+        }
+      });
+
+      syncLayoutFromGrid();
+    } finally {
+      isApplyingStoreLayout.current = false;
+    }
+
+    groupIdsRef.current = currentIds;
+
+    attachListenersToNestedGrids(gridStack, syncLayoutFromGrid);
+  }, [groups, widgetMap, densityPreset, gridStack, addSubGrid, removeGridWidget, syncLayoutFromGrid]);
+
+  // 切换编辑模式
+  useEffect(() => {
+    if (gridStack) {
+      if (isEditMode) {
+        gridStack.enable();
+      } else {
+        gridStack.disable();
+      }
+    }
+  }, [gridStack, isEditMode]);
+
+  useEffect(() => {
+    if (!gridStack) return;
+    attachListenersToNestedGrids(gridStack, syncLayoutFromGrid);
+
+    // 🔧 监听 SubGrid 的 change 事件（修复拖入到分组后内容消失的问题）
+    const handleSubGridAdded = () => {
+      setTimeout(() => {
+        attachListenersToNestedGrids(gridStack, syncLayoutFromGrid);
+      }, 100);
+    };
+
+    gridStack.on('added', handleSubGridAdded);
+
+    return () => {
+      gridStack.off('added');
+    };
+  }, [gridStack, syncLayoutFromGrid]);
 
   return (
-    <div className="dashboard-container">
-      <div style={{ padding: '20px', background: '#fff', marginBottom: '20px', borderRadius: '8px' }}>
-        <h2 style={{ marginBottom: '10px' }}>
-          GridStack 测试 - 步骤 2：渲染真实的 React 组件
-        </h2>
-        <p style={{ marginBottom: '0', color: '#666' }}>
-          当前显示 <strong>{widgets.length}</strong> 个 widgets（真实组件，不可交互）
-        </p>
-      </div>
-      <button onClick={() => {
-        let el = gridInstanceRef.current?.createWidgetDivs({ content: `<div>New Make: 123</div>` })
-        if (el) {
-          gridInstanceRef.current?.makeWidget(el, { w: 2 });
-        }
-      }}>添加widget</button>
-      <div ref={gridRef} className="grid-stack"></div>
+    <div
+      className={clsx('dashboard-container', {
+        'grid-background': isEditMode,
+        'fullscreen': isFullScreen,
+      })}
+      style={backgroundStyle}
+    >
+
+      {/* GridStack 渲染器 */}
+      <GridStackRenderProvider>
+        <GridStackRender componentMap={{
+          WidgetAdapter: WidgetAdapter,
+          GroupAdapter: GroupAdapter,
+        }} />
+      </GridStackRenderProvider>
+
+      {/* 悬浮模块 */}
+      {floatingModules.map(module => (
+        <FloatingModule key={module.id} widget={module} />
+      ))}
+
+      {/* Debug Panel - 开发调试用 */}
+      {/* {import.meta.env.DEV && <DebugPanel />} */}
     </div>
   );
 };
+
+/**
+ * DashboardGridStack 主组件
+ */
+
+const DashboardGridStack: React.FC = () => {
+  const { widgets, groups } = useStore();
+  const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
+
+  const buildGridOptions = useCallback((): GridStackOptions => {
+    const preset = GRID_DENSITY_PRESETS.standard;
+    const children = buildInitialChildren(widgets, groups, preset);
+    return {
+      column: COLUMN_COUNT,
+      cellHeight: preset.cellHeight,
+      margin: preset.margin,
+      float: true,
+      draggable: {
+        handle: '.grid-drag-handle',
+      },
+      resizable: {
+        handles: 'se',
+      },
+      animate: true,
+      acceptWidgets: true,
+      children,
+    };
+  }, [widgets, groups]);
+
+  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(() => {
+    if (persistApi?.hasHydrated?.()) {
+      return buildGridOptions();
+    }
+    return null;
+  });
+
+  const [isHydrated, setIsHydrated] = useState<boolean>(() => {
+    if (!persistApi?.hasHydrated) {
+      return true;
+    }
+    return persistApi.hasHydrated();
+  });
+
+  useEffect(() => {
+    if (!persistApi?.hasHydrated) {
+      return;
+    }
+    if (persistApi.hasHydrated()) {
+      setIsHydrated(true);
+      return;
+    }
+    const unsubscribe = persistApi.onFinishHydration?.(() => {
+      setIsHydrated(true);
+    });
+    return () => unsubscribe?.();
+  }, [persistApi]);
+
+  useEffect(() => {
+    if (!isHydrated || initialOptions) {
+      return;
+    }
+    setInitialOptions(buildGridOptions());
+  }, [isHydrated, initialOptions, buildGridOptions]);
+
+  if (!initialOptions) {
+    return (
+      <div className="dashboard-container dashboard-loading">
+        正在加载布局...
+      </div>
+    );
+  }
+
+  return (
+    <GridStackProvider initialOptions={initialOptions}>
+      <DashboardInner />
+    </GridStackProvider>
+  );
+};
+
+function createWidgetGridNode(widget: Widget): GridStackWidget & { id: string } {
+  const shouldAutoPosition = !Number.isFinite(widget.layout.y);
+  const normalizedX = Number.isFinite(widget.layout.x) ? widget.layout.x : 0;
+  const normalizedY = Number.isFinite(widget.layout.y) ? widget.layout.y : 0;
+
+  return {
+    id: widget.id,
+    x: normalizedX,
+    y: shouldAutoPosition ? undefined : normalizedY,
+    w: widget.layout.w,
+    h: widget.layout.h,
+    minW: widget.layout.minW || 1,
+    minH: widget.layout.minH || 1,
+    autoPosition: shouldAutoPosition ? true : undefined,
+    content: JSON.stringify({
+      name: 'WidgetAdapter',
+      props: {
+        widgetId: widget.id,
+        type: widget.type,
+      },
+    }),
+  };
+}
+
+function createGroupGridWidget(
+  group: WidgetGroup,
+  widgetMap: Map<string, Widget>,
+  preset: { cellHeight: number; margin: number }
+): (GridStackWidget & {
+  id: string;
+  subGridOpts: GridStackOptions & { children: (GridStackWidget & { id: string })[] };
+}) | null {
+  const children =
+    group.widgetIds
+      .map((id) => widgetMap.get(id))
+      .filter((widget): widget is Widget => Boolean(widget))
+      .map((widget) => {
+        const relativeX = (widget.layout.x || 0) - (group.layout.x || 0);
+        const relativeY = (widget.layout.y || 0) - (group.layout.y || 0);
+        return {
+          id: widget.id,
+          x: Math.max(relativeX, 0),
+          y: Math.max(relativeY, 0),
+          w: widget.layout.w,
+          h: widget.layout.h,
+          minW: widget.layout.minW || 1,
+          minH: widget.layout.minH || 1,
+          content: JSON.stringify({
+            name: 'WidgetAdapter',
+            props: {
+              widgetId: widget.id,
+              type: widget.type,
+            },
+          }),
+        };
+      }) || [];
+
+  const shouldAutoPosition = !Number.isFinite(group.layout.y);
+  const normalizedX = Number.isFinite(group.layout.x) ? group.layout.x : 0;
+
+  return {
+    id: group.id,
+    x: normalizedX,
+    y: shouldAutoPosition ? undefined : group.layout.y,
+    autoPosition: shouldAutoPosition ? true : undefined,
+    w: group.layout.w,
+    h: group.layout.h,
+    minW: group.layout.minW || 2,
+    minH: group.layout.minH || 2,
+    content: JSON.stringify({
+      name: 'GroupAdapter',
+      props: {
+        groupId: group.id,
+      },
+    }),
+    // resizable: { handles: 'all' },
+    subGridOpts: {
+      acceptWidgets: true,
+      // column: COLUMN_COUNT,
+      column: 'auto',
+      cellHeight: preset.cellHeight,
+      margin: preset.margin,
+      alwaysShowResizeHandle: false,
+      animate: true,
+      float: true,
+      // itemClass: 'grid-stack-group-wrap',
+      class: 'grid-stack-group-wrap',
+      // handle: true,
+      children,
+    },
+  };
+}
+
+function buildInitialChildren(
+  widgets: Widget[],
+  groups: WidgetGroup[],
+  preset: { cellHeight: number; margin: number }
+): GridStackWidget[] {
+  const widgetMap = new Map(widgets.map((widget) => [widget.id, widget]));
+  const rootWidgets = widgets
+    .filter((widget) => !widget.groupId)
+    .map(createWidgetGridNode);
+
+  const groupWidgets = groups
+    .map((group) => createGroupGridWidget(group, widgetMap, preset))
+    .filter((groupNode): groupNode is Exclude<ReturnType<typeof createGroupGridWidget>, null> => Boolean(groupNode));
+  return [...rootWidgets, ...groupWidgets];
+}
+
+function updateNestedGridDensity(
+  grid: GridStack | null,
+  preset: { cellHeight: number; margin: number }
+) {
+  if (!grid?.engine?.nodes) return;
+  grid.engine.nodes.forEach((node: any) => {
+    if (node?.subGrid) {
+      node.subGrid.cellHeight(preset.cellHeight);
+      node.subGrid.margin(preset.margin);
+      updateNestedGridDensity(node.subGrid, preset);
+    }
+  });
+}
+
+function attachListenersToNestedGrids(grid: GridStack | null, handler: () => void) {
+  if (!grid?.engine?.nodes) return;
+  grid.engine.nodes.forEach((node: any) => {
+    if (node?.subGrid) {
+      if (!SUBGRID_LISTENER_REGISTRY.has(node.subGrid)) {
+        // 🔧 修复：添加 change 事件监听（拖入拖出分组时触发）
+        node.subGrid.on('change', handler);
+        node.subGrid.on('added', handler);
+        node.subGrid.on('removed', handler);
+        node.subGrid.on('dragstop', handler);
+        node.subGrid.on('resizestop', handler);
+
+        SUBGRID_LISTENER_REGISTRY.add(node.subGrid);
+      }
+      attachListenersToNestedGrids(node.subGrid, handler);
+    }
+  });
+}
 
 export default DashboardGridStack;
