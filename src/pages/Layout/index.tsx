@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
-import type { MenuProps } from 'antd'
-import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, MessageOutlined, BellOutlined, RobotOutlined } from '@ant-design/icons';
+import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp, Select } from 'antd';
+import type { MenuProps } from 'antd';
+import { PlusOutlined, SaveOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
-import { WidgetType, MicroAppModule } from '@/types';
+import { WidgetType, MicroAppModule, GRID_DENSITY_PRESETS, GridDensityKey } from '@/types';
 import { Outlet, useNavigate } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
+import DashboardConfigDialog from '@/components/DashboardConfigDialog';
+import FloatingControlPanel from '@/components/FloatingControlPanel';
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
 import './index.scss';
@@ -23,17 +25,28 @@ const Layout: React.FC = () => {
     addFloatingModuleLocal,
     addFloatingModuleMicroApp,
     saveDashboard,
+    createEmptyGroup,
+    isFullScreen,
     toggleFullScreen,
+    gridDensity,
+    setGridDensity,
     logout
   } = useStore();
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
+  const [dashboardConfigOpen, setDashboardConfigOpen] = useState(false)
   const [microAppMarketOpen, setMicroAppMarketOpen] = useState(false)
   const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
 
   const handleAddWidget = (key: string) => {
+    // 处理新建分组
+    if (key === 'create-group') {
+      handleCreateGroupContainer();
+      return;
+    }
+
     // 如果是微应用类型,打开微应用市场
     if (key === 'microApp') {
       setMicroAppMarketMode('widget');
@@ -121,8 +134,17 @@ const Layout: React.FC = () => {
       dataTable: '数据表格',
       cardGrid: '卡片网格',
       customForm: '自定义表单',
+      groupTitle: '分组标题',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
+  };
+
+  const handleCreateGroupContainer = () => {
+    if (!isEditMode) {
+      return;
+    }
+    const group = createEmptyGroup();
+    message.success(`${group.title} 已创建，请拖入小部件`);
   };
 
   const handleSelectMicroApp = (systemId: string, moduleId: string, module: MicroAppModule) => {
@@ -158,7 +180,18 @@ const Layout: React.FC = () => {
   const items: MenuProps['items'] = [
     {
       type: 'group',
-      label: '基础小部件',
+      label: '分组组件',
+      children: [
+        { label: '新建分组', key: 'create-group', icon: <GroupOutlined /> },
+        { label: '分组标题', key: 'groupTitle', icon: <FolderOutlined /> },
+      ]
+    },
+    {
+      type: 'divider',
+    },
+    {
+      type: 'group',
+      label: '基础小部',
       children: [
         { label: '时钟', key: 'clock' },
         { label: '统计卡片', key: 'stats' },
@@ -269,70 +302,111 @@ const Layout: React.FC = () => {
 
   return (
     <AntdLayout className="app-layout">
-      <Header className="app-header">
-        <div className="app-header__logo">
-          <AppstoreOutlined />
-          Portal Engine
-        </div>
+      {!isFullScreen && (
+        <Header className="app-header">
+          <div className="app-header__logo">
+            <AppstoreOutlined />
+            Portal Engine
+          </div>
 
-        {/* 自定义主题配置器 */}
-        <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />
+          <Space size="middle">
+            {/* 主题切换按钮 - 仅在开发环境显示 */}
+            {isDevelopment() && (
+              <Dropdown
+                menu={{
+                  items: themeMenuItems,
+                  onClick: handleThemeChange,
+                  selectedKeys: [themeSystem.themePreset],
+                }}
+                placement="bottomRight"
+              >
+                <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
+              </Dropdown>
+            )}
 
-        {/* 微应用市场 */}
-        <MicroAppMarket
-          open={microAppMarketOpen}
-          onClose={() => setMicroAppMarketOpen(false)}
-          onSelectModule={handleSelectMicroApp}
-          mode={microAppMarketMode}
-        />
+            {/* 微应用配置按钮 */}
+            <Tooltip title="微应用配置">
+              <a href="#/micro-app-config" target='_blank' className="utility-btn">微应用配置</a>
+            </Tooltip>
 
-        <Space size="middle">
-          {/* 主题切换按钮 - 仅在开发环境显示 */}
-          {isDevelopment() && (
+            <Space>
+              <span>编辑模式</span>
+              <Switch checked={isEditMode} onChange={setEditMode} />
+            </Space>
+
             <Dropdown
               menu={{
-                items: themeMenuItems,
-                onClick: handleThemeChange,
-                selectedKeys: [themeSystem.themePreset],
+                items,
+                onClick: ({ key }) => handleAddWidget(key)
               }}
-              placement="bottomRight"
+              trigger={['click']}
+              disabled={!isEditMode}
             >
-              <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
+              <Button type="primary" icon={<PlusOutlined />} disabled={!isEditMode}>
+                添加组件
+              </Button>
             </Dropdown>
-          )}
 
+            {isEditMode && (
+              <>
+                 <Tooltip title="页面设置">
+                  <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} >页面设置</Button>
+                </Tooltip>
 
-          <Space>
-            <span>编辑模式</span>
-            <Switch checked={isEditMode} onChange={setEditMode} />
-          </Space>
+                <Select
+                  value={gridDensity}
+                  onChange={(value) => setGridDensity(value as GridDensityKey)}
+                  style={{ width: 100 }}
+                >
+                  {Object.entries(GRID_DENSITY_PRESETS).map(([key, preset]) => (
+                    <Select.Option key={key} value={key}>
+                      {preset.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </>
+            )}
 
-          <Dropdown
-            menu={{
-              items,
-              onClick: ({ key }) => handleAddWidget(key)
-            }}
-            trigger={['click']}
-            disabled={!isEditMode}
-          >
-            <Button type="primary" icon={<PlusOutlined />} disabled={!isEditMode}>
-              添加小部件
+            <Button icon={<SaveOutlined />} onClick={handleSave}>
+              保存
             </Button>
-          </Dropdown>
 
-          <Button icon={<SaveOutlined />} onClick={handleSave}>
-            保存
-          </Button>
+            <Tooltip title="全屏模式">
+              <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />
+            </Tooltip>
 
-          <Tooltip title="全屏模式">
-            <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />
-          </Tooltip>
+            <Tooltip title="退出登录">
+              <Button icon={<LogoutOutlined />} onClick={handleLogout} danger />
+            </Tooltip>
+          </Space>
+        </Header>
+      )}
 
-          <Tooltip title="退出登录">
-            <Button icon={<LogoutOutlined />} onClick={handleLogout} danger />
-          </Tooltip>
-        </Space>
-      </Header>
+      {isFullScreen && (
+        <FloatingControlPanel
+          onAdd={handleAddWidget}
+          addMenuItems={items}
+          onOpenSettings={() => setDashboardConfigOpen(true)}
+          onOpenMicroAppConfig={() => window.open('#/micro-app-config', '_blank')}
+          onSave={handleSave}
+        />
+      )}
+
+      {/* 自定义主题配置器 */}
+      <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />
+
+      {/* 微应用市场 */}
+      <MicroAppMarket
+        open={microAppMarketOpen}
+        onClose={() => setMicroAppMarketOpen(false)}
+        onSelectModule={handleSelectMicroApp}
+        mode={microAppMarketMode}
+      />
+
+      <DashboardConfigDialog
+        isOpen={dashboardConfigOpen}
+        onClose={() => setDashboardConfigOpen(false)}
+      />
 
       <Content className="app-content">
         <Outlet />

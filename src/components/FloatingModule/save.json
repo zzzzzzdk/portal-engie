@@ -1,0 +1,125 @@
+{
+    "widgets": [
+        {
+            "id": "340f9fe6-c804-46ad-ac1c-4814297b33eb",
+            "type": "chart",
+            "title": "Chart",
+            "layout": {
+                "w": 4,
+                "h": 4,
+                "x": 4,
+                "y": 0,
+                "minW": 1,
+                "minH": 1,
+                "i": "340f9fe6-c804-46ad-ac1c-4814297b33eb",
+                "moved": false,
+                "static": false
+            },
+            "config": {
+                "title": "Chart",
+                "showTitle": true,
+                "refreshInterval": 60
+            }
+        },
+        {
+            "id": "25b9d5ec-166b-4b70-84b2-da27d4570ed0",
+            "type": "microApp",
+            "title": "表单",
+            "layout": {
+                "i": "25b9d5ec-166b-4b70-84b2-da27d4570ed0",
+                "x": 0,
+                "y": 1,
+                "w": 4,
+                "h": 2,
+                "minW": 2,
+                "minH": 2,
+                "moved": false,
+                "static": false
+            },
+            "config": {
+                "title": "表单",
+                "showTitle": true,
+                "refreshInterval": 60,
+                "systemId": "system-fusion",
+                "moduleId": "input-only",
+                "microAppUrl": "http://localhost:8083/#/input-only",
+                "microAppEntry": "http://localhost:8083/",
+                "sync": true,
+                "alive": true
+            }
+        },
+        {
+            "id": "268d4442-a03f-4848-b723-ca5c376eb8c8",
+            "type": "microApp",
+            "title": "结果页",
+            "layout": {
+                "i": "268d4442-a03f-4848-b723-ca5c376eb8c8",
+                "x": 0,
+                "y": 3,
+                "w": 4,
+                "h": 2,
+                "minW": 2,
+                "minH": 2,
+                "moved": false,
+                "static": false
+            },
+            "config": {
+                "title": "结果页",
+                "showTitle": true,
+                "refreshInterval": 60,
+                "systemId": "system-finance",
+                "moduleId": "table-only",
+                "microAppUrl": "http://localhost:8083/#/table-only",
+                "microAppEntry": "http://localhost:8083/",
+                "sync": true,
+                "alive": true
+            }
+        }
+    ],
+    "floatingModules": [
+        {
+            "id": "floating-module-1764815141173",
+            "type": "floatingModule",
+            "title": "万象",
+            "layout": {
+                "i": "floating-module-1764815141173",
+                "x": 0,
+                "y": 0,
+                "w": 0,
+                "h": 0
+            },
+            "config": {
+                "contentType": "microApp",
+                "microApp": {
+                    "systemId": "system-crm",
+                    "moduleId": "crm-customer",
+                    "url": "http://localhost:3010/#/home",
+                    "entry": "http://localhost:3010"
+                },
+                "defaultPosition": "bottom-right",
+                "width": 319,
+                "height": 574,
+                "minWidth": 300,
+                "minHeight": 400,
+                "isExpanded": false,
+                "draggable": true,
+                "resizable": true,
+                "collapsible": true,
+                "closable": true,
+                "showHeader": false,
+                "theme": "auto",
+                "borderRadius": 12,
+                "zIndex": 9999,
+                "position": {
+                    "x": 1755,
+                    "y": 555
+                },
+                "showTitle": false,
+                "maxWidth": 800,
+                "maxHeight": 900,
+                "collapsedWidth": 60,
+                "collapsedHeight": 60
+            }
+        }
+    ]
+}

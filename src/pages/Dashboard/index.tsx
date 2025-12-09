@@ -3,23 +3,23 @@ import RGL, { WidthProvider, Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useStore } from '@/store/useStore';
-import WidgetWrapper from '../WidgetWrapper';
+import WidgetWrapper from '@/components/WidgetWrapper';
 import clsx from 'clsx';
 import { Button, Tooltip } from 'antd';
 import { FullscreenExitOutlined } from '@ant-design/icons';
-import ClockWidget from '../widgets/ClockWidget';
-import StatsWidget from '../widgets/StatsWidget';
-import ChartWidget from '../widgets/ChartWidget';
-import LinkWidget from '../widgets/LinkWidget';
-import NewsWidget from '../widgets/NewsWidget';
-import TopListWidget from '../widgets/TopListWidget';
-import SearchWidget from '../widgets/SearchWidget';
-import DataTableWidget from '../widgets/DataTableWidget';
-import CardGridWidget from '../widgets/CardGridWidget';
-import CustomFormWidget from '../widgets/CustomFormWidget';
-import MicroAppWidget from '../widgets/MicroAppWidget';
-import WidgetErrorBoundary from '../WidgetErrorBoundary';
-import FloatingModule from '../FloatingModule';
+import ClockWidget from '@/components/widgets/ClockWidget';
+import StatsWidget from '@/components/widgets/StatsWidget';
+import ChartWidget from '@/components/widgets/ChartWidget';
+import LinkWidget from '@/components/widgets/LinkWidget';
+import NewsWidget from '@/components/widgets/NewsWidget';
+import TopListWidget from '@/components/widgets/TopListWidget';
+import SearchWidget from '@/components/widgets/SearchWidget';
+import DataTableWidget from '@/components/widgets/DataTableWidget';
+import CardGridWidget from '@/components/widgets/CardGridWidget';
+import CustomFormWidget from '@/components/widgets/CustomFormWidget';
+import MicroAppWidget from '@/components/widgets/MicroAppWidget';
+import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
+import FloatingModule from '@/components/FloatingModule';
 import './index.scss';
 
 
@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
   }));
 
   const renderWidgetContent = (widget: any) => {
-    const commonProps = { config: widget.config };
+    const commonProps = { config: widget.config, widget };
     switch (widget.type) {
       case 'clock':
         return <ClockWidget {...commonProps} />;

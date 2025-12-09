@@ -3,9 +3,11 @@ import {
   DragOutlined,
   SettingOutlined,
   CloseOutlined,
-  MinusOutlined
+  MinusOutlined,
+  DeleteFilled,
+  DeleteOutlined
 } from '@ant-design/icons';
-import { Modal } from 'antd';
+import { Button, Modal } from 'antd';
 import Draggable from 'react-draggable';
 import { Resizable } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,8 +41,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   // ==================== 状态管理 ====================
   const [isExpanded, setIsExpanded] = useState(config.isExpanded ?? true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
+  const [_isDragging, setIsDragging] = useState(false);
+  const [_isResizing, setIsResizing] = useState(false);
   const [size, setSize] = useState({
     width: config.width || 380,
     height: config.height || 400,
@@ -106,27 +108,34 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   }, [initialPosition]);
 
   // 计算样式
+  const collapsedWidth = config.collapsedWidth || 60;
+  const collapsedHeight = config.collapsedHeight || 60;
+  const visibleSize = useMemo(() => ({
+    width: isExpanded ? size.width : collapsedWidth,
+    height: isExpanded ? size.height : collapsedHeight,
+  }), [isExpanded, size, collapsedWidth, collapsedHeight]);
+
   const moduleStyle = useMemo(() => ({
-    width: isExpanded ? size.width : (config.collapsedWidth || 60),
-    height: isExpanded ? size.height : (config.collapsedHeight || 60),
+    width: visibleSize.width,
+    height: visibleSize.height,
     zIndex: config.zIndex || 9999,
     borderRadius: config.borderRadius || 12,
-  }), [isExpanded, size, config]);
+  }), [visibleSize, config]);
 
   const headerStyle = useMemo(() =>
     config.headerColor ? { background: config.headerColor } : {},
     [config.headerColor]
   );
 
-  // 计算权限
+  // 计算权限 - 只在编辑模式下允许拖拽和调整大小
   const isDraggable = useMemo(() =>
-    isEditMode || (config.draggable !== false),
-    [isEditMode, config.draggable]
+    isEditMode,  // 只在编辑模式下可拖拽
+    [isEditMode]
   );
 
   const isResizable = useMemo(() =>
-    isExpanded && (isEditMode || (config.resizable !== false)),
-    [isExpanded, isEditMode, config.resizable]
+    isExpanded && isEditMode,  // 只在编辑模式下可调整大小
+    [isExpanded, isEditMode]
   );
 
   // ==================== 事件处理 ====================
@@ -223,44 +232,41 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const calculateExpandPosition = useCallback((currentPos: { x: number; y: number }) => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const collapsedWidth = config.collapsedWidth || 60;
-    const collapsedHeight = config.collapsedHeight || 60;
     const expandedWidth = size.width;
     const expandedHeight = size.height;
     const padding = 20;
 
-    // 判断折叠位置在屏幕的哪个区域
-    const isRight = currentPos.x > viewportWidth / 2;
-    const isBottom = currentPos.y > viewportHeight / 2;
-  
+    const idealRight = currentPos.x + (expandedWidth - collapsedWidth);
+    const idealLeft = currentPos.x - (expandedWidth - collapsedWidth);
+    const idealBottom = currentPos.y + (expandedHeight - collapsedHeight);
+    const idealTop = currentPos.y - (expandedHeight - collapsedHeight);
+
     let newX = currentPos.x;
     let newY = currentPos.y;
 
-    // 根据位置调整展开方向
-    if (isRight && isBottom) {
-      // 右下角 → 朝左上展开
+    const fitsRight = idealRight + padding <= viewportWidth;
+    const fitsLeft = idealLeft >= padding;
+    const fitsBottom = idealBottom + padding <= viewportHeight;
+    const fitsTop = idealTop >= padding;
+
+    if (!fitsRight && fitsLeft) {
       newX = Math.max(padding, currentPos.x + collapsedWidth - expandedWidth);
-      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
-    } else if (isRight && !isBottom) {
-      // 右上角 → 朝左下展开
-      newX = Math.max(padding, currentPos.x + collapsedWidth - expandedWidth);
-      newY = currentPos.y; // 保持顶部对齐
-    } else if (!isRight && isBottom) {
-      // 左下角 → 朝右上展开
-      newX = currentPos.x; // 保持左侧对齐
-      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
-    } else {
-      // 左上角 → 朝右下展开（默认）
+    } else if (fitsRight) {
       newX = currentPos.x;
-      newY = currentPos.y;
+    } else {
+      newX = Math.max(padding, Math.min(currentPos.x, viewportWidth - expandedWidth - padding));
     }
 
-    // 确保不超出边界
-    newX = Math.max(padding, Math.min(newX, viewportWidth - expandedWidth - padding));
-    newY = Math.max(padding, Math.min(newY, viewportHeight - expandedHeight - padding));
+    if (!fitsBottom && fitsTop) {
+      newY = Math.max(padding, currentPos.y + collapsedHeight - expandedHeight);
+    } else if (fitsBottom) {
+      newY = currentPos.y;
+    } else {
+      newY = Math.max(padding, Math.min(currentPos.y, viewportHeight - expandedHeight - padding));
+    }
 
     return { x: newX, y: newY };
-  }, [size, config]);
+  }, [size, collapsedWidth, collapsedHeight]);
 
   // 展开/收起 - 带智能位置计算
   const toggleExpand = useCallback((e?: React.MouseEvent) => {
@@ -268,32 +274,22 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     e?.preventDefault();
 
     if (!isExpanded) {
-      // 折叠 → 展开：获取当前小圆圈位置并计算偏移
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const currentPos = {
-          x: rect.left,
-          y: rect.top
-        };
 
-        // 更新对齐方向
-        const isRight = rect.left > viewportWidth / 2;
-        const isBottom = rect.top > viewportHeight / 2;
         setAlignment({
-          x: isRight ? 'right' : 'left',
-          y: isBottom ? 'bottom' : 'top'
+          x: rect.left > viewportWidth / 2 ? 'right' : 'left',
+          y: rect.top > viewportHeight / 2 ? 'bottom' : 'top'
         });
-
-        const newPos = calculateExpandPosition(currentPos);
-
-        // 计算需要的偏移量
-        const offsetX = newPos.x - currentPos.x;
-        const offsetY = newPos.y - currentPos.y;
-
-        setExpandOffset({ x: offsetX, y: offsetY });
       }
+
+      const newPos = calculateExpandPosition(position);
+      const offsetX = newPos.x - position.x;
+      const offsetY = newPos.y - position.y;
+      setExpandOffset({ x: offsetX, y: offsetY });
+
       setIsExpanded(true);
       toggleFloatingModuleExpanded(widget.id);
     } else {
@@ -302,8 +298,33 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       setIsExpanded(false);
       toggleFloatingModuleExpanded(widget.id);
     }
-  }, [widget.id, toggleFloatingModuleExpanded, isExpanded, calculateExpandPosition]);
+  }, [widget.id, toggleFloatingModuleExpanded, isExpanded, calculateExpandPosition, position]);
 
+  // 点击外部区域自动收起（仅非编辑模式）
+  useEffect(() => {
+    // 只在非编辑模式、展开状态、允许折叠时启用
+    if (isEditMode || !isExpanded || config.collapsible === false) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      // 检查点击是否在悬浮模块内部
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        // 点击在外部，收起悬浮模块
+        toggleExpand();
+      }
+    };
+
+    // 添加延迟以避免刚展开就被收起
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditMode, isExpanded, config.collapsible, toggleExpand]);
 
   // 关闭（删除）
   const handleClose = useCallback((e?: React.MouseEvent) => {
@@ -399,8 +420,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
         bounds="body"
       >
         <Resizable
-          width={size.width}
-          height={size.height}
+          width={visibleSize.width}
+          height={visibleSize.height}
           onResize={handleResize}
           onResizeStart={handleResizeStart}
           onResizeStop={handleResizeStop}
@@ -421,10 +442,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
             className="floating-module-container"
             style={{
               position: 'absolute',
-              width: isExpanded ? size.width : (config.collapsedWidth || 60),
-              height: isExpanded ? size.height : (config.collapsedHeight || 60),
-              left: expandOffset.x,
-              top: expandOffset.y,
+              width: visibleSize.width,
+              height: visibleSize.height,
+              transform: `translate3d(${expandOffset.x}px, ${expandOffset.y}px, 0)`,
             }}
           >
             <AnimatePresence>
@@ -441,7 +461,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                   transition={{
                     duration: 0.35,
                     ease: [0.4, 0, 0.2, 1],
-                    scale: { 
+                    scale: {
                       type: "spring",
                       damping: 25,
                       stiffness: 300,
@@ -456,8 +476,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                     transformOrigin: `${alignment.x} ${alignment.y}`,
                   }}
                 >
-                  {/* 头部 */}
-                  {config.showHeader !== false && (
+                  {/* 头部 - 根据 showTitle 配置显示完整头部或透明拖拽条 */}
+                  {config.showTitle !== false ? (
+                    // 完整头部（默认）
                     <div className="floating-module-header drag-handle" style={headerStyle}>
                       {isDraggable && <DragOutlined className="drag-icon" />}
                       <span className="title">{widget.title}</span>
@@ -486,13 +507,14 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
                         {/* 关闭按钮 - 根据模式显示不同行为 */}
                         {isEditMode ? (
-                          <button
+                          <Button
                             onClick={handleDelete}
                             title="删除"
                             className="action-btn delete-btn"
+                            danger
                           >
-                            <CloseOutlined />
-                          </button>
+                            <DeleteOutlined />
+                          </Button>
                         ) : (
                           config.closable !== false && (
                             <button
@@ -506,6 +528,40 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                         )}
                       </div>
                     </div>
+                  ) : (
+                    // 透明拖拽条（无标题模式）
+                    isEditMode && (
+                      <div className="floating-module-header-transparent drag-handle">
+                        {isDraggable && <DragOutlined className="drag-icon-transparent" />}
+                        {/* 编辑模式下显示操作按钮 */}
+                        <div className="actions-transparent">
+                          <button
+                            onClick={handleOpenConfig}
+                            title="设置"
+                            className="action-btn-transparent"
+                          >
+                            <SettingOutlined />
+                          </button>
+                          {config.collapsible !== false && (
+                            <button
+                              onClick={toggleExpand}
+                              title="最小化"
+                              className="action-btn-transparent"
+                            >
+                              <MinusOutlined />
+                            </button>
+                          )}
+                          <button
+                            onClick={handleDelete}
+                            title="删除"
+                            className="action-btn-transparent delete-btn"
+                          >
+                            <CloseOutlined />
+                          </button>
+                        </div>
+                      </div>
+
+                    )
                   )}
 
                   {/* 内容 */}

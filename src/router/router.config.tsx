@@ -22,7 +22,7 @@ export interface RouteConfig {
 const routeConfig: RouteConfig[] = [
   {
     path: '/login',
-    element: () => import('@/components/Login'),
+    element: () => import('@/pages/Login'),
     meta: {
       requiresAuth: false,
       title: '登录 - Portal Engine',
@@ -30,7 +30,7 @@ const routeConfig: RouteConfig[] = [
   },
   {
     path: '/',
-    element: () => import('@/components/Layout'),
+    element: () => import('@/pages/Layout'),
     meta: {
       requiresAuth: true,
       title: 'Portal Engine',
@@ -38,21 +38,37 @@ const routeConfig: RouteConfig[] = [
     children: [
       {
         index: true,
-        redirect: '/dashboard',
+        redirect: '/dashboard-gridstack',
       },
       {
         path: 'dashboard',
-        element: () => import('@/components/Dashboard'),
+        element: () => import('@/pages/Dashboard'),
         meta: {
-          requiresAuth: true,
+          requiresAuth: false,
           title: '仪表盘 - Portal Engine',
+        },
+      },
+      {
+        path: 'dashboard-gridstack',
+        element: () => import('@/pages/DashboardGridStack'),
+        meta: {
+          requiresAuth: false,
+          title: '仪表盘 (GridStack) - Portal Engine',
+        },
+      },
+      {
+        path: 'micro-app-config',
+        element: () => import('@/pages/MicroAppConfigPage'),
+        meta: {
+          requiresAuth: false,
+          title: '微应用配置 - Portal Engine',
         },
       },
     ],
   },
   {
     path: '/404',
-    element: () => import('@/components/_404'),
+    element: () => import('@/pages/_404'),
     meta: {
       title: '页面不存在',
       // layout: false,
@@ -61,7 +77,7 @@ const routeConfig: RouteConfig[] = [
   // 403 页面
   {
     path: '/403',
-    element: () => import('@/components/_403'),
+    element: () => import('@/pages/_403'),
     meta: {
       title: '无权限访问',
       // layout: false,

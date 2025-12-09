@@ -44,7 +44,7 @@ router.get("/", function (req, res, next) {
  * @apiSuccess {String} data.water_mark  是否显示水印
  * @apiSuccess {String} data.province  省份
  */
-router.get("/common/get-sys-config", function (req, res, next) {
+router.get("/v1/common/get-sysconfig", function (req, res, next) {
   // req.json.data = '1651c1y+LEUOHurir0zxsERiUMvT9m07aHhZtxyRDhMk' +
   // 'G6FQdX6Kyda7NQr/vkHuowPGe1QDLMYK+32Be/TUpyM/WUNYwwvUwow' +
   // 'C6kLioMDZGFwaCkXam7JoftOkDK1UqzzvkFzdwvE1JH/EvmC6vNIK0hzo' +
@@ -177,7 +177,7 @@ router.get("/common/get-sys-config", function (req, res, next) {
  * @apiSuccess {Object[]} data.menus.children 子菜单
  * @apiSuccess {String[]} data.route 页面权限
  */
-router.post("/iam-api/user/get-user-info", async function (req, res, next) {
+router.all("/v1/user/info", async function (req, res, next) {
   await req.sleep(0);
 
   req.json.data = {
@@ -274,6 +274,8 @@ router.post("/iam-api/user/get-user-info", async function (req, res, next) {
     route: [
       "/",
       "/dashboard",
+      '/micro-app-config',
+      '/dashboard-gridstack'
     ],
   };
 
@@ -341,7 +343,7 @@ router.post("/login", async (req, res) => {
     const token = 'mock-token-' + new Date().getTime();
 
     // 模拟后端写入 Cookie
-    res.cookie('YSTOKEN', token, {
+    res.cookie('JWT-TOKEN', token, {
       httpOnly: false,  // 允许前端读取
       maxAge: 24 * 60 * 60 * 1000,  // 24小时过期
       path: '/'
@@ -362,6 +364,48 @@ router.post("/login", async (req, res) => {
   } else {
     req.json.code = 1;
     req.json.message = '用户名或密码错误 (admin/123456)';
+  }
+
+  res.json(req.json);
+});
+
+/**
+ * @api {post} /api/micro-app/save-config 保存微应用配置
+ * @apiName saveMicroAppConfig
+ * @apiGroup MicroApp
+ *
+ * @apiParam {Object} config 配置对象
+ *
+ * @apiSuccess {Number} code 状态码
+ * @apiSuccess {String} message 消息
+ */
+router.post("/micro-app/save-config", async (req, res) => {
+  await req.sleep(0.5);
+  const fs = require('fs');
+  const path = require('path');
+
+  try {
+    const configData = req.body;
+
+    // 配置文件路径
+    const configPath = path.join(__dirname, '../../public/config/micro-apps.json');
+
+    // 确保目录存在
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    // 写入文件
+    fs.writeFileSync(configPath, JSON.stringify(configData, null, 2), 'utf8');
+
+    req.json.code = 0;
+    req.json.message = '配置保存成功';
+    req.json.data = { success: true };
+  } catch (error) {
+    req.json.code = 1;
+    req.json.message = '配置保存失败: ' + error.message;
+    req.json.data = { success: false };
   }
 
   res.json(req.json);

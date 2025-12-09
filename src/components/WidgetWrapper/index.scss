@@ -43,37 +43,46 @@
 
     // 极简模式：无标题但在编辑模式下显示的拖拽条
     &.widget-header--minimal {
-      background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.08)); // 淡蓝色半透明背景
-      border-bottom: 1px dashed var(--ant-color-primary-border, rgba(24, 144, 255, 0.3)); // 虚线边框
-      padding: 6px 12px;
+      // 默认透明，不占位
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      background: transparent;
+      border-bottom: none;
+      padding: 4px 8px;
       justify-content: flex-end; // 操作按钮靠右
-      position: relative;
+      opacity: 0; // 默认隐藏
+      transition: all 0.2s ease;
 
-      // 添加拖拽提示图标
-      &::before {
-        content: '⋮⋮';
-        position: absolute;
-        left: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--ant-color-primary-border-hover, rgba(24, 144, 255, 0.5));
-        font-size: 16px;
-        line-height: 1;
-        letter-spacing: 2px;
-      }
-
+      // 悬停时显示背景和操作按钮
       &:hover {
-        background: var(--ant-color-primary-bg-hover, rgba(24, 144, 255, 0.12));
-        border-bottom-color: var(--ant-color-primary-border-hover, rgba(24, 144, 255, 0.5));
-
-        &::before {
-          color: var(--ant-color-primary, rgba(24, 144, 255, 0.8));
+        background: var(--ant-color-primary-1);
+        // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        opacity: 1;
+        
+        .widget-actions {
+          opacity: 1;
         }
       }
 
       .widget-actions {
-        opacity: 0.7; // 默认显示操作按钮，半透明
+        opacity: 1; // 在父级 hover 时显示
+        // background: rgba(255, 255, 255, 0.8);
+        border-radius: 4px;
+        padding: 2px;
       }
+    }
+  }
+
+  // 当处于极简模式时，wrapper 需要 relative 定位以支持 header 绝对定位
+  &.edit-mode.no-header {
+    position: relative;
+    
+    // 确保悬停整个 wrapper 也能触发 header 显示（可选，提升体验）
+    &:hover .widget-header--minimal {
+      opacity: 1;
     }
   }
 
@@ -86,6 +95,12 @@
     overflow: auto;
     padding: 12px;
     position: relative;
+  }
+
+  &.groupTitle {
+    .widget-content {
+      padding: 0;
+    }
   }
 }
 
@@ -105,4 +120,18 @@
   .widget-content {
     padding: 0; // Remove padding when no header
   }
+}
+
+// 刷新按钮旋转动画
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating {
+  animation: rotate 0.6s linear infinite;
 }

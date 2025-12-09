@@ -1,5 +1,14 @@
 import type { MicroAppMetadata, MicroAppSystem, MicroAppModule } from '@/types';
 
+export interface MicroAppConfigChangeDetail {
+  systemId: string;
+  moduleId: string;
+  updates: Partial<MicroAppModule>;
+  module: MicroAppModule;
+}
+
+export const MICRO_APP_CONFIG_CHANGED_EVENT = 'micro-app-config:changed';
+
 /**
  * 微应用配置加载器
  * 负责从配置文件加载微应用元数据
@@ -85,6 +94,64 @@ class MicroAppConfigLoader {
   reload(): void {
     this.metadata = null;
     this.loading = false;
+  }
+
+  /**
+   * 更新指定模块的部分配置（例如图标）
+   */
+  async updateModuleConfig(
+    systemId: string,
+    moduleId: string,
+    updates: Partial<MicroAppModule>
+  ): Promise<MicroAppModule | null> {
+    const metadata = await this.loadMetadata();
+    const system = metadata.apps.find(app => app.id === systemId);
+    if (!system) {
+      console.warn('[microAppConfigLoader] System not found:', systemId);
+      return null;
+    }
+
+    const module = system.modules.find(m => m.id === moduleId);
+    if (!module) {
+      console.warn('[microAppConfigLoader] Module not found:', moduleId);
+      return null;
+    }
+
+    Object.assign(module, updates);
+    this.emitModuleUpdate(systemId, moduleId, updates, module);
+    return module;
+  }
+
+  /**
+   * 将完整配置替换为指定数据
+   * （供管理页面保存后刷新缓存）
+   */
+  setMetadata(metadata: MicroAppMetadata) {
+    this.metadata = metadata;
+  }
+
+  private emitModuleUpdate(
+    systemId: string,
+    moduleId: string,
+    updates: Partial<MicroAppModule>,
+    module: MicroAppModule
+  ) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+      return;
+    }
+
+    const detail: MicroAppConfigChangeDetail = {
+      systemId,
+      moduleId,
+      updates: { ...updates },
+      module: { ...module },
+    };
+
+    window.dispatchEvent(
+      new CustomEvent<MicroAppConfigChangeDetail>(MICRO_APP_CONFIG_CHANGED_EVENT, {
+        detail,
+      })
+    );
   }
 }
 

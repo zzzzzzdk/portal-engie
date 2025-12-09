@@ -13,10 +13,10 @@
 .floating-module-container {
   // 启用 GPU 加速
   will-change: transform, width, height;
+  transform: translate3d(0, 0, 0);
   
   // 平滑过渡 - 默认状态
-  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
-              top 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
               width 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
               height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -243,6 +243,131 @@
           border-color: rgba(255, 77, 79, 0.6);
 
           &:hover {
+            background: rgba(255, 77, 79, 0.2);
+            border-color: #ff4d4f;
+            color: #ff4d4f;
+          }
+        }
+      }
+    }
+  }
+
+  // ==================== 透明拖拽头部（无标题模式） ====================
+  .floating-module-header-transparent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    gap: 8px;
+    cursor: move;
+    user-select: none;
+    z-index: 10;
+
+    // 透明背景，悬停时显示
+    background: transparent;
+    transition: background 0.2s ease;
+
+    // 性能优化
+    will-change: transform, background;
+    transform: translateZ(0);
+
+    &:hover {
+      background: var(--ant-color-primary-1);
+    }
+
+    .drag-icon-transparent {
+      font-size: 14px;
+      opacity: 0;
+      color: #666;
+      transition: opacity 0.2s ease;
+    }
+
+    &:hover .drag-icon-transparent {
+      opacity: 0.6;
+    }
+
+    .actions-transparent {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-left: auto;
+
+      .action-btn-transparent {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        color: #666;
+        cursor: pointer;
+        font-size: 12px;
+        opacity: 0;
+        transition: all 0.2s ease;
+
+        // 性能优化
+        will-change: transform, opacity;
+        transform: translateZ(0);
+
+        &:hover {
+          background: rgba(255, 255, 255, 1);
+          border-color: rgba(0, 0, 0, 0.2);
+          color: #333;
+          transform: translateZ(0) scale(1.05);
+        }
+
+        &:active {
+          transform: translateZ(0) scale(0.95);
+        }
+
+        // 删除按钮特殊样式
+        &.delete-btn {
+          &:hover {
+            background: rgba(255, 77, 79, 0.1);
+            border-color: #ff4d4f;
+            color: #ff4d4f;
+          }
+        }
+      }
+    }
+
+    // 悬停时显示按钮
+    &:hover .action-btn-transparent {
+      opacity: 1;
+    }
+  }
+
+  // 暗色主题下的透明头部
+  &.theme-dark {
+    .floating-module-header-transparent {
+      &:hover {
+        background: var(--ant-color-primary-1);
+      }
+
+      .drag-icon-transparent {
+        color: #999;
+      }
+
+      .actions-transparent {
+        .action-btn-transparent {
+          background: rgba(0, 0, 0, 0.5);
+          border-color: rgba(255, 255, 255, 0.2);
+          color: #ccc;
+
+          &:hover {
+            background: rgba(0, 0, 0, 0.7);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+          }
+
+          &.delete-btn:hover {
             background: rgba(255, 77, 79, 0.2);
             border-color: #ff4d4f;
             color: #ff4d4f;
