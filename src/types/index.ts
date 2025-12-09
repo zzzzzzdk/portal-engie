@@ -1,9 +1,9 @@
 import { Layout } from 'react-grid-layout';
 
 export const GRID_DENSITY_PRESETS = {
-  compact: { label: '紧凑', cellHeight: 60, margin: 0 },
-  standard: { label: '标准', cellHeight: 120, margin: 0 },
-  spacious: { label: '宽松', cellHeight: 150, margin: 0 },
+  compact: { label: '紧凑', cellHeight: 60, margin: 0, columnCount: 24 },
+  standard: { label: '标准', cellHeight: 120, margin: 0, columnCount: 12 },
+  spacious: { label: '宽松', cellHeight: 150, margin: 0, columnCount: 8 },
 } as const;
 
 export type GridDensityKey = keyof typeof GRID_DENSITY_PRESETS;
@@ -20,6 +20,7 @@ export type WidgetType =
   | 'cardGrid'
   | 'customForm'
   | 'groupTitle'       // 分组标题
+  | 'typography'       // 文本/标题组件
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule';  // 悬浮模块
 

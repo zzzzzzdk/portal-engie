@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule } from '@/types';
 import { useStore } from '@/store/useStore';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
+import { uploadImage } from '@/services';
 import FormFieldBuilder from '../FormFieldBuilder';
 import MicroAppSelector from '../MicroAppSelector';
 import EventRouteConfig from '../EventRouteConfig';
@@ -22,6 +23,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<any[]>([]);
   const [iconFileList, setIconFileList] = useState<any[]>([]);
+  const [bgUploading, setBgUploading] = useState(false);
+  const [iconUploading, setIconUploading] = useState(false);
 
   // 判断是否为悬浮模块
   const isFloatingModule = floatingModules.some(m => m.id === widget.id);
@@ -276,7 +279,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         } else {
           // 其他小部件配置
           const { title, showTitle, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
-          
+
           // Normalize color
           let normalizedColor = backgroundColor;
           if (typeof normalizedColor === 'object' && normalizedColor?.toHexString) {
@@ -321,8 +324,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       <Form form={form} layout="vertical" size="small">
         <Form.Item
           name="title"
-          label="文案"
-          // rules={[{ required: true, message: '请输入标题' }]}
+          label="标题"
+          rules={[{ required: true, message: '请输入标题' }]}
         >
           <Input />
         </Form.Item>
@@ -352,15 +355,114 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         )}
 
         <Divider>背景设置</Divider>
-        <BackgroundSettings 
-          form={form} 
-          initialValues={widget.config as any} 
+        <BackgroundSettings
+          form={form}
+          initialValues={widget.config as any}
         />
         <Divider />
+
+        {/* Typography 特定配置 */}
+        {widget.type === 'typography' && (
+          <>
+            <Form.Item
+              name="content"
+              label="文本内容"
+              rules={[{ required: true, message: '请输入文本内容' }]}
+            >
+              <Input.TextArea rows={4} />
+            </Form.Item>
+            
+            <Form.Item
+              name="level"
+              label="标题等级"
+              tooltip="选择 1-5 作为标题，不选则作为普通文本"
+            >
+              <Select allowClear placeholder="选择标题等级 (默认普通文本)">
+                <Select.Option value={1}>H1</Select.Option>
+                <Select.Option value={2}>H2</Select.Option>
+                <Select.Option value={3}>H3</Select.Option>
+                <Select.Option value={4}>H4</Select.Option>
+                <Select.Option value={5}>H5</Select.Option>
+              </Select>
+            </Form.Item>
+            
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Form.Item
+                name="color"
+                label="字体颜色"
+                style={{ flex: 1 }}
+              >
+                <div style={{ display: 'flex', gap: 8 }}>
+                   <Input type="color" style={{ width: 40, padding: 0, border: 'none', background: 'transparent' }} />
+                   <Input placeholder="#000000" />
+                </div>
+              </Form.Item>
+              
+              <Form.Item
+                name="textAlign"
+                label="对齐方式"
+                style={{ flex: 1 }}
+              >
+                <Select allowClear>
+                  <Select.Option value="left">左对齐</Select.Option>
+                  <Select.Option value="center">居中</Select.Option>
+                  <Select.Option value="right">右对齐</Select.Option>
+                </Select>
+              </Form.Item>
+            </div>
+
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Form.Item
+                name="fontSize"
+                label="字体大小 (px)"
+                style={{ flex: 1 }}
+              >
+                <InputNumber min={12} max={200} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="fontWeight"
+                label="字体粗细"
+                style={{ flex: 1 }}
+              >
+                <Select allowClear>
+                  <Select.Option value="normal">正常</Select.Option>
+                  <Select.Option value="bold">加粗</Select.Option>
+                  <Select.Option value={500}>500</Select.Option>
+                  <Select.Option value={600}>600</Select.Option>
+                </Select>
+              </Form.Item>
+            </div>
+          </>
+        )}
 
         {/* 分组标题特定配置 */}
         {widget.type === 'groupTitle' && (
           <>
+            <Form.Item
+              name="headerTitle"
+              label="Header 内容"
+              tooltip="设置显示的标题内容，留空则不显示"
+            >
+              <Input placeholder="请输入Header内容" />
+            </Form.Item>
+            <Form.Item
+              name="headerAlignment"
+              label="对齐方式"
+              initialValue="left"
+            >
+              <Select>
+                <Select.Option value="left">左对齐</Select.Option>
+                <Select.Option value="center">居中对齐</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="showUserProfile"
+              label="显示个人中心"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
             <Form.Item
               name="icon"
               label="图标"
@@ -379,29 +481,49 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   listType="picture"
                   maxCount={1}
                   fileList={fileList}
-                  beforeUpload={(file) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => {
-                      const base64 = reader.result as string;
-                      form.setFieldValue('backgroundImage', base64);
-                      setFileList([
-                        {
-                          uid: file.uid,
-                          name: file.name,
-                          status: 'done',
-                          url: base64,
-                        },
-                      ]);
-                    };
-                    return false; // 阻止自动上传
+                  beforeUpload={async (file) => {
+                    const isImage = file.type.startsWith('image/');
+                    if (!isImage) {
+                      message.error('只能上传图片文件');
+                      return false;
+                    }
+                    const isLt10M = file.size / 1024 / 1024 < 10;
+                    if (!isLt10M) {
+                      message.error('图片大小不能超过 10MB');
+                      return false;
+                    }
+
+                    setBgUploading(true);
+                    setFileList([{ uid: file.uid, name: file.name, status: 'uploading' }]);
+
+                    try {
+                      const res = await uploadImage(file);
+                      if (res.data?.url) {
+                        form.setFieldValue('backgroundImage', res.data.url);
+                        setFileList([
+                          { uid: file.uid, name: file.name, status: 'done', url: res.data.url },
+                        ]);
+                        message.success('图片上传成功');
+                      } else {
+                        message.error(res.message || '上传失败');
+                        setFileList([]);
+                      }
+                    } catch {
+                      message.error('上传失败，请稍后重试');
+                      setFileList([]);
+                    } finally {
+                      setBgUploading(false);
+                    }
+                    return false;
                   }}
                   onRemove={() => {
                     setFileList([]);
                     form.setFieldValue('backgroundImage', '');
                   }}
                 >
-                  <Button icon={<UploadOutlined />}>上传图片</Button>
+                  <Button icon={bgUploading ? <LoadingOutlined /> : <UploadOutlined />}>
+                    {bgUploading ? '上传中' : '上传图片'}
+                  </Button>
                 </Upload>
               </div>
             </Form.Item>
@@ -417,7 +539,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
         {widget.type === 'customForm' && (
           <Form.Item name="fields" label="Form Fields">
-             <FormFieldBuilder />
+            <FormFieldBuilder />
           </Form.Item>
         )}
 
@@ -488,26 +610,44 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               tooltip="支持图片 URL 或上传图片，将同步到微应用配置"
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Input placeholder="https://example.com/icon.png 或 data:image/png;base64,..." />
+                <Input placeholder="https://example.com/icon.png" />
                 <Upload
                   listType="picture"
                   maxCount={1}
                   fileList={iconFileList}
-                  beforeUpload={(file) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => {
-                      const base64 = reader.result as string;
-                      form.setFieldValue('icon', base64);
-                      setIconFileList([
-                        {
-                          uid: file.uid,
-                          name: file.name,
-                          status: 'done',
-                          url: base64,
-                        },
-                      ]);
-                    };
+                  beforeUpload={async (file) => {
+                    const isImage = file.type.startsWith('image/');
+                    if (!isImage) {
+                      message.error('只能上传图片文件');
+                      return false;
+                    }
+                    const isLt10M = file.size / 1024 / 1024 < 10;
+                    if (!isLt10M) {
+                      message.error('图片大小不能超过 10MB');
+                      return false;
+                    }
+
+                    setIconUploading(true);
+                    setIconFileList([{ uid: file.uid, name: file.name, status: 'uploading' }]);
+
+                    try {
+                      const res = await uploadImage(file);
+                      if (res.data?.url) {
+                        form.setFieldValue('icon', res.data.url);
+                        setIconFileList([
+                          { uid: file.uid, name: file.name, status: 'done', url: res.data.url },
+                        ]);
+                        message.success('图标上传成功');
+                      } else {
+                        message.error(res.message || '上传失败');
+                        setIconFileList([]);
+                      }
+                    } catch {
+                      message.error('上传失败，请稍后重试');
+                      setIconFileList([]);
+                    } finally {
+                      setIconUploading(false);
+                    }
                     return false;
                   }}
                   onRemove={() => {
@@ -515,7 +655,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     form.setFieldValue('icon', '');
                   }}
                 >
-                  <Button icon={<UploadOutlined />}>上传图标</Button>
+                  <Button icon={iconUploading ? <LoadingOutlined /> : <UploadOutlined />}>
+                    {iconUploading ? '上传中' : '上传图标'}
+                  </Button>
                 </Upload>
               </div>
             </Form.Item>

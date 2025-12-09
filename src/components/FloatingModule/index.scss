@@ -276,7 +276,7 @@
     transform: translateZ(0);
 
     &:hover {
-      background: var(--ant-color-primary-1);
+      background: rgba(24, 144, 255, 0.4);
     }
 
     .drag-icon-transparent {
@@ -348,7 +348,7 @@
   &.theme-dark {
     .floating-module-header-transparent {
       &:hover {
-        background: var(--ant-color-primary-1);
+        background: rgba(24, 144, 255, 0.4);
       }
 
       .drag-icon-transparent {

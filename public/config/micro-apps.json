@@ -70,7 +70,7 @@
           "description": "万象",
           "url": "http://192.168.13.31:3010/#/home",
           "entry": "http://192.168.13.31:3010",
-          "icon": "http://192.168.11.16:8088/static/images/logo.png",
+          "icon": "fill_yingyongguanli",
           "defaultSize": {
             "w": 8,
             "h": 5

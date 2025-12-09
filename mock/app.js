@@ -8,6 +8,8 @@ var indexRouter = require("./routes/index").router;
 var dataBoard = require("./routes/dataBoard");
 var homeRouter = require("./routes/home");
 var systemSettingsRouter = require("./routes/system-settings");
+var publishRouter = require("./routes/publish");
+var uploadRouter = require("./routes/upload");
 
 var baseApi = "/";
 var app = express();
@@ -80,6 +82,8 @@ app.use(baseApi, indexRouter);
 app.use(baseApi, dataBoard);
 app.use(baseApi, homeRouter);
 app.use(baseApi, systemSettingsRouter);
+app.use(baseApi, publishRouter);
+app.use(baseApi, uploadRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

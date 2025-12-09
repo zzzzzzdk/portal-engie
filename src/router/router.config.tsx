@@ -67,6 +67,14 @@ const routeConfig: RouteConfig[] = [
     ],
   },
   {
+    path: '/preview/:id',
+    element: () => import('@/pages/DashboardPreview'),
+    meta: {
+      requiresAuth: false,
+      title: '仪表盘预览 - Portal Engine',
+    },
+  },
+  {
     path: '/404',
     element: () => import('@/pages/_404'),
     meta: {

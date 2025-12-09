@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Tabs, ColorPicker, Upload } from 'antd';
-import { BgColorsOutlined, PictureOutlined, UploadOutlined } from '@ant-design/icons';
+import { Form, Input, Tabs, ColorPicker, Upload, App as AntdApp } from 'antd';
+import { BgColorsOutlined, PictureOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd/es/form';
+import { uploadImage } from '@/services';
 
 export const GRADIENT_PRESETS = [
   'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
@@ -27,6 +28,8 @@ interface BackgroundSettingsProps {
 const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialValues }) => {
   const [activeTab, setActiveTab] = useState<string>('color');
   const [fileList, setFileList] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const { message } = AntdApp.useApp();
 
   useEffect(() => {
     if (initialValues) {
@@ -88,21 +91,54 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
               listType="picture-card"
               maxCount={1}
               fileList={fileList}
-              beforeUpload={(file) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => {
-                  const base64 = reader.result as string;
-                  form.setFieldValue('backgroundImage', base64);
-                  setFileList([
-                    {
-                      uid: file.uid,
-                      name: file.name,
-                      status: 'done',
-                      url: base64,
-                    },
-                  ]);
-                };
+              beforeUpload={async (file) => {
+                // 验证文件类型
+                const isImage = file.type.startsWith('image/');
+                if (!isImage) {
+                  message.error('只能上传图片文件');
+                  return false;
+                }
+
+                // 验证文件大小 (10MB)
+                const isLt10M = file.size / 1024 / 1024 < 10;
+                if (!isLt10M) {
+                  message.error('图片大小不能超过 10MB');
+                  return false;
+                }
+
+                setUploading(true);
+                setFileList([
+                  {
+                    uid: file.uid,
+                    name: file.name,
+                    status: 'uploading',
+                  },
+                ]);
+
+                try {
+                  const res = await uploadImage(file);
+                  if (res.data?.url) {
+                    form.setFieldValue('backgroundImage', res.data.url);
+                    setFileList([
+                      {
+                        uid: file.uid,
+                        name: file.name,
+                        status: 'done',
+                        url: res.data.url,
+                      },
+                    ]);
+                    message.success('图片上传成功');
+                  } else {
+                    message.error(res.message || '上传失败');
+                    setFileList([]);
+                  }
+                } catch (error) {
+                  message.error('上传失败，请稍后重试');
+                  setFileList([]);
+                } finally {
+                  setUploading(false);
+                }
+
                 return false;
               }}
               onRemove={() => {
@@ -112,8 +148,8 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
             >
               {fileList.length < 1 && (
                 <div>
-                  <UploadOutlined />
-                  <div style={{ marginTop: 8 }}>上传</div>
+                  {uploading ? <LoadingOutlined /> : <UploadOutlined />}
+                  <div style={{ marginTop: 8 }}>{uploading ? '上传中' : '上传'}</div>
                 </div>
               )}
             </Upload>
