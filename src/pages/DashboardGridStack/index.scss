@@ -8,7 +8,7 @@
 
   width: 100%;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--ant-color-layout);
   overflow: auto;
   // padding: 20px;
   position: relative;
@@ -109,6 +109,11 @@
     .grid-stack-item-content {
       overflow: hidden;
     }
+  }
+
+  .ui-resizable-se {
+    bottom: 4px;
+    right: 4px;
   }
 }
 

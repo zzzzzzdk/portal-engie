@@ -23,6 +23,7 @@ import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import GroupTitleWidget from '@/components/widgets/GroupTitleWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
+import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget'
 import { WidgetType } from '@/types';
 
 interface PreviewWidgetAdapterProps {
@@ -83,6 +84,8 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <TypographyWidget {...commonProps} />;
       case 'microApp':
         return <MicroAppWidget {...commonProps} />;
+      case 'pageNavigator':
+        return <PageNavigatorWidget {...commonProps} />;
       default:
         return <div>Unknown Widget Type: {type}</div>;
     }

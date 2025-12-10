@@ -1,36 +1,3 @@
-/**
- * DashboardGridStack - 使用官方 GridStack React Wrapper
- *
- * ========================================
- * 项目状态：✅ 重构完成 - 使用官方方案
- * 最后更新：2025-12-05
- * ========================================
- *
- * ## 核心特性 ✅
- * 1. 使用官方 GridStack React Wrapper（三层 Provider 架构）
- * 2. 支持拖拽、调整大小、添加/删除 widgets
- * 3. 支持嵌套网格（SubGrid）- 实现分组功能
- * 4. 完美集成 Zustand store
- * 5. 兼容现有所有 Widget 组件
- * 6. 支持编辑/预览模式切换
- *
- * ## 架构设计
- * GridStackProvider (状态管理)
- *   → GridStackRenderProvider (渲染层)
- *     → GridStackRender (Portal 渲染)
- *       → WidgetAdapter (适配现有组件)
- *
- * ## 与 Zustand 的集成
- * - 从 store 读取 widgets 并转换为 GridStack 格式
- * - 监听布局变化并同步回 store
- * - 支持添加/删除/更新 widgets
- *
- * ## 分组功能
- * - 使用 SubGrid 实现分组
- * - 分组可整体拖动
- * - 分组内的 widgets 可独立拖动
- */
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GridStack, GridStackOptions, GridStackWidget } from 'gridstack';
 import type { Layout } from 'react-grid-layout';
@@ -113,10 +80,10 @@ const DashboardInner: React.FC = () => {
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)'; 
+        style.backgroundColor = 'var(--ant-color-bg-layout)'; 
       }
     } else {
-         style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)';
+         style.backgroundColor = 'var(--ant-color-bg-layout)';
     }
 
     return style;
