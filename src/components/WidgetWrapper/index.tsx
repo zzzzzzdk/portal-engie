@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Widget } from '@/types';
 import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';
@@ -28,6 +28,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     const isEditMode = isPreviewMode ? false : storeEditMode;
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({})
 
     const handleDelete = () => {
       confirm({
@@ -89,20 +90,27 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     // 在编辑模式下，即使隐藏标题也要显示拖拽条
     const shouldShowHeader = showTitle || isEditMode;
 
-    // 计算背景样式
-    const backgroundStyle: React.CSSProperties = {};
-    const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = widget.config;
 
-    if (backgroundType === 'image' && backgroundImage) {
-      backgroundStyle.background = `url(${backgroundImage})`;
-      backgroundStyle.backgroundSize = 'cover';
-      backgroundStyle.backgroundPosition = 'center';
-      backgroundStyle.backgroundRepeat = 'no-repeat';
-    } else if (backgroundType === 'gradient' && backgroundGradient) {
-      backgroundStyle.background = backgroundGradient;
-    } else if (backgroundType === 'color' && backgroundColor) {
-      backgroundStyle.backgroundColor = backgroundColor;
-    }
+    useEffect(() => {
+      // 计算背景样式
+      const newBackgroundStyle: React.CSSProperties = {};
+      const {
+        backgroundType, backgroundColor, backgroundImage, backgroundGradient,
+        backgroundSize, backgroundRepeat, backgroundPosition
+      } = widget.config;
+      // console.log(widget.config)
+      if (backgroundType === 'image' && backgroundImage) {
+        newBackgroundStyle.background = `url(${backgroundImage})`;
+        newBackgroundStyle.backgroundSize = backgroundSize || 'cover';
+        newBackgroundStyle.backgroundPosition = backgroundPosition || 'center';
+        newBackgroundStyle.backgroundRepeat = backgroundRepeat || 'no-repeat';
+      } else if (backgroundType === 'gradient' && backgroundGradient) {
+        newBackgroundStyle.background = backgroundGradient;
+      } else if (backgroundType === 'color' && backgroundColor) {
+        newBackgroundStyle.backgroundColor = backgroundColor;
+      }
+      setBackgroundStyle(newBackgroundStyle)
+    }, [widget.config])
 
     // 预览模式下不显示右键菜单
     if (isPreviewMode) {
@@ -183,9 +191,9 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
               )}
             </div>
           )}
-          <div 
-          className="widget-content"
-          style={{ ...backgroundStyle }}
+          <div
+            className="widget-content"
+            style={{ ...backgroundStyle }}
           >{children}</div>
 
           <ConfigDialog

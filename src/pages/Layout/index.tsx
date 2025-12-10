@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule } from '@/types';
@@ -34,10 +34,11 @@ const Layout: React.FC = () => {
     groups,
     floatingModules,
     dashboardConfig,
+    resetDashboard,
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
-  const { message } = AntdApp.useApp();
+  const { message, modal } = AntdApp.useApp();
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [dashboardConfigOpen, setDashboardConfigOpen] = useState(false)
@@ -139,6 +140,7 @@ const Layout: React.FC = () => {
       cardGrid: '卡片网格',
       customForm: '自定义表单',
       groupTitle: '分组标题',
+      pageNavigator: '页面切换工具',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
@@ -203,6 +205,7 @@ const Layout: React.FC = () => {
         { label: '统计卡片', key: 'stats' },
         { label: '图表', key: 'chart' },
         { label: '快捷链接', key: 'link' },
+        { label: '页面切换', key: 'pageNavigator' },
         { label: '新闻动态', key: 'news' },
         { label: '排行榜', key: 'topList' },
         { label: '搜索', key: 'search' },
@@ -289,6 +292,20 @@ const Layout: React.FC = () => {
     themeSystem.applyPreset(key as 'light' | 'dark' | 'blue' | 'purple', true)
   }
 
+  const handleResetDashboard = () => {
+    modal.confirm({
+      title: '确认清空页面',
+      content: '此操作将清空所有组件和配置，恢复为空白页面。此操作无法撤销，确定要继续吗？',
+      okText: '确认清空',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        resetDashboard();
+        message.success('已恢复为空白页面');
+      },
+    });
+  };
+
   const handleGoHome = () => {
     navigate('/')
   }
@@ -303,24 +320,24 @@ const Layout: React.FC = () => {
       key: 'dark',
       label: '暗黑主题',
     },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'blue',
-      label: '蓝色主题',
-    },
-    {
-      key: 'purple',
-      label: '紫色主题',
-    },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'custom',
-      label: '自定义主题...',
-    },
+    // {
+    //   type: 'divider',
+    // },
+    // {
+    //   key: 'blue',
+    //   label: '蓝色主题',
+    // },
+    // {
+    //   key: 'purple',
+    //   label: '紫色主题',
+    // },
+    // {
+    //   type: 'divider',
+    // },
+    // {
+    //   key: 'custom',
+    //   label: '自定义主题...',
+    // },
   ]
 
   return (
@@ -374,6 +391,10 @@ const Layout: React.FC = () => {
               <>
                 <Tooltip title="页面设置">
                   <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} >页面设置</Button>
+                </Tooltip>
+
+                <Tooltip title="清空页面">
+                  <Button icon={<DeleteOutlined />} onClick={handleResetDashboard} danger>清空页面</Button>
                 </Tooltip>
 
                 {/* <Select

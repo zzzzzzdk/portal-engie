@@ -22,7 +22,8 @@ export type WidgetType =
   | 'groupTitle'       // 分组标题
   | 'typography'       // 文本/标题组件
   | 'microApp'         // 微应用小部件类型
-  | 'floatingModule';  // 悬浮模块
+  | 'floatingModule'   // 悬浮模块
+  | 'pageNavigator';   // 页面切换工具
 
 export interface WidgetConfig {
   title?: string;
@@ -34,6 +35,9 @@ export interface WidgetConfig {
   backgroundColor?: string;
   backgroundImage?: string;
   backgroundGradient?: string;
+  backgroundSize?: string;     // 背景大小
+  backgroundRepeat?: string;   // 背景重复
+  backgroundPosition?: string; // 背景位置
   [key: string]: any; // Allow custom properties for different widgets
 }
 

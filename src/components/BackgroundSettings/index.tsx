@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Tabs, ColorPicker, Upload, App as AntdApp } from 'antd';
+import { Form, Input, Tabs, ColorPicker, Upload, Select, App as AntdApp } from 'antd';
 import { BgColorsOutlined, PictureOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd/es/form';
 import { uploadImage } from '@/services';
@@ -36,7 +36,7 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       const type = initialValues.backgroundType || 'color';
       setActiveTab(type);
       form.setFieldValue('backgroundType', type);
-      
+
       // Initialize file list if image exists
       if (initialValues.backgroundImage) {
         setFileList([
@@ -66,7 +66,7 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       ),
       children: (
         <Form.Item name="backgroundColor" label="选择颜色">
-           <ColorPicker showText />
+          <ColorPicker showText />
         </Form.Item>
       ),
     },
@@ -154,6 +154,39 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
               )}
             </Upload>
           </Form.Item>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Form.Item name="backgroundSize" label="大小 (Size)" style={{ flex: 1 }}>
+              <Select allowClear placeholder="默认(auto)">
+                <Select.Option value="cover">Cover (铺满)</Select.Option>
+                <Select.Option value="contain">Contain (包含)</Select.Option>
+                <Select.Option value="100% 100%">100% 100% (拉伸)</Select.Option>
+                <Select.Option value="auto">Auto (默认)</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="backgroundRepeat" label="重复 (Repeat)" style={{ flex: 1 }} initialValue={'no-repeat'}>
+              <Select allowClear placeholder="默认(repeat)" >
+                <Select.Option value="no-repeat">No Repeat (不重复)</Select.Option>
+                <Select.Option value="repeat">Repeat (重复)</Select.Option>
+                <Select.Option value="repeat-x">Repeat X (水平重复)</Select.Option>
+                <Select.Option value="repeat-y">Repeat Y (垂直重复)</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+
+          <Form.Item name="backgroundPosition" label="位置 (Position)">
+            <Select allowClear placeholder="默认(0% 0%)">
+              <Select.Option value="center">Center (居中)</Select.Option>
+              <Select.Option value="top">Top (顶部)</Select.Option>
+              <Select.Option value="bottom">Bottom (底部)</Select.Option>
+              <Select.Option value="left">Left (左侧)</Select.Option>
+              <Select.Option value="right">Right (右侧)</Select.Option>
+              <Select.Option value="top left">Top Left (左上)</Select.Option>
+              <Select.Option value="top right">Top Right (右上)</Select.Option>
+              <Select.Option value="bottom left">Bottom Left (左下)</Select.Option>
+              <Select.Option value="bottom right">Bottom Right (右下)</Select.Option>
+            </Select>
+          </Form.Item>
         </>
       ),
     },
@@ -166,30 +199,30 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       ),
       children: (
         <>
-           <Form.Item name="backgroundGradient" label="CSS 渐变代码">
-             <Input.TextArea 
-               rows={2} 
-               placeholder="linear-gradient(to right, #ff0000, #0000ff)" 
-             />
-           </Form.Item>
-           <div style={{ marginBottom: 8 }}>预设渐变:</div>
-           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-             {GRADIENT_PRESETS.map((gradient, index) => (
-               <div
-                 key={index}
-                 onClick={() => form.setFieldValue('backgroundGradient', gradient)}
-                 style={{
-                   width: 48,
-                   height: 48,
-                   borderRadius: 4,
-                   background: gradient,
-                   cursor: 'pointer',
-                   border: '1px solid #d9d9d9',
-                 }}
-                 title={gradient}
-               />
-             ))}
-           </div>
+          <Form.Item name="backgroundGradient" label="CSS 渐变代码">
+            <Input.TextArea
+              rows={2}
+              placeholder="linear-gradient(to right, #ff0000, #0000ff)"
+            />
+          </Form.Item>
+          <div style={{ marginBottom: 8 }}>预设渐变:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {GRADIENT_PRESETS.map((gradient, index) => (
+              <div
+                key={index}
+                onClick={() => form.setFieldValue('backgroundGradient', gradient)}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 4,
+                  background: gradient,
+                  cursor: 'pointer',
+                  border: '1px solid #d9d9d9',
+                }}
+                title={gradient}
+              />
+            ))}
+          </div>
         </>
       ),
     },

@@ -59,6 +59,7 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
   floatingModule: Icons.AppWindow,
   groupTitle: Icons.Folder,
   typography: Icons.Type,
+  pageNavigator: Icons.Layers,
 };
 
 /**
@@ -146,6 +147,7 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
     floatingModule: { columns: 4, rows: 3 },
     groupTitle: { columns: 12, rows: 1 },
     typography: { columns: 4, rows: 2 },
+    pageNavigator: { columns: 12, rows: 1 },
   };
 
   return defaultSizes[type] || { columns: 4, rows: 3 };

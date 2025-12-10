@@ -8,6 +8,7 @@ import { getToken } from '@/utils/cookie'
 import { microAppCommunication } from '@/utils/microAppCommunication'
 import { ThemeProvider } from '@/theme'
 import '@/assets/css/index.scss'
+import { isDevelopment } from './config/env'
 
 /**
  * 登录状态检查组件
@@ -17,6 +18,7 @@ function LoginGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isLogin = useSystemStore((state) => state.isLogin)
+  const sysConfig = useSystemStore((state) => state.sysConfig)
 
   useEffect(() => {
     // 获取当前路径
@@ -34,7 +36,8 @@ function LoginGuard({ children }: { children: React.ReactNode }) {
     // token 不存在且不是登录页，跳转到登录页
     if (!token && !isLogin) {
       console.warn('未检测到登录凭证，跳转到登录页')
-      navigate('/login', { replace: true })
+      const loginUrl = isDevelopment() ? '/login' : sysConfig?.login_url
+      navigate(loginUrl || '', { replace: true })
     }
   }, [location.pathname, isLogin, navigate])
 

@@ -19,6 +19,7 @@ import { getToken, removeToken } from '@/utils/cookie';
 const DEFAULT_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_GROUP_LAYOUT = { w: 6, h: 4, x: 0, y: Infinity, minW: 2, minH: 2 };
 const DEFAULT_TITLE_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
@@ -65,6 +66,17 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         sync: false,
         alive: true,
       };
+    case 'pageNavigator':
+      return {
+        ...baseConfig,
+        title: '页面切换',
+        showTitle: false,
+        items: [
+          { name: '沧澜架构', path: '' },
+          { name: '工作台', path: '' },
+          { name: '首页', path: '' }
+        ]
+      };
     default:
       return baseConfig;
   }
@@ -74,27 +86,27 @@ export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       widgets: [
-        {
-          id: 'default-clock',
-          type: 'clock',
-          title: 'Clock',
-          layout: { i: 'default-clock', x: 0, y: 0, w: 4, h: 1, minW: 1, minH: 1 },
-          config: { title: 'Clock', showTitle: true, refreshInterval: 60 },
-        },
-        {
-          id: 'default-stats',
-          type: 'stats',
-          title: 'Statistics',
-          layout: { i: 'default-stats', x: 4, y: 0, w: 4, h: 1, minW: 1, minH: 1 },
-          config: { title: 'Statistics', showTitle: true, refreshInterval: 60 },
-        },
-        {
-          id: 'default-chart',
-          type: 'chart',
-          title: 'Chart',
-          layout: { i: 'default-chart', x: 8, y: 0, w: 4, h: 2, minW: 1, minH: 1 },
-          config: { title: 'Chart', showTitle: true, refreshInterval: 60 },
-        },
+        // {
+        //   id: 'default-clock',
+        //   type: 'clock',
+        //   title: 'Clock',
+        //   layout: { i: 'default-clock', x: 0, y: 0, w: 4, h: 3, minW: 1, minH: 1 },
+        //   config: { title: 'Clock', showTitle: true, refreshInterval: 60 },
+        // },
+        // {
+        //   id: 'default-stats',
+        //   type: 'stats',
+        //   title: 'Statistics',
+        //   layout: { i: 'default-stats', x: 4, y: 0, w: 4, h: 3, minW: 1, minH: 1 },
+        //   config: { title: 'Statistics', showTitle: true, refreshInterval: 60 },
+        // },
+        // {
+        //   id: 'default-chart',
+        //   type: 'chart',
+        //   title: 'Chart',
+        //   layout: { i: 'default-chart', x: 8, y: 0, w: 4, h: 3, minW: 1, minH: 1 },
+        //   config: { title: 'Chart', showTitle: true, refreshInterval: 60 },
+        // },
       ] as Widget[],
       groups: [] as WidgetGroup[],
       isEditMode: true, // Default to edit mode for easier setup
@@ -105,7 +117,7 @@ export const useStore = create<AppState>()(
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
       dashboardConfig: {
         backgroundType: 'color',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '',
       },
       gridDensity: 'compact',
       setGridDensity: (density) => set({ gridDensity: density }),
@@ -127,8 +139,13 @@ export const useStore = create<AppState>()(
       addWidget: (type: WidgetType) => {
         const id = uuidv4();
         // 使用特定的布局配置
-        const layoutConfig = type === 'groupTitle' ? DEFAULT_TITLE_LAYOUT : DEFAULT_LAYOUT;
-        
+        let layoutConfig = DEFAULT_LAYOUT;
+        if (type === 'groupTitle') {
+          layoutConfig = DEFAULT_TITLE_LAYOUT;
+        } else if (type === 'pageNavigator') {
+          layoutConfig = DEFAULT_NAVIGATOR_LAYOUT;
+        }
+
         const newWidget: Widget = {
           id,
           type,
@@ -417,7 +434,16 @@ export const useStore = create<AppState>()(
 
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
 
-      resetDashboard: () => set({ widgets: [], groups: [] }),
+      resetDashboard: () => set({
+        widgets: [],
+        groups: [],
+        floatingModules: [] as Widget[], // 悬浮模块列表
+        globalMicroApps: [] as Widget[], // 全局无边框微应用列表
+        dashboardConfig: {
+          backgroundType: 'color',
+          backgroundColor: '',
+        },
+      }),
 
       saveDashboard: () => {
         // Zustand persist middleware handles localStorage automatically.
@@ -563,9 +589,9 @@ export const useStore = create<AppState>()(
           floatingModules: state.floatingModules.map(m =>
             m.id === id
               ? {
-                  ...m,
-                  config: { ...m.config, position } as FloatingModuleConfig
-                }
+                ...m,
+                config: { ...m.config, position } as FloatingModuleConfig
+              }
               : m
           ),
         })),
@@ -576,13 +602,13 @@ export const useStore = create<AppState>()(
           floatingModules: state.floatingModules.map(m =>
             m.id === id
               ? {
-                  ...m,
-                  config: {
-                    ...m.config,
-                    width: size.width,
-                    height: size.height
-                  } as FloatingModuleConfig
-                }
+                ...m,
+                config: {
+                  ...m.config,
+                  width: size.width,
+                  height: size.height
+                } as FloatingModuleConfig
+              }
               : m
           ),
         })),
@@ -624,7 +650,7 @@ export const useStore = create<AppState>()(
       ) =>
         set((state) => {
           const id = `global-app-${Date.now()}`;
-          
+
           const newWidget: Widget = {
             id,
             type: 'microApp',

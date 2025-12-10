@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message } from 'antd';
-import { UploadOutlined, LoadingOutlined } from '@ant-design/icons';
+import { UploadOutlined, LoadingOutlined, PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule } from '@/types';
 import { useStore } from '@/store/useStore';
 import { microAppCommunication } from '@/utils/microAppCommunication';
@@ -87,6 +87,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           alive: widget.config.alive !== false,
           eventRoutes: widget.config.eventRoutes || [],
           icon: widget.config.icon || '',
+          backgroundType: widget.config.backgroundType || 'color',
+          backgroundColor: widget.config.backgroundColor,
+          backgroundImage: widget.config.backgroundImage,
+          backgroundGradient: widget.config.backgroundGradient,
+          backgroundSize: widget.config.backgroundSize,
+          backgroundRepeat: widget.config.backgroundRepeat,
+          backgroundPosition: widget.config.backgroundPosition,
         };
         form.setFieldsValue(initialValues);
         updateIconPreview(initialValues.icon);
@@ -254,7 +261,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         // 普通小部件配置
         if (widget.type === 'microApp') {
           // 微应用配置
-          const { title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon } = values;
+          const { 
+            title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon,
+            backgroundType, backgroundColor, backgroundImage, backgroundGradient,
+            backgroundSize, backgroundRepeat, backgroundPosition
+          } = values;
+
+          // Normalize color
+          let normalizedColor = backgroundColor;
+          if (typeof normalizedColor === 'object' && normalizedColor?.toHexString) {
+            normalizedColor = normalizedColor.toHexString();
+          }
+
           updateWidget(widget.id, {
             title,
             config: {
@@ -267,6 +285,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               alive,
               icon,
               eventRoutes: eventRoutes || [],
+              backgroundType,
+              backgroundColor: normalizedColor,
+              backgroundImage,
+              backgroundGradient,
+              backgroundSize,
+              backgroundRepeat,
+              backgroundPosition,
             },
           });
 
@@ -541,6 +566,44 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <Form.Item name="fields" label="Form Fields">
             <FormFieldBuilder />
           </Form.Item>
+        )}
+
+        {widget.type === 'pageNavigator' && (
+          <>
+            <Divider>导航项配置</Divider>
+            <Form.List name="items">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'name']}
+                        rules={[{ required: true, message: '请输入名称' }]}
+                        style={{ marginBottom: 0, flex: 1 }}
+                      >
+                        <Input placeholder="名称" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'path']}
+                        rules={[{ required: true, message: '请输入路径' }]}
+                        style={{ marginBottom: 0, flex: 2 }}
+                      >
+                        <Input placeholder="路径" />
+                      </Form.Item>
+                      <MinusCircleOutlined onClick={() => remove(name)} style={{ cursor: 'pointer', color: '#ff4d4f' }} />
+                    </div>
+                  ))}
+                  <Form.Item>
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                      添加导航项
+                    </Button>
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </>
         )}
 
         {/* 微应用特定配置 */}

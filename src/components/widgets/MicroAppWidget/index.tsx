@@ -142,7 +142,14 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
 
       {/* Wujie 容器 */}
       {moduleConfig && (
-        <div style={{ width: '100%', height: '100%', opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}>
+        <div 
+          className="nodrag" 
+          style={{ width: '100%', height: '100%', opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}
+          onMouseDown={(e) => {
+            // 阻止事件冒泡，防止触发 GridStack 拖拽
+            e.stopPropagation();
+          }}
+        >
         <WujieReact
           width="100%"
           height="100%"
@@ -156,6 +163,12 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
             token: getToken(),
             appId: appName,
             __sizeInfo: sizeInfo,
+            backgroundConfig: {
+              type: config.backgroundType,
+              color: config.backgroundColor,
+              image: config.backgroundImage,
+              gradient: config.backgroundGradient,
+            },
           }}
           // 绑定生命周期
           {...lifecycles}
