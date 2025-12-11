@@ -79,13 +79,13 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       ),
       children: (
         <>
-          <Form.Item
+          {/* <Form.Item
             name="backgroundImage"
             label="图片 URL"
             tooltip="输入图片链接或上传本地图片"
           >
             <Input placeholder="https://example.com/bg.png" />
-          </Form.Item>
+          </Form.Item> */}
           <Form.Item label="上传图片">
             <Upload
               listType="picture-card"

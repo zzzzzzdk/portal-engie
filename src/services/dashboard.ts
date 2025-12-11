@@ -5,6 +5,7 @@ import type { Widget, WidgetGroup, DashboardConfig } from '@/types';
 // 发布请求参数
 export interface PublishDashboardParams {
   id?: string;
+  title?: string; // 仪表盘标题
   widgets: Widget[];
   groups: WidgetGroup[];
   floatingModules: Widget[];

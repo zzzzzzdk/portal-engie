@@ -501,7 +501,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               tooltip="输入图片URL或上传本地图片"
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <Input placeholder="https://example.com/bg.png" />
+                {/* <Input placeholder="https://example.com/bg.png" /> */}
                 <Upload
                   listType="picture"
                   maxCount={1}
@@ -673,7 +673,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               tooltip="支持图片 URL 或上传图片，将同步到微应用配置"
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Input placeholder="https://example.com/icon.png" />
+                {/* <Input placeholder="https://example.com/icon.png" /> */}
                 <Upload
                   listType="picture"
                   maxCount={1}
