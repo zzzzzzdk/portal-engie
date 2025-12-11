@@ -33,7 +33,7 @@ class MicroAppConfigLoader {
 
     this.loading = true;
     try {
-      const response = await fetch('/config/micro-apps.json');
+      const response = await fetch('./config/micro-apps.json');
       if (!response.ok) {
         throw new Error('Failed to load micro-app metadata');
       }

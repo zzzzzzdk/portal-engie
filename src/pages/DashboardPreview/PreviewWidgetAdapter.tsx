@@ -41,9 +41,10 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
   }
 
   const { w, h } = resolvedWidget.layout;
+  const forceIconOnly = resolvedWidget.config.forceIconOnly;
 
   // 判断是否为 icon-only 模式
-  if (isIconOnlyMode(w, h)) {
+  if (forceIconOnly || isIconOnlyMode(w, h)) {
     return (
       <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
         <WidgetIconView

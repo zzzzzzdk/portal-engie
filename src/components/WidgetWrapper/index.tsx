@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Widget } from '@/types';
 import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';

@@ -4,6 +4,8 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // 公共基础路径，部署到子目录时修改（如 '/portal/'）
+  base: './',
   plugins: [react()],
   resolve: {
     alias: {
@@ -21,7 +23,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // 或者 host: '0.0.0.0'，允许局域网访问
-    port: 3000,
+    port: 3001,
     proxy: {
       '/api': {
         target: 'http://localhost:4001/',

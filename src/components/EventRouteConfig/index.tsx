@@ -40,7 +40,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
 
   // 加载微应用配置元数据
   useEffect(() => {
-    fetch('/config/micro-apps.json')
+    fetch('./config/micro-apps.json')
       .then(res => res.json())
       .then(data => {
         setMicroAppMetadata(data);

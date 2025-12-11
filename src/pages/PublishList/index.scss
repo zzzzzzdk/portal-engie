@@ -1,0 +1,48 @@
+.publish-list-page {
+  padding: 24px;
+  background-color: var(--bg-primary, #fff);
+  min-height: 100%;
+
+  .publish-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    .ant-typography {
+      margin: 0;
+    }
+  }
+
+  .publish-list-content {
+    background-color: var(--bg-secondary, #fff);
+    border-radius: 8px;
+
+    .ant-table-wrapper {
+      .ant-table {
+        background: transparent;
+      }
+    }
+  }
+
+  .publish-list-id {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+    max-width: 150px;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .publish-list-url {
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+    max-width: 200px;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

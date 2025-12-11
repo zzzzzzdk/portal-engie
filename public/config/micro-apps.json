@@ -113,7 +113,8 @@
             "h": 8
           },
           "emittableEvents": [],
-          "listenableEvents": []
+          "listenableEvents": [],
+          "forceIconOnly": true
         }
       ]
     }

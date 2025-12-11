@@ -13,6 +13,7 @@ import {
   Tag,
   Upload,
   Tabs,
+  Switch,
 } from 'antd';
 import {
   PlusOutlined,
@@ -61,7 +62,7 @@ const MicroAppConfigPage: React.FC = () => {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/config/micro-apps.json');
+      const response = await fetch('./config/micro-apps.json');
       const data = await response.json();
       updateConfigState(data);
     } catch (error) {
@@ -196,6 +197,11 @@ const MicroAppConfigPage: React.FC = () => {
   const handleSaveModule = async () => {
     try {
       const values = await moduleForm.validateFields();
+      const normalizedValues = {
+        ...values,
+        forceIconOnly: !!values.forceIconOnly,
+        iconSvg: values.iconSvg?.trim() ? values.iconSvg : undefined,
+      };
       const newApps = [...config.apps];
       const systemIndex = newApps.findIndex(app => app.id === editingModule?.systemId);
 
@@ -208,15 +214,15 @@ const MicroAppConfigPage: React.FC = () => {
           if (moduleIndex !== -1) {
             system.modules[moduleIndex] = {
               ...system.modules[moduleIndex],
-              ...values,
-              defaultSize: values.defaultSize || { w: 6, h: 4 },
+              ...normalizedValues,
+              defaultSize: normalizedValues.defaultSize || { w: 6, h: 4 },
             };
           }
         } else {
           // 添加新模块
           system.modules.push({
-            ...values,
-            defaultSize: values.defaultSize || { w: 6, h: 4 },
+            ...normalizedValues,
+            defaultSize: normalizedValues.defaultSize || { w: 6, h: 4 },
             emittableEvents: [],
             listenableEvents: [],
           });
@@ -407,6 +413,9 @@ const MicroAppConfigPage: React.FC = () => {
               <p>
                 <strong>默认尺寸:</strong> {module.defaultSize?.w || 6} x {module.defaultSize?.h || 4}
               </p>
+              {module.forceIconOnly && (
+                <Tag color="purple">图标模式</Tag>
+              )}
 
               {/* 事件管理 */}
               <Tabs
@@ -643,6 +652,22 @@ const MicroAppConfigPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="icon" label="图标URL">
             <Input placeholder="模块图标地址（可选）" />
+          </Form.Item>
+          <Form.Item
+            name="forceIconOnly"
+            label="强制图标显示"
+            valuePropName="checked"
+            tooltip="启用后，小部件将始终以图标形式展示"
+            initialValue={false}
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="iconSvg"
+            label="SVG 图标"
+            tooltip="可粘贴完整的 <svg>...</svg> 代码，优先于图标 URL"
+          >
+            <Input.TextArea rows={3} placeholder="<svg viewBox='0 0 24 24'>...</svg>" />
           </Form.Item>
           <Form.Item label="默认尺寸">
             <Space>

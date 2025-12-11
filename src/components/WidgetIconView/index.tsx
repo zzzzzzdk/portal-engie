@@ -68,6 +68,16 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   // 渲染 Icon
   const renderIcon = () => {
+    const svgMarkup = widget.config.iconSvg || iconConfig?.iconSvg;
+    if (svgMarkup) {
+      return (
+        <div
+          className="widget-icon-svg"
+          dangerouslySetInnerHTML={{ __html: svgMarkup }}
+        />
+      );
+    }
+
     if (loading) {
       return <div className="widget-icon-skeleton" />;
     }

@@ -56,28 +56,60 @@ router.post('/v1/dashboard/publish', async (req, res) => {
  * @apiName getPublishList
  * @apiGroup Dashboard
  *
+ * @apiParam {Number} page 当前页码
+ * @apiParam {Number} pageSize 每页条数
+ * @apiParam {String} [keyword] 搜索关键词
+ *
  * @apiSuccess {Number} code 状态码
- * @apiSuccess {Array} data 发布列表
+ * @apiSuccess {Object} data 分页数据
+ * @apiSuccess {Array} data.list 发布列表
+ * @apiSuccess {Number} data.total 总条数
+ * @apiSuccess {Number} data.page 当前页
+ * @apiSuccess {Number} data.pageSize 每页条数
  */
 router.get('/v1/dashboard/publish/list', async (req, res) => {
   await req.sleep(0.3);
 
-  req.json.code = 0;
-  req.json.message = '获取成功';
-  req.json.data = [
-    {
-      id: 'pub_1',
-      name: '默认仪表盘',
-      publishTime: '2025-12-01T10:00:00.000Z',
-      widgetCount: 5,
-    },
-    {
-      id: 'pub_2',
-      name: '数据监控面板',
-      publishTime: '2025-12-05T14:30:00.000Z',
-      widgetCount: 8,
-    },
+  const { page = 1, page_size = 10, keyword = '' } = req.query;
+  const currentPage = parseInt(page, 10);
+  const currentPageSize = parseInt(page_size, 10);
+
+  // 模拟数据
+  const allData = [
+    { id: 'pub_1', title: '默认仪表盘', publishTime: '2025-12-01T10:00:00.000Z' },
+    { id: 'pub_2', title: '数据监控面板', publishTime: '2025-12-05T14:30:00.000Z' },
+    { id: 'pub_3', title: '运维监控大屏', publishTime: '2025-12-08T09:15:00.000Z' },
+    { id: 'pub_4', title: '销售数据看板', publishTime: '2025-12-09T11:20:00.000Z' },
+    { id: 'pub_5', title: '用户行为分析', publishTime: '2025-12-10T08:45:00.000Z' },
+    { id: 'pub_6', title: '系统性能监控', publishTime: '2025-12-10T14:00:00.000Z' },
+    { id: 'pub_7', title: '财务报表大屏', publishTime: '2025-12-10T16:30:00.000Z' },
+    { id: 'pub_8', title: '库存管理看板', publishTime: '2025-12-11T09:00:00.000Z' },
   ];
+
+  // 关键词过滤
+  let filteredData = allData;
+  if (keyword) {
+    const lowerKeyword = keyword.toLowerCase();
+    filteredData = allData.filter(item =>
+      item.title.toLowerCase().includes(lowerKeyword) ||
+      item.id.toLowerCase().includes(lowerKeyword)
+    );
+  }
+
+  // 分页
+  const total = filteredData.length;
+  const startIndex = (currentPage - 1) * currentPageSize;
+  const endIndex = startIndex + currentPageSize;
+  const list = filteredData.slice(startIndex, endIndex);
+
+  req.json.code = 20000;
+  req.json.message = '获取成功';
+  req.json.data = {
+    list,
+    total,
+    page: currentPage,
+    page_size: currentPageSize,
+  };
 
   res.json(req.json);
 });
@@ -290,6 +322,38 @@ router.get('/v1/dashboard/publish', async (req, res) => {
     req.json.message = '仪表盘不存在';
     req.json.data = null;
   }
+
+  res.json(req.json);
+});
+
+/**
+ * @api {post} /v1/dashboard/publish/delete 删除已发布的仪表盘
+ * @apiName deletePublishedDashboard
+ * @apiGroup Dashboard
+ *
+ * @apiParam {String} id 发布ID
+ *
+ * @apiSuccess {Number} code 状态码
+ * @apiSuccess {Object} data 删除结果
+ */
+router.post('/v1/dashboard/publish/delete', async (req, res) => {
+  await req.sleep(0.3);
+
+  const { id } = req.body;
+
+  if (!id) {
+    req.json.code = 1;
+    req.json.message = '缺少参数: id';
+    req.json.data = { success: false };
+    res.json(req.json);
+    return;
+  }
+
+  console.log('[Mock] Dashboard deleted:', id);
+
+  req.json.code = 20000;
+  req.json.message = '删除成功';
+  req.json.data = { success: true };
 
   res.json(req.json);
 });

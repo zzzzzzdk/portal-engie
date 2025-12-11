@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Result, Spin, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import WujieReact from 'wujie-react';
@@ -8,6 +8,7 @@ import { getWidgetDisplayMode } from '@/utils/widgetHelpers';
 import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
+import { useTheme } from '@/theme/useTheme';
 import './index.scss';
 
 const { bus, preloadApp } = WujieReact;
@@ -18,19 +19,29 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
+  const { themeMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
   const appName = `${config.systemId}-${config.moduleId}`;
 
   // 计算尺寸信息
-  const sizeInfo: WidgetSizeInfo | undefined = widget ? {
-    grid: {
-      columns: widget.layout.w,
-      rows: widget.layout.h
-    },
-    displayMode: getWidgetDisplayMode(widget.layout.w, widget.layout.h)
-  } : undefined;
+  const sizeInfo = useMemo<WidgetSizeInfo | undefined>(() => {
+    return widget ? {
+      grid: {
+        columns: widget.layout.w,
+        rows: widget.layout.h
+      },
+      displayMode: getWidgetDisplayMode(widget.layout.w, widget.layout.h)
+    } : undefined;
+  }, [widget?.layout.w, widget?.layout.h]);
+
+  const backgroundConfig = useMemo(() => ({
+    type: config.backgroundType,
+    color: config.backgroundColor,
+    image: config.backgroundImage,
+    gradient: config.backgroundGradient,
+  }), [config.backgroundType, config.backgroundColor, config.backgroundImage, config.backgroundGradient]);
 
   // 检查模式
   const isGlobalMode = config.mode === 'global';
@@ -71,6 +82,11 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
 
       // 注入 token
       bus.$emit('subApp:setToken', getToken());
+      bus.$emit('subApp:config', {
+        theme: themeMode,
+        __sizeInfo: sizeInfo,
+        backgroundConfig
+      });
       
       // 注意：这里不设置 loading(false)，等待子应用 afterMount 生命周期触发
     } catch (err: any) {
@@ -84,6 +100,15 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
     initMicroApp();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.systemId, config.moduleId]);
+
+  // 监听上下文变化并通知子应用（主题、尺寸、背景）
+  useEffect(() => {
+    bus.$emit('subApp:config', {
+      theme: themeMode,
+      __sizeInfo: sizeInfo,
+      backgroundConfig
+    });
+  }, [themeMode, sizeInfo, backgroundConfig]);
 
   const handleRetry = () => {
     initMicroApp();
@@ -128,7 +153,6 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
       </div>
     );
   }
-
   return (
     <div className={`micro-app-widget-container ${isGlobalMode ? 'global-mode' : ''}`} style={{ position: 'relative' }}>
       {/* Loading 遮罩：覆盖在容器之上 */}
@@ -155,20 +179,17 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
           height="100%"
           name={appName} 
           url={moduleConfig.url}
-          sync={config.sync}
+          // sync={config.sync}
+          sync={false}
           alive={config.alive ?? true}
           degrade={degrade}
           props={{
             ...config.props,
             token: getToken(),
             appId: appName,
+            theme: themeMode,
             __sizeInfo: sizeInfo,
-            backgroundConfig: {
-              type: config.backgroundType,
-              color: config.backgroundColor,
-              image: config.backgroundImage,
-              gradient: config.backgroundGradient,
-            },
+            backgroundConfig,
           }}
           // 绑定生命周期
           {...lifecycles}

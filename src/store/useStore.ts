@@ -185,6 +185,9 @@ export const useStore = create<AppState>()(
             microAppEntry: module.entry,
             sync: true,
             alive: true,
+            icon: module.icon,
+            iconSvg: module.iconSvg,
+            forceIconOnly: module.forceIconOnly,
           },
         };
 
@@ -461,6 +464,30 @@ export const useStore = create<AppState>()(
       loadDashboard: () => {
         // This could fetch from API
         console.log('Loading dashboard config...');
+      },
+
+      // 从API数据加载仪表盘（用于编辑已发布的仪表盘）
+      loadDashboardFromData: (data: {
+        widgets?: Widget[];
+        groups?: WidgetGroup[];
+        floatingModules?: Widget[];
+        dashboardConfig?: any;
+      }) => {
+        set({
+          widgets: data.widgets?.map(w => ({
+            ...w,
+            layout: sanitizeLayout(w.layout)
+          })) || [],
+          groups: data.groups?.map(g => ({
+            ...g,
+            layout: sanitizeLayout(g.layout)
+          })) || [],
+          floatingModules: data.floatingModules || [],
+          dashboardConfig: data.dashboardConfig || {
+            backgroundType: 'color',
+            backgroundColor: '',
+          },
+        });
       },
 
       updateDashboardConfig: (config) =>

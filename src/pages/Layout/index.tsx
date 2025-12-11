@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp, Modal, Form, Input } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule } from '@/types';
@@ -424,6 +424,10 @@ const Layout: React.FC = () => {
             <Button icon={<CloudUploadOutlined />} onClick={handlePublish}>
               发布
             </Button>
+
+            <Tooltip title="已发布列表">
+              <Button icon={<UnorderedListOutlined />} onClick={() => navigate('/publish-list')} />
+            </Tooltip>
 
             <Tooltip title="全屏模式">
               <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />

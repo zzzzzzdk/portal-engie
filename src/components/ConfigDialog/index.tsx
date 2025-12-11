@@ -44,16 +44,16 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     }
   }, []);
 
-  const syncModuleIcon = useCallback(
-    async (systemId?: string, moduleId?: string, icon?: string) => {
-      if (!systemId || !moduleId) {
+  const syncModuleConfig = useCallback(
+    async (systemId?: string, moduleId?: string, updates?: Partial<MicroAppModule>) => {
+      if (!systemId || !moduleId || !updates) {
         return;
       }
       try {
-        await microAppConfigLoader.updateModuleConfig(systemId, moduleId, { icon: icon || '' });
+        await microAppConfigLoader.updateModuleConfig(systemId, moduleId, updates);
       } catch (error) {
-        console.error('Failed to sync micro app icon:', error);
-        message.error('同步微应用图标失败，请稍后重试');
+        console.error('Failed to sync micro app config:', error);
+        message.error('同步微应用配置失败，请稍后重试');
       }
     },
     []
@@ -87,6 +87,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           alive: widget.config.alive !== false,
           eventRoutes: widget.config.eventRoutes || [],
           icon: widget.config.icon || '',
+          forceIconOnly: widget.config.forceIconOnly || false,
+          iconSvg: widget.config.iconSvg || '',
           backgroundType: widget.config.backgroundType || 'color',
           backgroundColor: widget.config.backgroundColor,
           backgroundImage: widget.config.backgroundImage,
@@ -103,7 +105,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             .getModule(widget.config.systemId, widget.config.moduleId)
             .then(module => {
               if (!module) return;
-              form.setFieldsValue({ icon: module.icon || '' });
+              form.setFieldsValue({
+                icon: module.icon || '',
+                iconSvg: module.iconSvg || '',
+                forceIconOnly: module.forceIconOnly ?? form.getFieldValue('forceIconOnly') ?? false,
+              });
               updateIconPreview(module.icon);
             })
             .catch(error => console.warn('Failed to load module for icon:', error));
@@ -154,36 +160,40 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       const values = await form.validateFields();
       if (isFloatingModule) {
         // 悬浮模块配置
-        const {
-          title,
-          showTitle,
-          refreshInterval,
-          // 尺寸配置
-          width,
-          height,
-          minWidth,
-          minHeight,
-          maxWidth,
-          maxHeight,
-          // 行为配置
-          collapsible,
-          closable,
-          // 样式配置
-          theme,
-          borderRadius,
-          zIndex,
-          // 折叠状态尺寸
-          collapsedWidth,
-          collapsedHeight,
-          // 微应用特定字段
-          systemId,
-          moduleId,
-          sync,
-          alive,
-          eventRoutes,
-          icon,
-          ...restConfig
-        } = values;
+          const {
+            title,
+            showTitle,
+            refreshInterval,
+            // 尺寸配置
+            width,
+            height,
+            minWidth,
+            minHeight,
+            maxWidth,
+            maxHeight,
+            // 行为配置
+            collapsible,
+            closable,
+            // 样式配置
+            theme,
+            borderRadius,
+            zIndex,
+            // 折叠状态尺寸
+            collapsedWidth,
+            collapsedHeight,
+            // 微应用特定字段
+            systemId,
+            moduleId,
+            sync,
+            alive,
+            eventRoutes,
+            icon,
+            iconSvg,
+            forceIconOnly,
+            ...restConfig
+          } = values;
+          const normalizedForceIcon = !!forceIconOnly;
+          const cleanedIconSvg = iconSvg?.trim();
 
         updateFloatingModule(widget.id, { title }); // 更新 title
 
@@ -219,9 +229,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               sync,
               alive,
               icon,
+              iconSvg: cleanedIconSvg || undefined,
+              forceIconOnly: normalizedForceIcon,
             },
             eventRoutes: eventRoutes || [],
             icon,
+            iconSvg: cleanedIconSvg || undefined,
+            forceIconOnly: normalizedForceIcon,
           });
 
           // 重新设置事件监听器
@@ -229,7 +243,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             microAppCommunication.setupEventListeners();
           }, 100);
 
-          await syncModuleIcon(systemId, moduleId, icon);
+          await syncModuleConfig(systemId, moduleId, {
+            icon: icon || '',
+            iconSvg: cleanedIconSvg || '',
+            forceIconOnly: normalizedForceIcon,
+          });
         } else {
           // 本地组件类型的悬浮模块
           updateFloatingModuleConfig(widget.id, {
@@ -264,8 +282,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           const { 
             title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon,
             backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-            backgroundSize, backgroundRepeat, backgroundPosition
+            backgroundSize, backgroundRepeat, backgroundPosition, iconSvg, forceIconOnly
           } = values;
+          const normalizedForceIcon = !!forceIconOnly;
+          const cleanedIconSvg = iconSvg?.trim();
 
           // Normalize color
           let normalizedColor = backgroundColor;
@@ -284,6 +304,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               sync,
               alive,
               icon,
+              iconSvg: cleanedIconSvg || undefined,
+              forceIconOnly: normalizedForceIcon,
               eventRoutes: eventRoutes || [],
               backgroundType,
               backgroundColor: normalizedColor,
@@ -300,7 +322,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             microAppCommunication.setupEventListeners();
           }, 100);
 
-          await syncModuleIcon(systemId, moduleId, icon);
+          await syncModuleConfig(systemId, moduleId, {
+            icon: icon || '',
+            iconSvg: cleanedIconSvg || '',
+            forceIconOnly: normalizedForceIcon,
+          });
         } else {
           // 其他小部件配置
           const { title, showTitle, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
@@ -633,6 +659,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     systemId: config.systemId,
                     moduleId: config.moduleId,
                     icon: config.module?.icon || '',
+                    iconSvg: config.module?.iconSvg || '',
+                    forceIconOnly: config.module?.forceIconOnly ?? form.getFieldValue('forceIconOnly') ?? false,
                   });
                   updateIconPreview(config.module?.icon || '');
                   // 触发表单验证
@@ -723,6 +751,21 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   </Button>
                 </Upload>
               </div>
+            </Form.Item>
+            <Form.Item
+              name="forceIconOnly"
+              label="强制图标显示"
+              valuePropName="checked"
+              tooltip="开启后小部件会固定以图标模式展示"
+            >
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              name="iconSvg"
+              label="SVG 图标"
+              tooltip="可粘贴完整的 SVG 代码，优先于上传的图标"
+            >
+              <Input.TextArea rows={4} placeholder="<svg viewBox='0 0 24 24'>...</svg>" />
             </Form.Item>
 
             <Form.Item
