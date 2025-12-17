@@ -13,6 +13,7 @@ import {
   Tag,
   Upload,
   Tabs,
+  Switch,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,10 +22,16 @@ import {
   DownloadOutlined,
   UploadOutlined,
   AppstoreOutlined,
-  SaveOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { saveMicroAppConfig } from '@/services/microApp';
+import {
+  getMicroAppList,
+  saveApp,
+  saveModule,
+  saveEvent,
+  deleteMicroAppItem,
+} from '@/services/microApp';
 import { microAppConfigLoader, MICRO_APP_CONFIG_CHANGED_EVENT, MicroAppConfigChangeDetail } from '@/utils/microAppConfig';
 import type { EmittableEvent, MicroAppModule, MicroAppSystem, MicroAppMetadata } from '@/types';
 import './index.scss';
@@ -57,13 +64,16 @@ const MicroAppConfigPage: React.FC = () => {
     microAppConfigLoader.setMetadata(nextConfig);
   }, []);
 
-  // 加载配置
+  // 加载配置 - 使用API接口
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/config/micro-apps.json');
-      const data = await response.json();
-      updateConfigState(data);
+      const res = await getMicroAppList();
+      if (res.code === 20000 && res.data) {
+        updateConfigState(res.data);
+      } else {
+        message.error(res.message || '加载配置失败');
+      }
     } catch (error) {
       message.error('加载配置失败');
       console.error(error);
@@ -112,20 +122,6 @@ const MicroAppConfigPage: React.FC = () => {
       );
   }, []);
 
-  // 保存配置到服务器
-  const handleSaveToServer = async () => {
-    setSaving(true);
-    try {
-      await saveMicroAppConfig(config);
-      message.success('配置已保存到服务器');
-    } catch (error: any) {
-      message.error('保存失败: ' + (error.message || '未知错误'));
-      console.error('Save config error:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // 导出配置
   const handleExport = () => {
     const dataStr = JSON.stringify(config, null, 2);
@@ -139,14 +135,15 @@ const MicroAppConfigPage: React.FC = () => {
     message.success('配置已导出');
   };
 
-  // 导入配置
+  // 导入配置 - 导入后需要逐个调用保存接口
   const handleImport = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const importedConfig = JSON.parse(e.target?.result as string);
+        const importedConfig = JSON.parse(e.target?.result as string) as MicroAppConfig;
+        // 先更新本地状态
         updateConfigState(importedConfig);
-        message.success('配置已导入');
+        message.success('配置已导入到本地，请手动保存各项配置');
       } catch (error) {
         message.error('配置文件格式错误');
       }
@@ -155,158 +152,170 @@ const MicroAppConfigPage: React.FC = () => {
     return false; // 阻止自动上传
   };
 
-  // 添加/编辑系统
+  // 添加/编辑系统 - 使用saveApp API
   const handleSaveSystem = async () => {
     try {
       const values = await systemForm.validateFields();
-      const newApps = [...config.apps];
+      setSaving(true);
+      const res = await saveApp({
+        id: editingSystem?.id || values.id,
+        name: values.name,
+        description: values.description,
+        icon: values.icon,
+        category: values.category,
+      });
+      console.log(res)
 
-      if (editingSystem) {
-        // 编辑现有系统
-        const index = newApps.findIndex(app => app.id === editingSystem.id);
-        if (index !== -1) {
-          newApps[index] = { ...newApps[index], ...values };
-        }
+      if (res.code === 20000) {
+        message.success(editingSystem ? '系统已更新' : '系统已添加');
+        setSystemModalOpen(false);
+        systemForm.resetFields();
+        setEditingSystem(null);
+        // 刷新列表
+        await loadConfig();
       } else {
-        // 添加新系统
-        newApps.push({
-          ...values,
-          modules: [],
-        });
+        message.error(res.message || '保存失败');
       }
-
-      updateConfigState({ ...config, apps: newApps });
-      setSystemModalOpen(false);
-      systemForm.resetFields();
-      setEditingSystem(null);
-      message.success(editingSystem ? '系统已更新' : '系统已添加');
-    } catch (error) {
-      console.error('Validation failed:', error);
+    } catch (error: any) {
+      if (error.errorFields) {
+        // 表单校验错误
+        return;
+      }
+      message.error('保存失败: ' + (error.message || '未知错误'));
+      console.error('Save system error:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 删除系统
-  const handleDeleteSystem = (systemId: string) => {
-    const newApps = config.apps.filter(app => app.id !== systemId);
-    updateConfigState({ ...config, apps: newApps });
-    message.success('系统已删除');
+  // 删除系统 - 使用deleteMicroAppItem API
+  const handleDeleteSystem = async (systemId: string) => {
+    try {
+      const res = await deleteMicroAppItem({ id: systemId, type: 'app' });
+      if (res.code === 20000) {
+        message.success('系统已删除');
+        // 刷新列表
+        await loadConfig();
+      } else {
+        message.error(res.message || '删除失败');
+      }
+    } catch (error: any) {
+      message.error('删除失败: ' + (error.message || '未知错误'));
+      console.error('Delete system error:', error);
+    }
   };
 
-  // 添加/编辑模块
+  // 添加/编辑模块 - 使用saveModule API
   const handleSaveModule = async () => {
     try {
       const values = await moduleForm.validateFields();
-      const newApps = [...config.apps];
-      const systemIndex = newApps.findIndex(app => app.id === editingModule?.systemId);
+      setSaving(true);
 
-      if (systemIndex !== -1) {
-        const system = newApps[systemIndex];
+      const res = await saveModule({
+        id: editingModule?.module?.id || values.id,
+        app_id: editingModule?.systemId || '',
+        name: values.name,
+        description: values.description,
+        url: values.url,
+        entry: values.entry,
+        icon: values.icon,
+        defaultSize: values.defaultSize || { w: 6, h: 4 },
+        forceIconOnly: !!values.forceIconOnly,
+        iconSvg: values.iconSvg?.trim() || undefined,
+      });
 
-        if (editingModule?.module) {
-          // 编辑现有模块
-          const moduleIndex = system.modules.findIndex(m => m.id === editingModule.module!.id);
-          if (moduleIndex !== -1) {
-            system.modules[moduleIndex] = {
-              ...system.modules[moduleIndex],
-              ...values,
-              defaultSize: values.defaultSize || { w: 6, h: 4 },
-            };
-          }
-        } else {
-          // 添加新模块
-          system.modules.push({
-            ...values,
-            defaultSize: values.defaultSize || { w: 6, h: 4 },
-            emittableEvents: [],
-            listenableEvents: [],
-          });
-        }
+      if (res.code === 20000) {
+        message.success(editingModule?.module ? '模块已更新' : '模块已添加');
+        setModuleModalOpen(false);
+        moduleForm.resetFields();
+        setEditingModule(undefined);
+        // 刷新列表
+        await loadConfig();
+      } else {
+        message.error(res.message || '保存失败');
       }
-
-      updateConfigState({ ...config, apps: newApps });
-      setModuleModalOpen(false);
-      moduleForm.resetFields();
-      setEditingModule(undefined);
-      message.success(editingModule?.module ? '模块已更新' : '模块已添加');
-    } catch (error) {
-      console.error('Validation failed:', error);
+    } catch (error: any) {
+      if (error.errorFields) {
+        return;
+      }
+      message.error('保存失败: ' + (error.message || '未知错误'));
+      console.error('Save module error:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 删除模块
-  const handleDeleteModule = (systemId: string, moduleId: string) => {
-    const newApps = [...config.apps];
-    const system = newApps.find(app => app.id === systemId);
-    if (system) {
-      system.modules = system.modules.filter(m => m.id !== moduleId);
-      updateConfigState({ ...config, apps: newApps });
-      message.success('模块已删除');
+  // 删除模块 - 使用deleteMicroAppItem API
+  const handleDeleteModule = async (moduleId: string) => {
+    try {
+      const res = await deleteMicroAppItem({ id: moduleId, type: 'module' });
+      if (res.code === 20000) {
+        message.success('模块已删除');
+        // 刷新列表
+        await loadConfig();
+      } else {
+        message.error(res.message || '删除失败');
+      }
+    } catch (error: any) {
+      message.error('删除失败: ' + (error.message || '未知错误'));
+      console.error('Delete module error:', error);
     }
   };
 
-  // 添加/编辑事件
+  // 添加/编辑事件 - 使用saveEvent API
   const handleSaveEvent = async () => {
     try {
       const values = await eventForm.validateFields();
-      const newApps = [...config.apps];
-      const system = newApps.find(app => app.id === editingEvent?.systemId);
+      setSaving(true);
 
-      if (system) {
-        const module = system.modules.find(m => m.id === editingEvent?.moduleId);
-        if (module) {
-          const eventList = editingEvent?.eventType === 'emittable'
-            ? (module.emittableEvents || [])
-            : (module.listenableEvents || []);
+      const eventType = editingEvent?.eventType === 'emittable'
+        ? 'emittableEvents'
+        : 'listenableEvents';
 
-          if (editingEvent?.event) {
-            // 编辑现有事件
-            const eventIndex = eventList.findIndex(e => e.type === editingEvent.event!.type);
-            if (eventIndex !== -1) {
-              eventList[eventIndex] = values;
-            }
-          } else {
-            // 添加新事件
-            eventList.push(values);
-          }
+      const res = await saveEvent({
+        id: editingEvent?.event?.type, // 使用event.type作为id（编辑时）
+        module_id: editingEvent?.moduleId || '',
+        event_type: eventType,
+        type: values.type,
+        name: values.name,
+        description: values.description,
+      });
 
-          if (editingEvent?.eventType === 'emittable') {
-            module.emittableEvents = eventList;
-          } else {
-            module.listenableEvents = eventList;
-          }
-        }
+      if (res.code === 20000) {
+        message.success(editingEvent?.event ? '事件已更新' : '事件已添加');
+        setEventModalOpen(false);
+        eventForm.resetFields();
+        setEditingEvent(undefined);
+        // 刷新列表
+        await loadConfig();
+      } else {
+        message.error(res.message || '保存失败');
       }
-
-      updateConfigState({ ...config, apps: newApps });
-      setEventModalOpen(false);
-      eventForm.resetFields();
-      setEditingEvent(undefined);
-      message.success(editingEvent?.event ? '事件已更新' : '事件已添加');
-    } catch (error) {
-      console.error('Validation failed:', error);
+    } catch (error: any) {
+      if (error.errorFields) {
+        return;
+      }
+      message.error('保存失败: ' + (error.message || '未知错误'));
+      console.error('Save event error:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 删除事件
-  const handleDeleteEvent = (
-    systemId: string,
-    moduleId: string,
-    eventType: 'emittable' | 'listenable',
-    eventTypeValue: string
-  ) => {
-    const newApps = [...config.apps];
-    const system = newApps.find(app => app.id === systemId);
-    if (system) {
-      const module = system.modules.find(m => m.id === moduleId);
-      if (module) {
-        if (eventType === 'emittable') {
-          module.emittableEvents = (module.emittableEvents || []).filter(e => e.type !== eventTypeValue);
-        } else {
-          module.listenableEvents = (module.listenableEvents || []).filter(e => e.type !== eventTypeValue);
-        }
-        updateConfigState({ ...config, apps: newApps });
+  // 删除事件 - 使用deleteMicroAppItem API
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const res = await deleteMicroAppItem({ id: eventId, type: 'event' });
+      if (res.code === 20000) {
         message.success('事件已删除');
+        // 刷新列表
+        await loadConfig();
+      } else {
+        message.error(res.message || '删除失败');
       }
+    } catch (error: any) {
+      message.error('删除失败: ' + (error.message || '未知错误'));
+      console.error('Delete event error:', error);
     }
   };
 
@@ -342,6 +351,7 @@ const MicroAppConfigPage: React.FC = () => {
           </Button>
           <Popconfirm
             title="确定删除此系统吗？"
+            description="删除后该系统下的所有模块和事件也将被删除"
             onConfirm={() => handleDeleteSystem(record.id)}
           >
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
@@ -393,7 +403,8 @@ const MicroAppConfigPage: React.FC = () => {
                   />
                   <Popconfirm
                     title="确定删除此模块吗？"
-                    onConfirm={() => handleDeleteModule(system.id, module.id)}
+                    description="删除后该模块下的所有事件也将被删除"
+                    onConfirm={() => handleDeleteModule(module.id)}
                   >
                     <Button type="link" size="small" danger icon={<DeleteOutlined />} />
                   </Popconfirm>
@@ -407,6 +418,9 @@ const MicroAppConfigPage: React.FC = () => {
               <p>
                 <strong>默认尺寸:</strong> {module.defaultSize?.w || 6} x {module.defaultSize?.h || 4}
               </p>
+              {module.forceIconOnly && (
+                <Tag color="purple">图标模式</Tag>
+              )}
 
               {/* 事件管理 */}
               <Tabs
@@ -439,7 +453,10 @@ const MicroAppConfigPage: React.FC = () => {
                           <Tag
                             key={event.type}
                             closable
-                            onClose={() => handleDeleteEvent(system.id, module.id, 'emittable', event.type)}
+                            onClose={(e) => {
+                              e.preventDefault();
+                              handleDeleteEvent(event.id);
+                            }}
                           >
                             {event.name} ({event.type})
                           </Tag>
@@ -474,7 +491,10 @@ const MicroAppConfigPage: React.FC = () => {
                           <Tag
                             key={event.type}
                             closable
-                            onClose={() => handleDeleteEvent(system.id, module.id, 'listenable', event.type)}
+                            onClose={(e) => {
+                              e.preventDefault();
+                              handleDeleteEvent(event.id);
+                            }}
                           >
                             {event.name} ({event.type})
                           </Tag>
@@ -503,12 +523,11 @@ const MicroAppConfigPage: React.FC = () => {
         extra={
           <Space>
             <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSaveToServer}
-              loading={saving}
+              icon={<ReloadOutlined />}
+              onClick={loadConfig}
+              loading={loading}
             >
-              保存
+              刷新
             </Button>
             <Upload beforeUpload={handleImport} showUploadList={false}>
               <Button icon={<UploadOutlined />}>导入配置</Button>
@@ -552,15 +571,17 @@ const MicroAppConfigPage: React.FC = () => {
           systemForm.resetFields();
           setEditingSystem(null);
         }}
+        confirmLoading={saving}
         width={600}
       >
         <Form form={systemForm} layout="vertical">
           <Form.Item
             name="id"
             label="系统ID"
-            rules={[{ required: true, message: '请输入系统ID' }]}
+            rules={[{ required: !editingSystem, message: '请输入系统ID' }]}
+            hidden={!!editingSystem}
           >
-            <Input placeholder="例如: system-finance" disabled={!!editingSystem} />
+            <Input placeholder="例如: system-finance" />
           </Form.Item>
           <Form.Item
             name="name"
@@ -572,14 +593,12 @@ const MicroAppConfigPage: React.FC = () => {
           <Form.Item
             name="description"
             label="描述"
-            rules={[{ required: true, message: '请输入描述' }]}
           >
             <Input.TextArea placeholder="系统描述信息" rows={3} />
           </Form.Item>
           <Form.Item
             name="icon"
             label="图标"
-            rules={[{ required: true, message: '请输入图标' }]}
           >
             <Input placeholder="例如: AccountBookOutlined" />
           </Form.Item>
@@ -603,15 +622,17 @@ const MicroAppConfigPage: React.FC = () => {
           moduleForm.resetFields();
           setEditingModule(undefined);
         }}
+        confirmLoading={saving}
         width={700}
       >
         <Form form={moduleForm} layout="vertical">
           <Form.Item
             name="id"
             label="模块ID"
-            rules={[{ required: true, message: '请输入模块ID' }]}
+            rules={[{ required: !editingModule?.module, message: '请输入模块ID' }]}
+            hidden={!!editingModule?.module}
           >
-            <Input placeholder="例如: finance-report" disabled={!!editingModule?.module} />
+            <Input placeholder="例如: finance-report" />
           </Form.Item>
           <Form.Item
             name="name"
@@ -623,7 +644,6 @@ const MicroAppConfigPage: React.FC = () => {
           <Form.Item
             name="description"
             label="描述"
-            rules={[{ required: true, message: '请输入描述' }]}
           >
             <Input.TextArea placeholder="模块描述信息" rows={2} />
           </Form.Item>
@@ -643,6 +663,22 @@ const MicroAppConfigPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="icon" label="图标URL">
             <Input placeholder="模块图标地址（可选）" />
+          </Form.Item>
+          <Form.Item
+            name="forceIconOnly"
+            label="强制图标显示"
+            valuePropName="checked"
+            tooltip="启用后，小部件将始终以图标形式展示"
+            initialValue={false}
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="iconSvg"
+            label="SVG 图标"
+            tooltip="可粘贴完整的 <svg>...</svg> 代码，优先于图标 URL"
+          >
+            <Input.TextArea rows={3} placeholder="<svg viewBox='0 0 24 24'>...</svg>" />
           </Form.Item>
           <Form.Item label="默认尺寸">
             <Space>
@@ -668,6 +704,7 @@ const MicroAppConfigPage: React.FC = () => {
           eventForm.resetFields();
           setEditingEvent(undefined);
         }}
+        confirmLoading={saving}
         width={600}
       >
         <Form form={eventForm} layout="vertical">
@@ -688,7 +725,6 @@ const MicroAppConfigPage: React.FC = () => {
           <Form.Item
             name="description"
             label="描述"
-            rules={[{ required: true, message: '请输入描述' }]}
           >
             <Input.TextArea placeholder="事件描述信息" rows={3} />
           </Form.Item>

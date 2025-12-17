@@ -47,6 +47,7 @@ export interface WidgetSizeInfo {
 export interface WidgetIconConfig {
   // Icon URL 或 React 组件 或 组件类型
   icon: string | React.ReactNode | React.ComponentType<any>;
+  iconSvg?: string;
 
   // 降级方案
   fallback?: 'letter' | 'default';

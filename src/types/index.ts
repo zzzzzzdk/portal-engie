@@ -30,6 +30,8 @@ export interface WidgetConfig {
   showTitle?: boolean; // 是否显示标题
   refreshInterval?: number; // in seconds
   apiEndpoint?: string;
+  forceIconOnly?: boolean;
+  iconSvg?: string;
   // 背景配置
   backgroundType?: 'color' | 'image' | 'gradient';
   backgroundColor?: string;
@@ -74,6 +76,7 @@ export interface UserInfo {
 }
 
 export interface DashboardConfig {
+  title?: string; // 仪表盘标题（编辑模式下使用）
   backgroundType: 'color' | 'image' | 'gradient';
   backgroundColor?: string;
   backgroundImage?: string;
@@ -110,6 +113,12 @@ export interface AppState {
   resetDashboard: () => void;
   saveDashboard: () => void;
   loadDashboard: () => void;
+  loadDashboardFromData: (data: {
+    widgets?: Widget[];
+    groups?: WidgetGroup[];
+    floatingModules?: Widget[];
+    dashboardConfig?: DashboardConfig;
+  }) => void;
   updateDashboardConfig: (config: Partial<DashboardConfig>) => void;
   // 悬浮模块方法
   addFloatingModuleMicroApp: (
@@ -158,6 +167,7 @@ export interface FormConfig extends WidgetConfig {
 
 // 微应用可发送的事件定义
 export interface EmittableEvent {
+  id: string;
   type: string;                  // 事件类型 (如 data:submit)
   name: string;                  // 事件名称
   description?: string;          // 事件描述
@@ -172,6 +182,8 @@ export interface MicroAppModule {
   entry: string;                 // 微应用入口地址
   icon?: string;                 // 图标
   defaultSize?: { w: number; h: number }; // 默认尺寸
+  forceIconOnly?: boolean;
+  iconSvg?: string;
 
   emittableEvents?: EmittableEvent[]; // 可发送的事件列表
   listenableEvents?: EmittableEvent[]; // 可监听的事件列表(接收方)

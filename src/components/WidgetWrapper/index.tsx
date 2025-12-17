@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Widget } from '@/types';
 import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';
@@ -28,7 +28,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     const isEditMode = isPreviewMode ? false : storeEditMode;
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({})
+    // const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({})
 
     const handleDelete = () => {
       confirm({
@@ -90,8 +90,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     // 在编辑模式下，即使隐藏标题也要显示拖拽条
     const shouldShowHeader = showTitle || isEditMode;
 
-
-    useEffect(() => {
+    const backgroundStyle = useCallback(() => {
       // 计算背景样式
       const newBackgroundStyle: React.CSSProperties = {};
       const {
@@ -109,7 +108,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       } else if (backgroundType === 'color' && backgroundColor) {
         newBackgroundStyle.backgroundColor = backgroundColor;
       }
-      setBackgroundStyle(newBackgroundStyle)
+      return newBackgroundStyle
     }, [widget.config])
 
     // 预览模式下不显示右键菜单

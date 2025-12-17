@@ -124,6 +124,13 @@
             var(--ant-color-primary-bg, rgba(24, 144, 255, 0.1)) 0%,
             var(--ant-color-primary-bg-hover, rgba(24, 144, 255, 0.05)) 100%);
         }
+
+        &--svg {
+          svg {
+            width: 100%;
+            height: 100%;
+          }
+        }
       }
 
       .ant-card-body {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Image } from 'antd';
+import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Image, Tag } from 'antd';
 import { AppstoreOutlined } from '@ant-design/icons';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import type { MicroAppSystem, MicroAppModule } from '@/types';
@@ -45,38 +45,46 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
   };
 
   const renderModuleCard = (system: MicroAppSystem, module: MicroAppModule) => {
+    const cover = module.iconSvg ? (
+      <div
+        className="module-thumbnail module-thumbnail--svg"
+        dangerouslySetInnerHTML={{ __html: module.iconSvg }}
+      />
+    ) : module.icon ? (
+      <div className="module-thumbnail">
+        <Image
+          src={module.icon}
+          alt={module.name}
+          preview={false}
+          fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='14' fill='%23999'%3E????%3C/text%3E%3C/svg%3E"
+        />
+      </div>
+    ) : (
+      <div className="module-thumbnail module-thumbnail--placeholder">
+        <AppstoreOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+      </div>
+    );
+
     return (
       <Card
         key={`${system.id}-${module.id}`}
         hoverable
         className="module-card"
         onClick={() => handleModuleClick(system.id, module.id, module)}
-        cover={
-          module.icon ? (
-            <div className="module-thumbnail">
-              <Image
-                src={module.icon}
-                alt={module.name}
-                preview={false}
-                fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='14' fill='%23999'%3E暂无图片%3C/text%3E%3C/svg%3E"
-              />
-            </div>
-          ) : (
-            <div className="module-thumbnail module-thumbnail--placeholder">
-              <AppstoreOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-            </div>
-          )
-        }
+        cover={cover}
       >
         <Card.Meta
           title={module.name}
           description={
             <div className="module-description">
-              <div className="module-desc-text">{module.description || '暂无描述'}</div>
+              <div className="module-desc-text">{module.description || '????'}</div>
               {module.defaultSize && (
                 <div className="module-size">
-                  推荐尺寸: {module.defaultSize.w} × {module.defaultSize.h}
+                  ????: {module.defaultSize.w} ? {module.defaultSize.h}
                 </div>
+              )}
+              {module.forceIconOnly && (
+                <Tag color="purple" style={{ marginTop: 8 }}>????</Tag>
               )}
             </div>
           }

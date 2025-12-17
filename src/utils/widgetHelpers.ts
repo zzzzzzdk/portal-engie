@@ -69,6 +69,14 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
 export const getWidgetIcon = async (widget: Widget): Promise<WidgetIconConfig | null> => {
   // 微应用类型：优先读取 widget 自身配置
   if (widget.type === 'microApp') {
+    if (widget.config.iconSvg) {
+      return {
+        icon: widget.config.icon || '',
+        iconSvg: widget.config.iconSvg,
+        fallback: 'letter',
+      };
+    }
+
     if (widget.config.icon) {
       return {
         icon: widget.config.icon,
@@ -82,6 +90,14 @@ export const getWidgetIcon = async (widget: Widget): Promise<WidgetIconConfig | 
           widget.config.systemId,
           widget.config.moduleId
         );
+
+        if (module?.iconSvg) {
+          return {
+            icon: module.icon || widget.title.charAt(0).toUpperCase(),
+            iconSvg: module.iconSvg,
+            fallback: 'letter'
+          };
+        }
 
         if (module?.icon) {
           return {

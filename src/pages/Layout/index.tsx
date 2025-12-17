@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp, Modal, Form, Input } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule } from '@/types';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useSearchParams } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
@@ -38,11 +38,15 @@ const Layout: React.FC = () => {
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
   const { message, modal } = AntdApp.useApp();
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [dashboardConfigOpen, setDashboardConfigOpen] = useState(false)
   const [microAppMarketOpen, setMicroAppMarketOpen] = useState(false)
+  const [publishModalOpen, setPublishModalOpen] = useState(false)
+  const [publishForm] = Form.useForm()
   const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
 
   const handleAddWidget = (key: string) => {
@@ -259,20 +263,32 @@ const Layout: React.FC = () => {
     }
   ];
 
-  const handlePublish = async () => {
+  const handlePublish = () => {
+    // 如果是编辑模式且有保存的标题，预填标题
+    if (editId && dashboardConfig?.title) {
+      publishForm.setFieldsValue({ title: dashboardConfig.title });
+    }
+    setPublishModalOpen(true);
+  };
+
+  const handlePublishSubmit = async () => {
     try {
+      const values = await publishForm.validateFields();
       const res = await publishDashboard({
-        id: '',
+        id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
+        title: values.title,
         widgets,
         groups,
         floatingModules,
         dashboardConfig,
       });
       console.log(res)
-      message.success('仪表盘发布成功');
+      message.success(editId ? '仪表盘更新成功' : '仪表盘发布成功');
+      setPublishModalOpen(false);
+      publishForm.resetFields();
     } catch (error) {
       console.log(error)
-      message.error('发布失败');
+      message.error(editId ? '更新失败' : '发布失败');
     }
   };
 
@@ -415,6 +431,10 @@ const Layout: React.FC = () => {
               发布
             </Button>
 
+            <Tooltip title="已发布列表">
+              <Button icon={<UnorderedListOutlined />} onClick={() => navigate('/publish-list')} />
+            </Tooltip>
+
             <Tooltip title="全屏模式">
               <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />
             </Tooltip>
@@ -451,6 +471,23 @@ const Layout: React.FC = () => {
         isOpen={dashboardConfigOpen}
         onClose={() => setDashboardConfigOpen(false)}
       />
+
+      <Modal
+        title="发布仪表盘"
+        open={publishModalOpen}
+        onOk={handlePublishSubmit}
+        onCancel={() => setPublishModalOpen(false)}
+      >
+        <Form form={publishForm} layout="vertical">
+          <Form.Item
+            name="title"
+            label="名称"
+            rules={[{ required: true, message: '请输入名称' }]}
+          >
+            <Input placeholder="请输入名称" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Content className="app-content">
         <Outlet />

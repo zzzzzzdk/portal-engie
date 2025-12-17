@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GridStack, GridStackOptions, GridStackWidget } from 'gridstack';
 import type { Layout } from 'react-grid-layout';
+import { useSearchParams } from 'react-router-dom';
+import { message } from 'antd';
 import {
   GridStackProvider,
   GridStackRenderProvider,
@@ -8,6 +10,7 @@ import {
   useGridStackContext,
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
+import { getPublishedDashboard } from '@/services/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
@@ -60,7 +63,7 @@ const DashboardInner: React.FC = () => {
   const allWidgetIdsRef = useRef<Set<string>>(new Set(widgets.map((w) => w.id))); // 追踪所有 widgets 以处理删除
   const groupIdsRef = useRef<Set<string>>(new Set(groups.map((group) => group.id)));
   const isApplyingStoreLayout = useRef(false);
-  const pendingSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSyncFrameRef = useRef<number | null>(null);
   const backgroundStyle = useMemo(() => {
     const style: React.CSSProperties = {
       '--grid-cell-width': `${gridVisualMetrics.cellWidth}px`,
@@ -90,16 +93,16 @@ const DashboardInner: React.FC = () => {
   }, [isEditMode, gridVisualMetrics, dashboardConfig]);
 
   const syncLayoutFromGrid = useCallback(() => {
-    if (pendingSyncTimeoutRef.current) {
+    if (pendingSyncFrameRef.current !== null) {
       return;
     }
 
-    // 🔧 延迟调用，确保 GridStack 的 DOM 更新完成（特别是 SubGrid）
-    pendingSyncTimeoutRef.current = setTimeout(() => {
+    // 🔧 延迟到下一帧，确保 GridStack 的 DOM 更新完成（特别是 SubGrid）
+    pendingSyncFrameRef.current = requestAnimationFrame(() => {
       const currentLayout = saveOptions();
 
       if (!currentLayout) {
-        pendingSyncTimeoutRef.current = null;
+        pendingSyncFrameRef.current = null;
         return;
       }
 
@@ -186,8 +189,8 @@ const DashboardInner: React.FC = () => {
         });
       }
 
-      pendingSyncTimeoutRef.current = null;
-    }, 50); // 50ms 延迟，确保 DOM 更新完成
+      pendingSyncFrameRef.current = null;
+    });
   }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap]);
 
   // 只监听用户拖拽和缩放事件，不监听 change（避免 addWidget 触发循环）
@@ -450,11 +453,15 @@ const DashboardInner: React.FC = () => {
  */
 
 const DashboardGridStack: React.FC = () => {
-  const { widgets, groups } = useStore();
+  const { widgets, groups, gridDensity, loadDashboardFromData, setEditMode } = useStore();
   const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('editId');
+  const [isLoadingEditData, setIsLoadingEditData] = useState(!!editId); // 有 editId 时初始为 loading
+  const [editDataLoaded, setEditDataLoaded] = useState(!editId); // 无 editId 时直接标记为已完成
 
   const buildGridOptions = useCallback((): GridStackOptions => {
-    const preset = GRID_DENSITY_PRESETS.standard;
+    const preset = GRID_DENSITY_PRESETS[gridDensity] ?? GRID_DENSITY_PRESETS.standard;
     const children = buildInitialChildren(widgets, groups, preset);
     return {
       column: preset.columnCount,
@@ -471,10 +478,12 @@ const DashboardGridStack: React.FC = () => {
       acceptWidgets: true,
       children,
     };
-  }, [widgets, groups]);
+  }, [widgets, groups, gridDensity]);
 
+  // 如果没有 editId，直接使用 localStorage 数据初始化
+  // 如果有 editId，等待 API 数据加载完成后再初始化
   const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(() => {
-    if (persistApi?.hasHydrated?.()) {
+    if (!editId && persistApi?.hasHydrated?.()) {
       return buildGridOptions();
     }
     return null;
@@ -501,12 +510,62 @@ const DashboardGridStack: React.FC = () => {
     return () => unsubscribe?.();
   }, [persistApi]);
 
+  // 处理编辑已发布的仪表盘 - 在设置 initialOptions 之前加载数据
   useEffect(() => {
-    if (!isHydrated || initialOptions) {
+    if (!editId || !isHydrated) {
+      return;
+    }
+
+    const loadEditData = async () => {
+      setIsLoadingEditData(true);
+      try {
+        const res = await getPublishedDashboard({ id: editId });
+        if (res.code === 20000 && res.data) {
+          // 加载数据到 store，将 title 合并到 dashboardConfig 中
+          loadDashboardFromData({
+            widgets: res.data.widgets,
+            groups: res.data.groups,
+            floatingModules: res.data.floatingModules,
+            dashboardConfig: {
+              backgroundType: 'color', // 默认值
+              ...res.data.dashboardConfig,
+              title: res.data.title, // 保存标题用于编辑后发布
+            },
+          });
+          setEditMode(true);
+          setEditDataLoaded(true); // 标记编辑数据已加载
+          message.success('已加载仪表盘数据');
+        } else {
+          message.error(res.message || '加载仪表盘数据失败');
+          setEditDataLoaded(true); // 即使失败也标记完成，避免卡住
+        }
+      } catch (error) {
+        console.error('加载仪表盘数据失败:', error);
+        message.error('加载仪表盘数据失败');
+        setEditDataLoaded(true);
+      } finally {
+        setIsLoadingEditData(false);
+      }
+    };
+
+    loadEditData();
+  }, [editId, isHydrated, loadDashboardFromData, setEditMode]);
+
+  // 设置 initialOptions：等待水合完成 + 编辑数据加载完成（如果有 editId）
+  useEffect(() => {
+    if (!isHydrated || !editDataLoaded || initialOptions) {
       return;
     }
     setInitialOptions(buildGridOptions());
-  }, [isHydrated, initialOptions, buildGridOptions]);
+  }, [isHydrated, editDataLoaded, initialOptions, buildGridOptions]);
+
+  if (isLoadingEditData) {
+    return (
+      <div className="dashboard-container dashboard-loading">
+        正在加载仪表盘数据...
+      </div>
+    );
+  }
 
   if (!initialOptions) {
     return (

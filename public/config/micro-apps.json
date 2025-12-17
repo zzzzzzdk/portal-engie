@@ -94,6 +94,43 @@
           ]
         }
       ]
+    },
+    {
+      "id": "qianyu",
+      "name": "乾宇系统",
+      "description": "乾宇相关",
+      "icon": "http://192.168.5.59:29088/seaie/api/passport ",
+      "category": "业务系统",
+      "modules": [
+        {
+          "id": "qianyu-chat",
+          "name": "model-chat",
+          "description": "乾宇大模型",
+          "url": "http://192.168.5.57:9998/chat/",
+          "entry": "http://192.168.5.57:9998/chat/",
+          "defaultSize": {
+            "w": 4,
+            "h": 8
+          },
+          "emittableEvents": [],
+          "listenableEvents": [],
+          "forceIconOnly": true
+        },
+        {
+          "id": "qianyu-chat-input",
+          "name": "Chatlnput",
+          "description": "门户对话框",
+          "url": "http://192.168.5.57:9998/ChatInput",
+          "entry": "http://192.168.5.57:9998/ChatInput",
+          "defaultSize": {
+            "w": 4,
+            "h": 8
+          },
+          "emittableEvents": [],
+          "listenableEvents": [],
+          "forceIconOnly": false
+        }
+      ]
     }
   ]
 }

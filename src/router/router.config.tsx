@@ -64,6 +64,14 @@ const routeConfig: RouteConfig[] = [
           title: '微应用配置 - Portal Engine',
         },
       },
+      {
+        path: 'publish-list',
+        element: () => import('@/pages/PublishList'),
+        meta: {
+          requiresAuth: false,
+          title: '已发布列表 - Portal Engine',
+        },
+      },
     ],
   },
   {
