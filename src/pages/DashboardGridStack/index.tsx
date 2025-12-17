@@ -521,12 +521,16 @@ const DashboardGridStack: React.FC = () => {
       try {
         const res = await getPublishedDashboard({ id: editId });
         if (res.code === 20000 && res.data) {
-          // 加载数据到 store
+          // 加载数据到 store，将 title 合并到 dashboardConfig 中
           loadDashboardFromData({
             widgets: res.data.widgets,
             groups: res.data.groups,
             floatingModules: res.data.floatingModules,
-            dashboardConfig: res.data.dashboardConfig,
+            dashboardConfig: {
+              backgroundType: 'color', // 默认值
+              ...res.data.dashboardConfig,
+              title: res.data.title, // 保存标题用于编辑后发布
+            },
           });
           setEditMode(true);
           setEditDataLoaded(true); // 标记编辑数据已加载

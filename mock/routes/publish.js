@@ -137,6 +137,7 @@ router.get('/v1/dashboard/publish', async (req, res) => {
   const mockDashboards = {
     canglan: {
       id: "canglan",
+      title: "沧澜仪表盘", // 仪表盘标题
       "widgets": [
           {
               "id": "adbdbc5d-d501-4ec1-9f0e-96541afa3aa1",
@@ -267,7 +268,7 @@ router.get('/v1/dashboard/publish', async (req, res) => {
     },
     pub_1: {
       id: 'pub_1',
-      name: '默认仪表盘',
+      title: '默认仪表盘',
       publishTime: '2025-12-01T10:00:00.000Z',
       widgets: [
         {
@@ -292,7 +293,7 @@ router.get('/v1/dashboard/publish', async (req, res) => {
     },
     pub_2: {
       id: 'pub_2',
-      name: '数据监控面板',
+      title: '数据监控面板',
       publishTime: '2025-12-05T14:30:00.000Z',
       widgets: [
         {

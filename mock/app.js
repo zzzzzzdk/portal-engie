@@ -10,6 +10,7 @@ var homeRouter = require("./routes/home");
 var systemSettingsRouter = require("./routes/system-settings");
 var publishRouter = require("./routes/publish");
 var uploadRouter = require("./routes/upload");
+var microAppRouter = require("./routes/micro-app");
 
 var baseApi = "/";
 var app = express();
@@ -84,6 +85,7 @@ app.use(baseApi, homeRouter);
 app.use(baseApi, systemSettingsRouter);
 app.use(baseApi, publishRouter);
 app.use(baseApi, uploadRouter);
+app.use(baseApi, microAppRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

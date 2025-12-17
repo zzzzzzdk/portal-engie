@@ -76,6 +76,7 @@ export interface UserInfo {
 }
 
 export interface DashboardConfig {
+  title?: string; // 仪表盘标题（编辑模式下使用）
   backgroundType: 'color' | 'image' | 'gradient';
   backgroundColor?: string;
   backgroundImage?: string;
@@ -166,6 +167,7 @@ export interface FormConfig extends WidgetConfig {
 
 // 微应用可发送的事件定义
 export interface EmittableEvent {
+  id: string;
   type: string;                  // 事件类型 (如 data:submit)
   name: string;                  // 事件名称
   description?: string;          // 事件描述

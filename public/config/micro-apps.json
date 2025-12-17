@@ -115,6 +115,20 @@
           "emittableEvents": [],
           "listenableEvents": [],
           "forceIconOnly": true
+        },
+        {
+          "id": "qianyu-chat-input",
+          "name": "Chatlnput",
+          "description": "门户对话框",
+          "url": "http://192.168.5.57:9998/ChatInput",
+          "entry": "http://192.168.5.57:9998/ChatInput",
+          "defaultSize": {
+            "w": 4,
+            "h": 8
+          },
+          "emittableEvents": [],
+          "listenableEvents": [],
+          "forceIconOnly": false
         }
       ]
     }

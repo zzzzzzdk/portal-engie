@@ -44,7 +44,7 @@ export interface PublishListResponse {
 // 发布的仪表盘详情
 export interface PublishedDashboard {
   id: string;
-  name: string;
+  title: string; // 仪表盘标题
   publishTime: string;
   widgets: Widget[];
   groups: WidgetGroup[];

@@ -3,6 +3,7 @@ import { Button, Select, Table, Switch, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { EventRouteConfig, MicroAppWidgetConfig, EmittableEvent } from '@/types';
 import { useStore } from '@/store/useStore';
+import { microAppConfigLoader } from '@/utils/microAppConfig';
 import './index.scss';
 
 interface EventRouteConfigComponentProps {
@@ -38,10 +39,9 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
   const [microAppMetadata, setMicroAppMetadata] = useState<any>(null);
   const [receiverListenableEvents, setReceiverListenableEvents] = useState<Map<string, EmittableEvent[]>>(new Map());
 
-  // 加载微应用配置元数据
+  // 加载微应用配置元数据 - 使用统一的 microAppConfigLoader
   useEffect(() => {
-    fetch('./config/micro-apps.json')
-      .then(res => res.json())
+    microAppConfigLoader.loadMetadata()
       .then(data => {
         setMicroAppMetadata(data);
       })

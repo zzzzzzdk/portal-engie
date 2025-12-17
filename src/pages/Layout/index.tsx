@@ -5,7 +5,7 @@ import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule } from '@/types';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useSearchParams } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
@@ -38,6 +38,8 @@ const Layout: React.FC = () => {
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
   const { message, modal } = AntdApp.useApp();
   const themeSystem = useTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
@@ -262,6 +264,10 @@ const Layout: React.FC = () => {
   ];
 
   const handlePublish = () => {
+    // 如果是编辑模式且有保存的标题，预填标题
+    if (editId && dashboardConfig?.title) {
+      publishForm.setFieldsValue({ title: dashboardConfig.title });
+    }
     setPublishModalOpen(true);
   };
 
@@ -269,7 +275,7 @@ const Layout: React.FC = () => {
     try {
       const values = await publishForm.validateFields();
       const res = await publishDashboard({
-        id: '',
+        id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
         title: values.title,
         widgets,
         groups,
@@ -277,12 +283,12 @@ const Layout: React.FC = () => {
         dashboardConfig,
       });
       console.log(res)
-      message.success('仪表盘发布成功');
+      message.success(editId ? '仪表盘更新成功' : '仪表盘发布成功');
       setPublishModalOpen(false);
       publishForm.resetFields();
     } catch (error) {
       console.log(error)
-      message.error('发布失败');
+      message.error(editId ? '更新失败' : '发布失败');
     }
   };
 

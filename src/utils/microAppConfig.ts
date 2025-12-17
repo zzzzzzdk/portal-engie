@@ -1,4 +1,5 @@
 import type { MicroAppMetadata, MicroAppSystem, MicroAppModule } from '@/types';
+import { getMicroAppList } from '@/services/microApp';
 
 export interface MicroAppConfigChangeDetail {
   systemId: string;
@@ -11,7 +12,7 @@ export const MICRO_APP_CONFIG_CHANGED_EVENT = 'micro-app-config:changed';
 
 /**
  * 微应用配置加载器
- * 负责从配置文件加载微应用元数据
+ * 负责从API接口加载微应用元数据
  */
 class MicroAppConfigLoader {
   private metadata: MicroAppMetadata | null = null;
@@ -33,12 +34,12 @@ class MicroAppConfigLoader {
 
     this.loading = true;
     try {
-      const response = await fetch('./config/micro-apps.json');
-      if (!response.ok) {
-        throw new Error('Failed to load micro-app metadata');
+      const res = await getMicroAppList();
+      if (res.code === 20000 && res.data) {
+        this.metadata = res.data;
+        return this.metadata;
       }
-      this.metadata = await response.json();
-      return this.metadata!;
+      throw new Error(res.message || 'Failed to load micro-app metadata');
     } catch (error) {
       console.error('Failed to load micro-app config:', error);
       // 返回空配置
