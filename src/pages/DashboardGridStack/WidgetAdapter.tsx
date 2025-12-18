@@ -21,7 +21,7 @@ import SearchWidget from '@/components/widgets/SearchWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
-import GroupTitleWidget from '@/components/widgets/GroupTitleWidget';
+import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget';
@@ -110,8 +110,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <CardGridWidget {...commonProps} />;
       case 'customForm':
         return <CustomFormWidget {...commonProps} />;
-      case 'groupTitle':
-        return <GroupTitleWidget {...commonProps} />;
+      case 'headerBar':
+        return <HeaderBarWidget {...commonProps} />;
       case 'typography':
         return <TypographyWidget {...commonProps} />;
       case 'microApp':

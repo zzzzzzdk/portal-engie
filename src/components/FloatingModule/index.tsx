@@ -428,7 +428,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                                   <Button onClick={handleDelete} className="action-btn delete-btn" danger><DeleteOutlined /></Button>
                                 ) : (
                                   config.closable !== false && (
-                                    <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
+                                    // <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
+                                    ""
                                   )
                                 )}
                               </div>

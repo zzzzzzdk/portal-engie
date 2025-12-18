@@ -18,14 +18,16 @@ router.get('/v1/micro_apps/list', async (req, res) => {
     version: '1.0.0',
     apps: [
       {
-        id: 'system-fusion',
+        id: 'db_001',
+        systemId: 'system-fusion',
         name: '表单组件',
         description: '提交融合数据到其他系统',
         icon: 'UserOutlined',
         category: '融合',
         modules: [
           {
-            id: 'input-only',
+            id: 'db_mod_001',
+            moduleId: 'input-only',
             name: '表单',
             description: '输入框',
             url: 'http://localhost:8083/#/input-only',
@@ -34,6 +36,7 @@ router.get('/v1/micro_apps/list', async (req, res) => {
             defaultSize: { w: 6, h: 4 },
             emittableEvents: [
               {
+                id: 'db_evt_001',
                 type: 'data:submit:input-only',
                 name: '数据提交',
                 description: '提交融合数据到其他系统'
@@ -43,14 +46,16 @@ router.get('/v1/micro_apps/list', async (req, res) => {
         ]
       },
       {
-        id: 'system-finance',
+        id: 'db_002',
+        systemId: 'system-finance',
         name: '接收方',
         description: '接受数据进行操作',
         icon: 'AccountBookOutlined',
         category: '结果',
         modules: [
           {
-            id: 'table-only',
+            id: 'db_mod_002',
+            moduleId: 'table-only',
             name: '结果页',
             description: '结果页',
             url: 'http://192.168.13.31:8083/#/table-only',
@@ -59,6 +64,7 @@ router.get('/v1/micro_apps/list', async (req, res) => {
             defaultSize: { w: 6, h: 6 },
             listenableEvents: [
               {
+                id: 'db_evt_002',
                 type: 'data:submit:table-only',
                 name: '数据提交',
                 description: '接收数据提交事件'
@@ -78,7 +84,8 @@ router.get('/v1/micro_apps/list', async (req, res) => {
  * @apiName saveApp
  * @apiGroup MicroApp
  *
- * @apiParam {String} [id] 应用ID（编辑时必填）
+ * @apiParam {String} [id] 数据库ID（编辑时必填）
+ * @apiParam {String} systemId 系统标识符（用户输入）
  * @apiParam {String} name 应用名称
  * @apiParam {String} [description] 应用描述
  * @apiParam {String} [icon] 应用图标
@@ -90,7 +97,15 @@ router.get('/v1/micro_apps/list', async (req, res) => {
 router.post('/v1/micro_apps/app-save', async (req, res) => {
   await req.sleep(0.3);
 
-  const { id, name, description, icon, category } = req.body;
+  const { id, systemId, name, description, icon, category } = req.body;
+
+  if (!systemId) {
+    req.json.code = 1;
+    req.json.message = '系统ID不能为空';
+    req.json.data = { success: false };
+    res.json(req.json);
+    return;
+  }
 
   if (!name) {
     req.json.code = 1;
@@ -109,13 +124,14 @@ router.post('/v1/micro_apps/app-save', async (req, res) => {
   }
 
   const newId = id || `app_${Date.now()}`;
-  console.log('[Mock] App saved:', { id: newId, name, category });
+  console.log('[Mock] App saved:', { id: newId, systemId, name, category });
 
   req.json.code = 20000;
   req.json.message = id ? '编辑成功' : '新增成功';
   req.json.data = {
     success: true,
-    id: newId
+    id: newId,
+    systemId: systemId
   };
 
   res.json(req.json);
@@ -126,8 +142,9 @@ router.post('/v1/micro_apps/app-save', async (req, res) => {
  * @apiName saveModule
  * @apiGroup MicroApp
  *
- * @apiParam {String} [id] 模块ID（编辑时必填）
- * @apiParam {String} app_id 所属应用ID
+ * @apiParam {String} [id] 数据库ID（编辑时必填）
+ * @apiParam {String} moduleId 模块标识符（用户输入）
+ * @apiParam {String} systemId 所属系统ID
  * @apiParam {String} name 模块名称
  * @apiParam {String} [description] 模块描述
  * @apiParam {String} url 模块URL
@@ -143,11 +160,19 @@ router.post('/v1/micro_apps/app-save', async (req, res) => {
 router.post('/v1/micro_apps/module-save', async (req, res) => {
   await req.sleep(0.3);
 
-  const { id, app_id, name, url, entry } = req.body;
+  const { id, moduleId, systemId, name, url, entry } = req.body;
 
-  if (!app_id) {
+  if (!moduleId) {
     req.json.code = 1;
-    req.json.message = '所属应用不能为空';
+    req.json.message = '模块ID不能为空';
+    req.json.data = { success: false };
+    res.json(req.json);
+    return;
+  }
+
+  if (!systemId) {
+    req.json.code = 1;
+    req.json.message = '所属系统不能为空';
     req.json.data = { success: false };
     res.json(req.json);
     return;
@@ -170,13 +195,14 @@ router.post('/v1/micro_apps/module-save', async (req, res) => {
   }
 
   const newId = id || `module_${Date.now()}`;
-  console.log('[Mock] Module saved:', { id: newId, app_id, name });
+  console.log('[Mock] Module saved:', { id: newId, moduleId, systemId, name });
 
   req.json.code = 20000;
   req.json.message = id ? '编辑成功' : '新增成功';
   req.json.data = {
     success: true,
-    id: newId
+    id: newId,
+    moduleId: moduleId
   };
 
   res.json(req.json);
@@ -187,8 +213,8 @@ router.post('/v1/micro_apps/module-save', async (req, res) => {
  * @apiName saveEvent
  * @apiGroup MicroApp
  *
- * @apiParam {String} [id] 事件ID（编辑时必填）
- * @apiParam {String} module_id 所属模块ID
+ * @apiParam {String} [id] 数据库ID（编辑时必填）
+ * @apiParam {String} moduleId 所属模块ID
  * @apiParam {String} event_type 事件类型（emittableEvents/listenableEvents）
  * @apiParam {String} type 事件标识
  * @apiParam {String} name 事件名称
@@ -200,9 +226,9 @@ router.post('/v1/micro_apps/module-save', async (req, res) => {
 router.post('/v1/micro_apps/event-save', async (req, res) => {
   await req.sleep(0.3);
 
-  const { id, module_id, event_type, type, name } = req.body;
+  const { id, moduleId, event_type, type, name } = req.body;
 
-  if (!module_id) {
+  if (!moduleId) {
     req.json.code = 1;
     req.json.message = '所属模块不能为空';
     req.json.data = { success: false };
@@ -227,7 +253,7 @@ router.post('/v1/micro_apps/event-save', async (req, res) => {
   }
 
   const newId = id || `event_${Date.now()}`;
-  console.log('[Mock] Event saved:', { id: newId, module_id, event_type, type, name });
+  console.log('[Mock] Event saved:', { id: newId, moduleId, event_type, type, name });
 
   req.json.code = 20000;
   req.json.message = id ? '编辑成功' : '新增成功';

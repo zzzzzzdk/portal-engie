@@ -19,7 +19,7 @@ export type WidgetType =
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
-  | 'groupTitle'       // 分组标题
+  | 'headerBar'        // 头部栏组件
   | 'typography'       // 文本/标题组件
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule'   // 悬浮模块
@@ -175,7 +175,8 @@ export interface EmittableEvent {
 
 // 微应用模块配置
 export interface MicroAppModule {
-  id: string;                    // 模块唯一标识
+  id: string;                    // 数据库ID（由接口返回）
+  moduleId?: string;             // 模块标识符（用户输入）
   name: string;                  // 模块名称
   description?: string;          // 模块描述
   url: string;                   // 模块访问路径
@@ -191,7 +192,8 @@ export interface MicroAppModule {
 
 // 微应用系统配置
 export interface MicroAppSystem {
-  id: string;                    // 系统唯一标识
+  id: string;                    // 数据库ID（由接口返回）
+  systemId?: string;             // 系统标识符（用户输入）
   name: string;                  // 系统名称
   description?: string;          // 系统描述
   icon?: string;                 // 系统图标
@@ -396,6 +398,7 @@ export type LocalComponentType =
   | 'help'           // 帮助文档
   | 'calendar'       // 日历
   | 'notes'          // 笔记
+  | 'assistantHub'   // 助手中心
   | 'custom';        // 自定义组件
 
 /**

@@ -9,11 +9,11 @@ import './index.scss';
 
 const { Text } = Typography;
 
-interface GroupTitleWidgetProps {
+interface HeaderBarWidgetProps {
   config?: WidgetConfig;
 }
 
-const GroupTitleWidget: React.FC<GroupTitleWidgetProps> = ({ config }) => {
+const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
   const { userInfo, logout } = useStore();
   const { token } = theme.useToken();
 
@@ -33,16 +33,33 @@ const GroupTitleWidget: React.FC<GroupTitleWidgetProps> = ({ config }) => {
   };
 
   const backgroundStyle = useMemo(() => {
-    if (config?.backgroundImage) {
+    const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = config || {};
+
+    if (backgroundType === 'image' && backgroundImage) {
       return {
-        backgroundImage: `url(${config.backgroundImage})`,
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      };
+    }
+    if (backgroundType === 'gradient' && backgroundGradient) {
+      return { background: backgroundGradient };
+    }
+    if (backgroundType === 'color' && backgroundColor) {
+      return { backgroundColor };
+    }
+    // 兼容旧数据：直接使用 backgroundImage
+    if (backgroundImage) {
+      return {
+        backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       };
     }
     return { background: 'transparent' };
-  }, [config?.backgroundImage]);
+  }, [config]);
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
     if (e.key === 'logout') {
@@ -82,20 +99,21 @@ const GroupTitleWidget: React.FC<GroupTitleWidgetProps> = ({ config }) => {
 
   return (
     <div
-      className={`group-title-widget ${alignment === 'center' ? 'align-center' : ''}`}
+      className={`header-bar-widget ${alignment === 'center' ? 'align-center' : ''}`}
       style={{
         ...backgroundStyle,
       }}
     >
-      <div className="group-title-content">
+      <div className="header-bar-content">
         {/* Title Section */}
         <div className="title-section">
           {renderIcon()}
-          <Typography.Title 
-            level={4} 
-            style={{ 
-              margin: 0, 
-              color: config?.textColor
+          <Typography.Title
+            level={4}
+            style={{
+              margin: 0,
+              color: config?.textColor,
+              fontFamily: config?.fontFamily || 'YouSheBiaoTiHei',
             }}
           >
             {config?.headerTitle || ''}
@@ -107,10 +125,10 @@ const GroupTitleWidget: React.FC<GroupTitleWidgetProps> = ({ config }) => {
           <div className="user-profile-section">
             <Dropdown menu={userMenuProps} trigger={['click']}>
               <div className="user-profile-trigger" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar 
-                  size="small" 
-                  icon={<UserOutlined />} 
-                  src={userInfo?.avatar} 
+                <Avatar
+                  size="small"
+                  icon={<UserOutlined />}
+                  src={userInfo?.avatar}
                   style={{ backgroundColor: token.colorPrimary }}
                 />
                 <Space size={4}>
@@ -126,4 +144,4 @@ const GroupTitleWidget: React.FC<GroupTitleWidgetProps> = ({ config }) => {
   );
 };
 
-export default GroupTitleWidget;
+export default HeaderBarWidget;

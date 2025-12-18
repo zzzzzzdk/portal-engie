@@ -18,7 +18,7 @@ import { getToken, removeToken } from '@/utils/cookie';
 
 const DEFAULT_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_GROUP_LAYOUT = { w: 6, h: 4, x: 0, y: Infinity, minW: 2, minH: 2 };
-const DEFAULT_TITLE_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
@@ -53,8 +53,17 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
       return { ...baseConfig, title: 'Chart' };
-    case 'groupTitle':
-      return { ...baseConfig, title: '分组标题', showTitle: false };
+    case 'headerBar':
+      return {
+        ...baseConfig,
+        title: '头部栏',
+        showTitle: false,
+        headerTitle: '头部栏',  // 默认显示标题文字
+        textColor: '#ffffff',  // 白色文字
+        fontFamily: 'YouSheBiaoTiHei',  // 默认字体
+        backgroundType: 'gradient',
+        backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',  // 默认渐变背景
+      };
     case 'typography':
       return { ...baseConfig, title: '文本组件', content: '这是一段文本', showTitle: false };
     case 'microApp':
@@ -140,8 +149,8 @@ export const useStore = create<AppState>()(
         const id = uuidv4();
         // 使用特定的布局配置
         let layoutConfig = DEFAULT_LAYOUT;
-        if (type === 'groupTitle') {
-          layoutConfig = DEFAULT_TITLE_LAYOUT;
+        if (type === 'headerBar') {
+          layoutConfig = DEFAULT_HEADER_BAR_LAYOUT;
         } else if (type === 'pageNavigator') {
           layoutConfig = DEFAULT_NAVIGATOR_LAYOUT;
         }

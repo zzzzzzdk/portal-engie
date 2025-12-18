@@ -158,7 +158,8 @@ const MicroAppConfigPage: React.FC = () => {
       const values = await systemForm.validateFields();
       setSaving(true);
       const res = await saveApp({
-        id: editingSystem?.id || values.id,
+        id: editingSystem?.id, // 数据库ID（编辑时携带）
+        systemId: editingSystem ? editingSystem.systemId || editingSystem.id : values.systemId, // 编辑时优先用systemId，没有则用id；新增时用用户输入
         name: values.name,
         description: values.description,
         icon: values.icon,
@@ -211,9 +212,11 @@ const MicroAppConfigPage: React.FC = () => {
       const values = await moduleForm.validateFields();
       setSaving(true);
 
+      const module = editingModule?.module;
       const res = await saveModule({
-        id: editingModule?.module?.id || values.id,
-        app_id: editingModule?.systemId || '',
+        id: module?.id, // 数据库ID（编辑时携带）
+        moduleId: module ? module.moduleId || module.id : values.moduleId, // 编辑时优先用moduleId，没有则用id；新增时用用户输入
+        systemId: editingModule?.systemId || '', // 所属系统ID
         name: values.name,
         description: values.description,
         url: values.url,
@@ -273,8 +276,8 @@ const MicroAppConfigPage: React.FC = () => {
         : 'listenableEvents';
 
       const res = await saveEvent({
-        id: editingEvent?.event?.type, // 使用event.type作为id（编辑时）
-        module_id: editingEvent?.moduleId || '',
+        id: editingEvent?.event?.id, // 数据库ID（编辑时携带）
+        moduleId: editingEvent?.moduleId || '', // 所属模块ID
         event_type: eventType,
         type: values.type,
         name: values.name,
@@ -321,7 +324,12 @@ const MicroAppConfigPage: React.FC = () => {
 
   // 系统表格列
   const systemColumns: ColumnsType<MicroAppSystem> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 150 },
+    {
+      title: '系统ID',
+      key: 'systemId',
+      width: 150,
+      render: (_text, record) => record.systemId || record.id,
+    },
     { title: '名称', dataIndex: 'name', key: 'name' },
     { title: '描述', dataIndex: 'description', key: 'description' },
     { title: '图标', dataIndex: 'icon', key: 'icon' },
@@ -411,7 +419,7 @@ const MicroAppConfigPage: React.FC = () => {
                 </Space>
               }
             >
-              <p><strong>ID:</strong> {module.id}</p>
+              <p><strong>模块ID:</strong> {module.moduleId || module.id}</p>
               <p><strong>描述:</strong> {module.description}</p>
               <p><strong>URL:</strong> {module.url}</p>
               <p><strong>Entry:</strong> {module.entry}</p>
@@ -576,7 +584,7 @@ const MicroAppConfigPage: React.FC = () => {
       >
         <Form form={systemForm} layout="vertical">
           <Form.Item
-            name="id"
+            name="systemId"
             label="系统ID"
             rules={[{ required: !editingSystem, message: '请输入系统ID' }]}
             hidden={!!editingSystem}
@@ -627,7 +635,7 @@ const MicroAppConfigPage: React.FC = () => {
       >
         <Form form={moduleForm} layout="vertical">
           <Form.Item
-            name="id"
+            name="moduleId"
             label="模块ID"
             rules={[{ required: !editingModule?.module, message: '请输入模块ID' }]}
             hidden={!!editingModule?.module}

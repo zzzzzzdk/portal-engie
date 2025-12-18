@@ -233,6 +233,9 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       <Form.Item name="backgroundType" hidden>
         <Input />
       </Form.Item>
+      <Form.Item name="backgroundImage" hidden>
+        <Input />
+      </Form.Item>
       <Tabs
         activeKey={activeTab}
         onChange={handleTabChange}

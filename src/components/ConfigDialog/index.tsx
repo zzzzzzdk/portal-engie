@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { Widget, MicroAppModule } from '@/types';
+import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
@@ -10,6 +10,7 @@ import FormFieldBuilder from '../FormFieldBuilder';
 import MicroAppSelector from '../MicroAppSelector';
 import EventRouteConfig from '../EventRouteConfig';
 import BackgroundSettings from '@/components/BackgroundSettings';
+import AssistantHubConfig from '@/components/AssistantHubConfig';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -28,6 +29,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
   // 判断是否为悬浮模块
   const isFloatingModule = floatingModules.some(m => m.id === widget.id);
+
+  // 判断是否为助手中心
+  const floatingModuleConfig = widget.config as FloatingModuleConfig;
+  const isAssistantHub = isFloatingModule &&
+    floatingModuleConfig.contentType === 'localComponent' &&
+    floatingModuleConfig.localComponent?.componentType === 'assistantHub';
 
   const updateIconPreview = useCallback((value?: string) => {
     if (value && (value.startsWith('http') || value.startsWith('data:'))) {
@@ -151,6 +158,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           collapsedWidth: widget.config.collapsedWidth || 60,
           collapsedHeight: widget.config.collapsedHeight || 60,
         });
+
+        // 助手中心特有配置
+        const fmConfig = widget.config as FloatingModuleConfig;
+        if (fmConfig.contentType === 'localComponent' &&
+            fmConfig.localComponent?.componentType === 'assistantHub') {
+          form.setFieldsValue({
+            systems: fmConfig.localComponent.componentProps?.systems || [],
+          });
+        }
       }
     }
   }, [isOpen, widget, form, isFloatingModule, updateIconPreview]);
@@ -190,6 +206,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             icon,
             iconSvg,
             forceIconOnly,
+            // 助手中心特定字段
+            systems,
             ...restConfig
           } = values;
           const normalizedForceIcon = !!forceIconOnly;
@@ -250,6 +268,16 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           });
         } else {
           // 本地组件类型的悬浮模块
+          const fmConfig = widget.config as FloatingModuleConfig;
+          const updatedLocalComponent = fmConfig.localComponent ? {
+            ...fmConfig.localComponent,
+            componentProps: {
+              ...fmConfig.localComponent.componentProps,
+              // 如果是助手中心，保存 systems 配置
+              ...(systems ? { systems } : {}),
+            },
+          } : undefined;
+
           updateFloatingModuleConfig(widget.id, {
             ...widget.config,
             showTitle,
@@ -272,6 +300,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             // 折叠状态尺寸
             collapsedWidth,
             collapsedHeight,
+            // 本地组件配置
+            localComponent: updatedLocalComponent,
             ...restConfig,
           });
         }
@@ -487,8 +517,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           </>
         )}
 
-        {/* 分组标题特定配置 */}
-        {widget.type === 'groupTitle' && (
+        {/* 头部栏特定配置 */}
+        {widget.type === 'headerBar' && (
           <>
             <Form.Item
               name="headerTitle"
@@ -520,6 +550,35 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               tooltip="输入 Ant Design 图标名称 (如: FolderOpenOutlined) 或iconfont自定义图标名称 (如: icon-home中的home)"
             >
               <Input placeholder="FolderOpenOutlined 或 home" />
+            </Form.Item>
+            <Form.Item
+              name="textColor"
+              label="文字颜色"
+              tooltip="设置标题和用户名等文字的颜色"
+            >
+              <Input type="color" style={{ width: 60, padding: 4 }} />
+            </Form.Item>
+            <Form.Item
+              name="fontFamily"
+              label="字体"
+              tooltip="设置标题字体，需确保系统已安装该字体"
+            >
+              <Select
+                showSearch
+                allowClear
+                placeholder="选择或输入字体名称"
+                options={[
+                  { value: 'YouSheBiaoTiHei', label: 'YouSheBiaoTiHei (优设标题黑)' },
+                  { value: 'Microsoft YaHei', label: 'Microsoft YaHei (微软雅黑)' },
+                  { value: 'SimHei', label: 'SimHei (黑体)' },
+                  { value: 'SimSun', label: 'SimSun (宋体)' },
+                  { value: 'KaiTi', label: 'KaiTi (楷体)' },
+                  { value: 'FangSong', label: 'FangSong (仿宋)' },
+                  { value: 'Arial', label: 'Arial' },
+                  { value: 'Helvetica', label: 'Helvetica' },
+                  { value: 'sans-serif', label: 'sans-serif (无衬线)' },
+                ]}
+              />
             </Form.Item>
             <Form.Item
               name="backgroundImage"
@@ -777,6 +836,20 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 currentSystemId={widget.config.systemId}
                 currentModuleId={widget.config.moduleId}
               />
+            </Form.Item>
+          </>
+        )}
+
+        {/* 助手中心特定配置 */}
+        {isAssistantHub && (
+          <>
+            <Divider>助手中心配置</Divider>
+            <Form.Item
+              name="systems"
+              label="系统配置"
+              tooltip="配置系统列表和入口，每个入口关联一个微应用"
+            >
+              <AssistantHubConfig />
             </Form.Item>
           </>
         )}

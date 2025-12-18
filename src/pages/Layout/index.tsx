@@ -131,6 +131,29 @@ const Layout: React.FC = () => {
       return;
     }
 
+    // 助手中心悬浮模块
+    if (key === 'floating-assistantHub') {
+      addFloatingModuleLocal(
+        'assistantHub',
+        '助手中心',
+        {
+          systems: [
+            
+          ],
+          collapsedIcon: 'CustomerServiceOutlined',
+        },
+        {
+          defaultPosition: 'bottom-right',
+          width: 720,
+          height: 500,
+          collapsedWidth: 60,
+          collapsedHeight: 60,
+        }
+      );
+      message.success('已添加助手中心悬浮模块');
+      return;
+    }
+
     addWidget(key as WidgetType);
     const widgetNames: Record<string, string> = {
       clock: '时钟',
@@ -143,7 +166,7 @@ const Layout: React.FC = () => {
       dataTable: '数据表格',
       cardGrid: '卡片网格',
       customForm: '自定义表单',
-      groupTitle: '分组标题',
+      headerBar: '头部栏',
       pageNavigator: '页面切换工具',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
@@ -194,7 +217,7 @@ const Layout: React.FC = () => {
       label: '分组组件',
       children: [
         { label: '新建分组', key: 'create-group', icon: <GroupOutlined /> },
-        { label: '分组标题', key: 'groupTitle', icon: <FolderOutlined /> },
+        { label: '头部栏', key: 'headerBar', icon: <FolderOutlined /> },
       ]
     },
     {
@@ -252,6 +275,11 @@ const Layout: React.FC = () => {
         {
           label: '微应用（悬浮）',
           key: 'floating-microApp',
+          icon: <RobotOutlined />
+        },
+        {
+          label: '助手中心',
+          key: 'floating-assistantHub',
           icon: <RobotOutlined />
         },
         // {

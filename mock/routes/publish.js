@@ -163,8 +163,8 @@ router.get('/v1/dashboard/publish', async (req, res) => {
           },
           {
               "id": "eb7aca40-e1fe-47e7-bc4e-c1c3624b1981",
-              "type": "groupTitle",
-              "title": "分组标题",
+              "type": "headerBar",
+              "title": "头部栏",
               "layout": {
                   "w": 24,
                   "h": 3,

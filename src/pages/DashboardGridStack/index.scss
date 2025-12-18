@@ -8,7 +8,7 @@
 
   width: 100%;
   min-height: 100vh;
-  background: var(--ant-color-layout);
+  background-color: var(--ant-color-layout);
   overflow: auto;
   // padding: 20px;
   position: relative;
@@ -86,7 +86,7 @@
 // GridStack 容器
 .grid-stack {
   min-height: 80vh;
-  background: transparent;
+  background-color: transparent;
 }
 
 // GridStack 默认样式已通过 import 'gridstack/dist/gridstack.min.css' 引入
