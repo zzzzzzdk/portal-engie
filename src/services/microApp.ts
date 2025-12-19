@@ -8,7 +8,8 @@ import type { MicroAppMetadata } from '@/types';
 
 // 应用保存参数
 export interface AppSaveParams {
-  id?: string;
+  id?: string;       // 数据库ID（编辑时必填，由接口返回）
+  systemId: string;  // 用户输入的系统标识符
   name: string;
   description?: string;
   icon?: string;
@@ -17,8 +18,9 @@ export interface AppSaveParams {
 
 // 模块保存参数
 export interface ModuleSaveParams {
-  id?: string;
-  app_id: string;
+  id?: string;       // 数据库ID（编辑时必填，由接口返回）
+  moduleId: string;  // 用户输入的模块标识符
+  systemId: string;  // 所属系统标识符
   name: string;
   description?: string;
   url: string;
@@ -31,8 +33,8 @@ export interface ModuleSaveParams {
 
 // 事件保存参数
 export interface EventSaveParams {
-  id?: string;
-  module_id: string;
+  id?: string;       // 数据库ID（编辑时必填，由接口返回）
+  moduleId: string;  // 所属模块标识符
   event_type: 'emittableEvents' | 'listenableEvents';
   type: string;
   name: string;
@@ -41,7 +43,7 @@ export interface EventSaveParams {
 
 // 删除参数
 export interface DeleteParams {
-  id: string;
+  id: string;        // 数据库ID
   type: 'app' | 'module' | 'event';
 }
 

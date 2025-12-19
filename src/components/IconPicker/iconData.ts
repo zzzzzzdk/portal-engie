@@ -1,0 +1,279 @@
+/**
+ * 图标数据定义
+ * 包含 Ant Design 常用图标和自定义 Iconfont 图标
+ */
+
+import {
+  // Outlined 图标（约50个常用）
+  HomeOutlined,
+  SettingOutlined,
+  UserOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  CloseOutlined,
+  CheckOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  AppstoreOutlined,
+  MenuOutlined,
+  BellOutlined,
+  MailOutlined,
+  MessageOutlined,
+  QuestionOutlined,
+  InfoCircleOutlined,
+  ExclamationCircleOutlined,
+  ClockCircleOutlined,
+  CalendarOutlined,
+  FileOutlined,
+  FolderOutlined,
+  FolderOpenOutlined,
+  PictureOutlined,
+  LinkOutlined,
+  ShareAltOutlined,
+  CloudOutlined,
+  DatabaseOutlined,
+  ApiOutlined,
+  CodeOutlined,
+  BugOutlined,
+  ToolOutlined,
+  DesktopOutlined,
+  MobileOutlined,
+  GlobalOutlined,
+  TeamOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  HeartOutlined,
+  StarOutlined,
+  LikeOutlined,
+  CommentOutlined,
+  BarChartOutlined,
+  LineChartOutlined,
+  PieChartOutlined,
+  DashboardOutlined,
+  ShoppingCartOutlined,
+  WalletOutlined,
+  // Filled 图标（约30个常用）
+  HomeFilled,
+  SettingFilled,
+  StarFilled,
+  HeartFilled,
+  AppstoreFilled,
+  BellFilled,
+  CheckCircleFilled,
+  CloseCircleFilled,
+  InfoCircleFilled,
+  ExclamationCircleFilled,
+  PlusCircleFilled,
+  MinusCircleFilled,
+  CaretUpFilled,
+  CaretDownFilled,
+  CaretLeftFilled,
+  CaretRightFilled,
+  PlayCircleFilled,
+  PauseCircleFilled,
+  StopFilled,
+  FireFilled,
+  ThunderboltFilled,
+  CrownFilled,
+  GiftFilled,
+  TrophyFilled,
+  SafetyCertificateFilled,
+  SecurityScanFilled,
+  InsuranceFilled,
+  AccountBookFilled,
+  FundFilled,
+  GoldFilled,
+} from '@ant-design/icons';
+
+import type { IconItem } from './types';
+
+/**
+ * Ant Design Outlined 图标列表
+ */
+export const ANTD_OUTLINED_ICONS: IconItem[] = [
+  { name: 'HomeOutlined', component: HomeOutlined, type: 'antd-outlined', keywords: ['home', '首页', '主页'] },
+  { name: 'SettingOutlined', component: SettingOutlined, type: 'antd-outlined', keywords: ['setting', '设置', '配置'] },
+  { name: 'UserOutlined', component: UserOutlined, type: 'antd-outlined', keywords: ['user', '用户', '个人'] },
+  { name: 'SearchOutlined', component: SearchOutlined, type: 'antd-outlined', keywords: ['search', '搜索', '查找'] },
+  { name: 'PlusOutlined', component: PlusOutlined, type: 'antd-outlined', keywords: ['plus', 'add', '添加', '新增'] },
+  { name: 'EditOutlined', component: EditOutlined, type: 'antd-outlined', keywords: ['edit', '编辑', '修改'] },
+  { name: 'DeleteOutlined', component: DeleteOutlined, type: 'antd-outlined', keywords: ['delete', '删除', '移除'] },
+  { name: 'CloseOutlined', component: CloseOutlined, type: 'antd-outlined', keywords: ['close', '关闭', '取消'] },
+  { name: 'CheckOutlined', component: CheckOutlined, type: 'antd-outlined', keywords: ['check', '确认', '完成'] },
+  { name: 'UploadOutlined', component: UploadOutlined, type: 'antd-outlined', keywords: ['upload', '上传'] },
+  { name: 'DownloadOutlined', component: DownloadOutlined, type: 'antd-outlined', keywords: ['download', '下载'] },
+  { name: 'AppstoreOutlined', component: AppstoreOutlined, type: 'antd-outlined', keywords: ['app', '应用', '模块'] },
+  { name: 'MenuOutlined', component: MenuOutlined, type: 'antd-outlined', keywords: ['menu', '菜单'] },
+  { name: 'BellOutlined', component: BellOutlined, type: 'antd-outlined', keywords: ['bell', '通知', '铃铛'] },
+  { name: 'MailOutlined', component: MailOutlined, type: 'antd-outlined', keywords: ['mail', '邮件', '信件'] },
+  { name: 'MessageOutlined', component: MessageOutlined, type: 'antd-outlined', keywords: ['message', '消息', '聊天'] },
+  { name: 'QuestionOutlined', component: QuestionOutlined, type: 'antd-outlined', keywords: ['question', '问题', '帮助'] },
+  { name: 'InfoCircleOutlined', component: InfoCircleOutlined, type: 'antd-outlined', keywords: ['info', '信息', '提示'] },
+  { name: 'ExclamationCircleOutlined', component: ExclamationCircleOutlined, type: 'antd-outlined', keywords: ['warning', '警告', '注意'] },
+  { name: 'ClockCircleOutlined', component: ClockCircleOutlined, type: 'antd-outlined', keywords: ['clock', '时间', '时钟'] },
+  { name: 'CalendarOutlined', component: CalendarOutlined, type: 'antd-outlined', keywords: ['calendar', '日历', '日期'] },
+  { name: 'FileOutlined', component: FileOutlined, type: 'antd-outlined', keywords: ['file', '文件', '文档'] },
+  { name: 'FolderOutlined', component: FolderOutlined, type: 'antd-outlined', keywords: ['folder', '文件夹', '目录'] },
+  { name: 'FolderOpenOutlined', component: FolderOpenOutlined, type: 'antd-outlined', keywords: ['folder', '文件夹', '打开'] },
+  { name: 'PictureOutlined', component: PictureOutlined, type: 'antd-outlined', keywords: ['picture', '图片', '图像'] },
+  { name: 'LinkOutlined', component: LinkOutlined, type: 'antd-outlined', keywords: ['link', '链接', '连接'] },
+  { name: 'ShareAltOutlined', component: ShareAltOutlined, type: 'antd-outlined', keywords: ['share', '分享', '共享'] },
+  { name: 'CloudOutlined', component: CloudOutlined, type: 'antd-outlined', keywords: ['cloud', '云', '云端'] },
+  { name: 'DatabaseOutlined', component: DatabaseOutlined, type: 'antd-outlined', keywords: ['database', '数据库', '数据'] },
+  { name: 'ApiOutlined', component: ApiOutlined, type: 'antd-outlined', keywords: ['api', '接口'] },
+  { name: 'CodeOutlined', component: CodeOutlined, type: 'antd-outlined', keywords: ['code', '代码', '编程'] },
+  { name: 'BugOutlined', component: BugOutlined, type: 'antd-outlined', keywords: ['bug', '缺陷', '问题'] },
+  { name: 'ToolOutlined', component: ToolOutlined, type: 'antd-outlined', keywords: ['tool', '工具'] },
+  { name: 'DesktopOutlined', component: DesktopOutlined, type: 'antd-outlined', keywords: ['desktop', '桌面', '电脑'] },
+  { name: 'MobileOutlined', component: MobileOutlined, type: 'antd-outlined', keywords: ['mobile', '手机', '移动'] },
+  { name: 'GlobalOutlined', component: GlobalOutlined, type: 'antd-outlined', keywords: ['global', '全球', '世界'] },
+  { name: 'TeamOutlined', component: TeamOutlined, type: 'antd-outlined', keywords: ['team', '团队', '组织'] },
+  { name: 'LockOutlined', component: LockOutlined, type: 'antd-outlined', keywords: ['lock', '锁定', '安全'] },
+  { name: 'UnlockOutlined', component: UnlockOutlined, type: 'antd-outlined', keywords: ['unlock', '解锁'] },
+  { name: 'EyeOutlined', component: EyeOutlined, type: 'antd-outlined', keywords: ['eye', '查看', '可见'] },
+  { name: 'EyeInvisibleOutlined', component: EyeInvisibleOutlined, type: 'antd-outlined', keywords: ['eye', '隐藏', '不可见'] },
+  { name: 'HeartOutlined', component: HeartOutlined, type: 'antd-outlined', keywords: ['heart', '喜欢', '爱心'] },
+  { name: 'StarOutlined', component: StarOutlined, type: 'antd-outlined', keywords: ['star', '星标', '收藏'] },
+  { name: 'LikeOutlined', component: LikeOutlined, type: 'antd-outlined', keywords: ['like', '点赞', '喜欢'] },
+  { name: 'CommentOutlined', component: CommentOutlined, type: 'antd-outlined', keywords: ['comment', '评论', '留言'] },
+  { name: 'BarChartOutlined', component: BarChartOutlined, type: 'antd-outlined', keywords: ['chart', '柱状图', '图表'] },
+  { name: 'LineChartOutlined', component: LineChartOutlined, type: 'antd-outlined', keywords: ['chart', '折线图', '图表'] },
+  { name: 'PieChartOutlined', component: PieChartOutlined, type: 'antd-outlined', keywords: ['chart', '饼图', '图表'] },
+  { name: 'DashboardOutlined', component: DashboardOutlined, type: 'antd-outlined', keywords: ['dashboard', '仪表盘', '面板'] },
+  { name: 'ShoppingCartOutlined', component: ShoppingCartOutlined, type: 'antd-outlined', keywords: ['cart', '购物车', '购物'] },
+  { name: 'WalletOutlined', component: WalletOutlined, type: 'antd-outlined', keywords: ['wallet', '钱包', '支付'] },
+];
+
+/**
+ * Ant Design Filled 图标列表
+ */
+export const ANTD_FILLED_ICONS: IconItem[] = [
+  { name: 'HomeFilled', component: HomeFilled, type: 'antd-filled', keywords: ['home', '首页'] },
+  { name: 'SettingFilled', component: SettingFilled, type: 'antd-filled', keywords: ['setting', '设置'] },
+  { name: 'StarFilled', component: StarFilled, type: 'antd-filled', keywords: ['star', '星标', '收藏'] },
+  { name: 'HeartFilled', component: HeartFilled, type: 'antd-filled', keywords: ['heart', '爱心', '喜欢'] },
+  { name: 'AppstoreFilled', component: AppstoreFilled, type: 'antd-filled', keywords: ['app', '应用'] },
+  { name: 'BellFilled', component: BellFilled, type: 'antd-filled', keywords: ['bell', '通知', '铃铛'] },
+  { name: 'CheckCircleFilled', component: CheckCircleFilled, type: 'antd-filled', keywords: ['check', '成功', '完成'] },
+  { name: 'CloseCircleFilled', component: CloseCircleFilled, type: 'antd-filled', keywords: ['close', '错误', '失败'] },
+  { name: 'InfoCircleFilled', component: InfoCircleFilled, type: 'antd-filled', keywords: ['info', '信息'] },
+  { name: 'ExclamationCircleFilled', component: ExclamationCircleFilled, type: 'antd-filled', keywords: ['warning', '警告'] },
+  { name: 'PlusCircleFilled', component: PlusCircleFilled, type: 'antd-filled', keywords: ['plus', '添加'] },
+  { name: 'MinusCircleFilled', component: MinusCircleFilled, type: 'antd-filled', keywords: ['minus', '减少'] },
+  { name: 'CaretUpFilled', component: CaretUpFilled, type: 'antd-filled', keywords: ['up', '上', '箭头'] },
+  { name: 'CaretDownFilled', component: CaretDownFilled, type: 'antd-filled', keywords: ['down', '下', '箭头'] },
+  { name: 'CaretLeftFilled', component: CaretLeftFilled, type: 'antd-filled', keywords: ['left', '左', '箭头'] },
+  { name: 'CaretRightFilled', component: CaretRightFilled, type: 'antd-filled', keywords: ['right', '右', '箭头'] },
+  { name: 'PlayCircleFilled', component: PlayCircleFilled, type: 'antd-filled', keywords: ['play', '播放'] },
+  { name: 'PauseCircleFilled', component: PauseCircleFilled, type: 'antd-filled', keywords: ['pause', '暂停'] },
+  { name: 'StopFilled', component: StopFilled, type: 'antd-filled', keywords: ['stop', '停止'] },
+  { name: 'FireFilled', component: FireFilled, type: 'antd-filled', keywords: ['fire', '热门', '火'] },
+  { name: 'ThunderboltFilled', component: ThunderboltFilled, type: 'antd-filled', keywords: ['thunder', '闪电', '快速'] },
+  { name: 'CrownFilled', component: CrownFilled, type: 'antd-filled', keywords: ['crown', '皇冠', 'VIP'] },
+  { name: 'GiftFilled', component: GiftFilled, type: 'antd-filled', keywords: ['gift', '礼物', '奖品'] },
+  { name: 'TrophyFilled', component: TrophyFilled, type: 'antd-filled', keywords: ['trophy', '奖杯', '成就'] },
+  { name: 'SafetyCertificateFilled', component: SafetyCertificateFilled, type: 'antd-filled', keywords: ['safety', '安全', '认证'] },
+  { name: 'SecurityScanFilled', component: SecurityScanFilled, type: 'antd-filled', keywords: ['security', '安全', '扫描'] },
+  { name: 'InsuranceFilled', component: InsuranceFilled, type: 'antd-filled', keywords: ['insurance', '保险', '保障'] },
+  { name: 'AccountBookFilled', component: AccountBookFilled, type: 'antd-filled', keywords: ['account', '账本', '财务'] },
+  { name: 'FundFilled', component: FundFilled, type: 'antd-filled', keywords: ['fund', '基金', '投资'] },
+  { name: 'GoldFilled', component: GoldFilled, type: 'antd-filled', keywords: ['gold', '黄金', '会员'] },
+];
+
+/**
+ * 自定义 Iconfont 图标列表
+ * 对应 public/static/fonts/iconfont.js 中定义的图标
+ */
+export const ICONFONT_ICONS: IconItem[] = [
+  // Line 类型
+  { name: 'line_xia', type: 'iconfont', keywords: ['下', 'down', '箭头'] },
+  { name: 'line_huanjing', type: 'iconfont', keywords: ['环境', 'environment', '太阳'] },
+  { name: 'line_bianji', type: 'iconfont', keywords: ['编辑', 'edit', '修改'] },
+  { name: 'line_shuaxin', type: 'iconfont', keywords: ['刷新', 'refresh', '更新'] },
+  { name: 'line_daoru', type: 'iconfont', keywords: ['导入', 'import'] },
+  { name: 'line_shuangxia', type: 'iconfont', keywords: ['双下', 'double down'] },
+  { name: 'line_shanchu', type: 'iconfont', keywords: ['删除', 'delete', '移除'] },
+  { name: 'line_duixiang', type: 'iconfont', keywords: ['对象', 'object', '模块'] },
+  { name: 'line_yonghu', type: 'iconfont', keywords: ['用户', 'user', '个人'] },
+  { name: 'line_tuichu', type: 'iconfont', keywords: ['退出', 'logout', '登出'] },
+  { name: 'line_jiansuo', type: 'iconfont', keywords: ['检索', 'search', '搜索'] },
+  { name: 'line_shezhi', type: 'iconfont', keywords: ['设置', 'setting', '配置'] },
+  { name: 'line_shang', type: 'iconfont', keywords: ['上', 'up', '箭头'] },
+  { name: 'line_you', type: 'iconfont', keywords: ['右', 'right', '箭头'] },
+  { name: 'line_zuo', type: 'iconfont', keywords: ['左', 'left', '箭头'] },
+  { name: 'line_shangchuan', type: 'iconfont', keywords: ['上传', 'upload'] },
+  // Fill 类型
+  { name: 'fill_xiaoyan', type: 'iconfont', keywords: ['小眼', '验证', 'check'] },
+  { name: 'fill_guanbi', type: 'iconfont', keywords: ['关闭', 'close', '取消'] },
+  { name: 'fill_shaixuan', type: 'iconfont', keywords: ['筛选', 'filter', '过滤'] },
+  { name: 'fill_paixu', type: 'iconfont', keywords: ['排序', 'sort', '顺序'] },
+  { name: 'fill_jinggao', type: 'iconfont', keywords: ['警告', 'warning', '注意'] },
+  { name: 'fill_yuandian', type: 'iconfont', keywords: ['圆点', 'dot', '点'] },
+  { name: 'fill_gongzuotai', type: 'iconfont', keywords: ['工作台', 'workspace', '桌面'] },
+  { name: 'fill_shouye', type: 'iconfont', keywords: ['首页', 'home', '主页'] },
+  { name: 'fill_bushuguanli', type: 'iconfont', keywords: ['部署管理', 'deploy', '部署'] },
+  { name: 'fill_moxingguanli', type: 'iconfont', keywords: ['模型管理', 'model', '模型'] },
+  { name: 'fill_yangbenguanli', type: 'iconfont', keywords: ['样本管理', 'sample', '样本'] },
+  { name: 'fill_yingyongguanli', type: 'iconfont', keywords: ['应用管理', 'app', '应用'] },
+];
+
+/**
+ * 所有图标列表
+ */
+export const ALL_ICONS: IconItem[] = [
+  ...ANTD_OUTLINED_ICONS,
+  ...ANTD_FILLED_ICONS,
+  ...ICONFONT_ICONS,
+];
+
+/**
+ * 根据类型获取图标列表
+ */
+export function getIconsByType(type: 'all' | 'antd-outlined' | 'antd-filled' | 'iconfont'): IconItem[] {
+  switch (type) {
+    case 'antd-outlined':
+      return ANTD_OUTLINED_ICONS;
+    case 'antd-filled':
+      return ANTD_FILLED_ICONS;
+    case 'iconfont':
+      return ICONFONT_ICONS;
+    default:
+      return ALL_ICONS;
+  }
+}
+
+/**
+ * 搜索图标
+ */
+export function searchIcons(keyword: string, icons: IconItem[] = ALL_ICONS): IconItem[] {
+  if (!keyword || keyword.trim() === '') {
+    return icons;
+  }
+
+  const lowerKeyword = keyword.toLowerCase().trim();
+
+  return icons.filter(icon => {
+    // 匹配图标名称
+    if (icon.name.toLowerCase().includes(lowerKeyword)) {
+      return true;
+    }
+
+    // 匹配关键词
+    if (icon.keywords?.some(kw => kw.toLowerCase().includes(lowerKeyword))) {
+      return true;
+    }
+
+    return false;
+  });
+}
+
+/**
+ * 根据名称查找图标
+ */
+export function findIconByName(name: string): IconItem | undefined {
+  return ALL_ICONS.find(icon => icon.name === name);
+}

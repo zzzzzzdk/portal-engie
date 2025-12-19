@@ -127,7 +127,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
               <h3 className="widget-title">{widget.title}</h3>
             </div>
           )}
-          <div className="widget-content" style={{ ...backgroundStyle }}>
+          <div className="widget-content" style={{ ...backgroundStyle() }}>
             {children}
           </div>
         </div>
@@ -192,7 +192,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
           )}
           <div
             className="widget-content"
-            style={{ ...backgroundStyle }}
+            style={{ ...backgroundStyle() }}
           >{children}</div>
 
           <ConfigDialog

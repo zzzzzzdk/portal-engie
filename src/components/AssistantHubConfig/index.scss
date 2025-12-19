@@ -1,0 +1,272 @@
+.assistant-hub-config {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .empty-state {
+    padding: 32px 0;
+    text-align: center;
+  }
+
+  .entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .config-card {
+    background: var(--ant-color-bg-container, #fff);
+    border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+
+    &.expanded {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border-color: var(--ant-color-primary-hover);
+      
+      .card-header {
+         background: var(--ant-color-bg-layout, #fafafa);
+         border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+      }
+    }
+
+    &.collapsed {
+       &:hover {
+          border-color: var(--ant-color-primary-hover);
+          background: var(--ant-color-bg-layout, #fafafa);
+       }
+       .card-header {
+          border-bottom: none;
+          background: transparent;
+       }
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+      min-height: 48px;
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        gap: 12px;
+        overflow: hidden;
+
+        .expand-icon {
+           color: var(--ant-color-text-tertiary);
+           font-size: 12px;
+           display: flex;
+           align-items: center;
+           width: 16px;
+           justify-content: center;
+        }
+
+        .name-editor {
+           display: flex;
+           align-items: center;
+           gap: 4px;
+           
+           .name-input {
+              width: 140px;
+              font-weight: 500;
+              font-size: 14px;
+              padding: 0 4px;
+              margin: 0;
+              color: var(--ant-color-text);
+              background: transparent;
+
+              &:focus {
+                 background: var(--ant-color-bg-container, #fff);
+                 box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
+                 border-radius: 4px;
+              }
+           }
+
+           .edit-icon {
+              font-size: 12px;
+              color: var(--ant-color-text-quaternary);
+              opacity: 0;
+              transition: opacity 0.2s;
+           }
+
+           &:hover .edit-icon {
+              opacity: 1;
+           }
+        }
+
+        .header-meta {
+           display: flex;
+           align-items: center;
+           gap: 8px;
+           margin-left: 12px;
+           flex-wrap: nowrap;
+           overflow: hidden;
+           
+           .icon-tag {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 12px;
+              color: var(--ant-color-text-secondary);
+              background: rgba(0, 0, 0, 0.04);
+              padding: 2px 8px;
+              border-radius: 4px;
+              white-space: nowrap;
+           }
+           
+           .app-tag {
+              margin: 0;
+              font-size: 12px;
+              border: none;
+              background: rgba(0, 0, 0, 0.04);
+              color: var(--ant-color-text-secondary);
+              padding: 2px 8px;
+              
+              &.ant-tag-blue {
+                 background: var(--ant-color-primary-bg);
+                 color: var(--ant-color-primary);
+              }
+           }
+        }
+      }
+
+      .delete-btn {
+        color: var(--ant-color-text-tertiary);
+        transition: all 0.2s;
+        opacity: 0.6;
+        
+        &:hover {
+          color: var(--ant-color-error);
+          background: var(--ant-color-error-bg);
+          opacity: 1;
+        }
+      }
+    }
+
+    .card-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: slideDown 0.2s ease-out;
+
+      .form-row {
+         display: flex;
+         align-items: center;
+         gap: 24px;
+         
+         .form-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            
+            .field-label {
+               color: var(--ant-color-text-secondary);
+               font-size: 13px;
+               min-width: 60px;
+            }
+            
+            &.icon-config {
+               .custom-input {
+                  max-width: 300px;
+               }
+               .input-prefix-icon {
+                  color: var(--ant-color-text-tertiary);
+               }
+            }
+         }
+      }
+
+      .microapp-selection-area {
+         background: var(--ant-color-bg-layout, #fafafa);
+         border-radius: 6px;
+         padding: 12px;
+         border: 1px dashed var(--ant-color-border, #d9d9d9);
+         
+         .area-label {
+            font-size: 12px;
+            color: var(--ant-color-text-tertiary);
+            margin-bottom: 8px;
+            font-weight: 500;
+         }
+
+         .selector-container {
+            width: 100%;
+         }
+      }
+    }
+  }
+
+  .add-entry-btn {
+    height: 40px;
+    border-style: dashed;
+    border-width: 1.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    
+    &:hover {
+       color: var(--ant-color-primary);
+       border-color: var(--ant-color-primary);
+    }
+  }
+}
+
+@keyframes slideDown {
+   from {
+      opacity: 0;
+      transform: translateY(-8px);
+   }
+   to {
+      opacity: 1;
+      transform: translateY(0);
+   }
+}
+
+// Dark Mode Adaptation
+:global(.theme-dark) {
+  .assistant-hub-config {
+    .config-card {
+      background: var(--ant-color-bg-elevated, #1f1f1f);
+      border-color: var(--ant-color-border, #303030);
+
+      &.expanded .card-header,
+      &.collapsed:hover {
+         background: rgba(255, 255, 255, 0.04);
+         border-bottom-color: var(--ant-color-border, #303030);
+      }
+
+      .card-header {
+        .name-editor .name-input:focus {
+           background: var(--ant-color-bg-container);
+        }
+        
+        .header-meta {
+           .icon-tag, .app-tag {
+              background: rgba(255, 255, 255, 0.08);
+           }
+           
+           .app-tag.ant-tag-blue {
+              background: rgba(22, 119, 255, 0.15); // Antd dark blue bg
+           }
+        }
+      }
+
+      .card-body {
+         .microapp-selection-area {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--ant-color-border, #303030);
+         }
+      }
+    }
+  }
+}

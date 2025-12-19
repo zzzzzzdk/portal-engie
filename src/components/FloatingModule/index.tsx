@@ -203,19 +203,68 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     [config.theme, themeMode],
   );
 
+  // 计算背景样式
+  const backgroundStyle = useMemo(() => {
+    const style: React.CSSProperties = {};
+    const bgType = config.backgroundType || 'color';
+
+    if (bgType === 'color' && config.backgroundColor) {
+      // 处理 ColorPicker 返回的对象或字符串
+      const bgColor = config.backgroundColor as any;
+      const color = typeof bgColor === 'object' && bgColor?.toHexString
+        ? bgColor.toHexString()
+        : bgColor;
+      style.backgroundColor = color;
+    } else if (bgType === 'image' && config.backgroundImage) {
+      style.backgroundImage = `url(${config.backgroundImage})`;
+      style.backgroundSize = config.backgroundSize || 'cover';
+      style.backgroundRepeat = config.backgroundRepeat || 'no-repeat';
+      style.backgroundPosition = config.backgroundPosition || 'center';
+    } else if (bgType === 'gradient' && config.backgroundGradient) {
+      style.background = config.backgroundGradient;
+    }
+
+    return style;
+  }, [
+    config.backgroundType,
+    config.backgroundColor,
+    config.backgroundImage,
+    config.backgroundGradient,
+    config.backgroundSize,
+    config.backgroundRepeat,
+    config.backgroundPosition,
+  ]);
+
   const moduleStyle = useMemo(
     () => ({
       width: size.width,
       height: size.height,
       zIndex: config.zIndex || 9999,
       borderRadius: config.borderRadius || 12,
+      ...backgroundStyle,
     }),
-    [size.width, size.height, config.zIndex, config.borderRadius],
+    [size.width, size.height, config.zIndex, config.borderRadius, backgroundStyle],
   );
 
+  // 判断是否有自定义背景
+  const hasCustomBackground = useMemo(() => {
+    const bgType = config.backgroundType || 'color';
+    return (
+      (bgType === 'color' && config.backgroundColor) ||
+      (bgType === 'image' && config.backgroundImage) ||
+      (bgType === 'gradient' && config.backgroundGradient)
+    );
+  }, [config.backgroundType, config.backgroundColor, config.backgroundImage, config.backgroundGradient]);
+
   const headerStyle = useMemo(
-    () => (config.headerColor ? { background: config.headerColor } : {}),
-    [config.headerColor],
+    () => {
+      // 如果有自定义背景，header 变成透明
+      if (hasCustomBackground) {
+        return { background: 'transparent' };
+      }
+      return config.headerColor ? { background: config.headerColor } : {};
+    },
+    [config.headerColor, hasCustomBackground],
   );
 
   const isDraggable = useMemo(
@@ -410,7 +459,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                       >
                          {/* Header */}
                          {config.showTitle !== false ? (
-                            <div className="floating-module-header drag-handle" style={headerStyle}>
+                            <div className={`floating-module-header drag-handle ${hasCustomBackground ? 'transparent-bg' : ''}`} style={headerStyle}>
                               {isDraggable && <DragOutlined className="drag-icon" />}
                               <span className="title">{widget.title}</span>
                               <div className="actions">
@@ -428,7 +477,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                                   <Button onClick={handleDelete} className="action-btn delete-btn" danger><DeleteOutlined /></Button>
                                 ) : (
                                   config.closable !== false && (
-                                    <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
+                                    // <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
+                                    ""
                                   )
                                 )}
                               </div>

@@ -8,7 +8,7 @@
 
   width: 100%;
   min-height: 100vh;
-  background: var(--ant-color-layout);
+  background-color: var(--ant-color-layout);
   overflow: auto;
   // padding: 20px;
   position: relative;
@@ -86,7 +86,7 @@
 // GridStack 容器
 .grid-stack {
   min-height: 80vh;
-  background: transparent;
+  background-color: transparent;
 }
 
 // GridStack 默认样式已通过 import 'gridstack/dist/gridstack.min.css' 引入
@@ -101,13 +101,27 @@
   }
 
   &.grid-stack-sub-grid {
-    border: 1px solid var(--ant-color-border);
+    // 默认更明显的样式
+    border: 2px solid var(--ant-color-border);
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.2s, box-shadow 0.2s;
+
     &:hover {
-      // border: 1px solid var(--ant-color-primary, #1890ff);
       border-color: var(--ant-color-primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
+
     .grid-stack-item-content {
       overflow: hidden;
+      border-radius: inherit;
+    }
+
+    // 嵌套的 grid-stack 需要 position 和 z-index 才能在 .group-container 背景之上
+    > .grid-stack-item-content > .grid-stack {
+      position: relative;
+      z-index: 1;
     }
   }
 
@@ -158,32 +172,72 @@
   text-align: center;
 }
 
-// 分组操作栏（仅包含删除按钮等）
-.group-header-wrapper {
-  width: 30px;
-  height: 30px;
+// 分组背景层（应用自定义背景和边框样式）
+// 层级结构：
+// - .group-background: z-index: 0 (背景层，在 widgets 下面)
+// - .grid-stack (嵌套网格): z-index: 1 (widgets 层)
+// - .group-header-wrapper: z-index: 2 (头部层，在 widgets 上面，可点击)
+.group-background {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  height: 32px;
-  width: auto;
-  z-index: 10;
-  pointer-events: none; // 让点击穿透，除非点到按钮
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;  // 背景层在最底部
+}
+
+// 分组头部 - 独立于背景层，在 widgets 之上
+.group-header-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  z-index: 2;  // 在嵌套网格(z-index: 1)之上，在背景层(z-index: 0)之上
+  pointer-events: none;  // 默认不阻止鼠标事件穿透到 widgets
 
   .group-header {
     display: flex;
-    justify-content: flex-end;
-    height: 100%;
+    justify-content: space-between;
+    align-items: center;
+    height: 28px;
+  }
+
+  .group-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ant-color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
   }
 
   .group-actions {
-    // opacity: 0;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
     transition: opacity 0.2s;
-    pointer-events: auto; // 恢复按钮点击
+    pointer-events: auto;  // 按钮需要可点击
+
+    .group-config-btn {
+      color: var(--ant-color-text-secondary);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--ant-color-border);
+
+      &:hover {
+        color: var(--ant-color-primary);
+        background: #fff;
+        border-color: var(--ant-color-primary);
+      }
+    }
 
     .group-delete-btn {
       color: #ff4d4f;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.9);
       border: 1px solid #ffccc7;
 
       &:hover {
@@ -195,6 +249,7 @@
 }
 
 // 仅在分组 hover 时显示操作按钮
+.grid-stack-sub-grid:hover .group-actions,
 .grid-stack-group-wrap:hover .group-actions {
   opacity: 1;
 }

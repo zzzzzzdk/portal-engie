@@ -57,7 +57,7 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
   customForm: Icons.FileText,
   microApp: null,  // 微应用动态获取
   floatingModule: Icons.AppWindow,
-  groupTitle: Icons.Folder,
+  headerBar: Icons.PanelTop,
   typography: Icons.Type,
   pageNavigator: Icons.Layers,
 };
@@ -161,7 +161,7 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
     customForm: { columns: 4, rows: 4 },
     microApp: { columns: 6, rows: 4 },
     floatingModule: { columns: 4, rows: 3 },
-    groupTitle: { columns: 12, rows: 1 },
+    headerBar: { columns: 12, rows: 1 },
     typography: { columns: 4, rows: 2 },
     pageNavigator: { columns: 12, rows: 1 },
   };

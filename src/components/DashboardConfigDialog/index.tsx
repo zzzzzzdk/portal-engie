@@ -27,6 +27,7 @@ const DashboardConfigDialog: React.FC<DashboardConfigDialogProps> = ({ isOpen, o
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
+      console.log(values)
       
       // Normalize color value from ColorPicker
       let backgroundColor = values.backgroundColor;

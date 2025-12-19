@@ -83,10 +83,10 @@ const DashboardInner: React.FC = () => {
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-layout)'; 
+        style.backgroundColor = 'var(--ant-color-bg-layout)';
       }
     } else {
-         style.backgroundColor = 'var(--ant-color-bg-layout)';
+      style.backgroundColor = 'var(--ant-color-bg-layout)';
     }
 
     return style;
@@ -470,11 +470,13 @@ const DashboardGridStack: React.FC = () => {
       float: true,
       draggable: {
         handle: '.grid-drag-handle',
+        appendTo: 'parent',  // 添加这行
+        scroll: false,   // 禁用自动滚动
       },
       resizable: {
         handles: 'se',
       },
-      animate: true,
+      // animate: true,
       acceptWidgets: true,
       children,
     };
