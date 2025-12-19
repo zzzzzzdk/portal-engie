@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import SystemList from './components/SystemList';
+import EntryList from './components/EntryList';
 import MicroAppPanel from './components/MicroAppPanel';
 import type { AssistantHubProps, AssistantEntry } from '@/types/assistantHub';
 import './index.scss';
@@ -7,7 +7,7 @@ import './index.scss';
 type ViewState = 'list' | 'panel' | 'transitioning-to-panel' | 'transitioning-to-list';
 
 const AssistantHubComponent: React.FC<AssistantHubProps> = ({
-  systems = [],
+  entries = [],
   onEntrySelect,
 }) => {
   const [selectedEntry, setSelectedEntry] = useState<AssistantEntry | null>(null);
@@ -67,11 +67,11 @@ const AssistantHubComponent: React.FC<AssistantHubProps> = ({
 
   return (
     <div className="assistant-hub">
-      {/* 系统列表视图 */}
+      {/* 入口列表视图 */}
       {showList && (
         <div className={`assistant-hub__view ${getListClassName()}`}>
-          <SystemList
-            systems={systems}
+          <EntryList
+            entries={entries}
             selectedEntryId={undefined}
             onEntrySelect={handleEntrySelect}
           />

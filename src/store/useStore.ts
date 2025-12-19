@@ -11,6 +11,7 @@ import {
   FloatingModuleConfig,
   LocalComponentType,
   WidgetGroup,
+  WidgetGroupConfig,
   LayoutSyncOptions,
 } from '@/types';
 import { Layout } from 'react-grid-layout';
@@ -18,6 +19,14 @@ import { getToken, removeToken } from '@/utils/cookie';
 
 const DEFAULT_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_GROUP_LAYOUT = { w: 6, h: 4, x: 0, y: Infinity, minW: 2, minH: 2 };
+const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
+  showTitle: true,
+  borderStyle: 'solid',
+  borderWidth: 2,
+  borderRadius: 8,
+  backgroundType: 'color',
+  backgroundColor: 'rgba(0, 0, 0, 0.02)',
+};
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
 
@@ -286,6 +295,7 @@ export const useStore = create<AppState>()(
             title: groupTitle,
             widgetIds: [],
             layout,
+            config: { ...DEFAULT_GROUP_CONFIG },
           };
 
           createdGroup = newGroup;
@@ -311,6 +321,22 @@ export const useStore = create<AppState>()(
             widgets: state.widgets.filter((w) => !widgetIdsToRemove.has(w.id)),
           };
         });
+      },
+
+      updateGroup: (id: string, updates: Partial<WidgetGroup>) => {
+        set((state) => ({
+          groups: state.groups.map((g) =>
+            g.id === id ? { ...g, ...updates } : g
+          ),
+        }));
+      },
+
+      updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => {
+        set((state) => ({
+          groups: state.groups.map((g) =>
+            g.id === id ? { ...g, config: { ...g.config, ...config } } : g
+          ),
+        }));
       },
 
       removeWidget: (id: string) => {
@@ -432,6 +458,7 @@ export const useStore = create<AppState>()(
               title: existing?.title || `分组 ${index + 1}`,
               widgetIds,
               layout: mergedLayout,
+              config: existing?.config,  // 保留分组配置
             };
           });
 

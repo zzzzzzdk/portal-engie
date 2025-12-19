@@ -53,11 +53,36 @@ export interface Widget {
   groupId?: string;
 }
 
+export interface WidgetGroupConfig {
+  // 标题设置
+  showTitle?: boolean;          // 是否显示标题，默认 true
+  titleColor?: string;          // 标题颜色
+
+  // 背景设置
+  backgroundType?: 'color' | 'image' | 'gradient';
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundGradient?: string;
+  backgroundSize?: string;
+  backgroundRepeat?: string;
+  backgroundPosition?: string;
+
+  // 边框设置
+  borderStyle?: 'none' | 'solid' | 'dashed';  // 默认 'solid'
+  borderColor?: string;         // 默认使用主题边框色
+  borderWidth?: number;         // 默认 2
+  borderRadius?: number;        // 默认 8
+
+  // 其他
+  padding?: number;             // 内边距
+}
+
 export interface WidgetGroup {
   id: string;
   title: string;
   widgetIds: string[];
   layout: Layout;
+  config?: WidgetGroupConfig;
 }
 
 export interface LayoutSyncOptions {
@@ -108,6 +133,8 @@ export interface AppState {
   createWidgetGroup: (title: string, widgetIds: string[]) => void;
   createEmptyGroup: (title?: string) => WidgetGroup;
   removeGroup: (id: string) => void;
+  updateGroup: (id: string, updates: Partial<WidgetGroup>) => void;
+  updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => void;
   setEditMode: (isEditMode: boolean) => void;
   toggleFullScreen: () => void;
   resetDashboard: () => void;

@@ -112,7 +112,6 @@
     }
 
     .floating-module-content {
-      background: #ffffff;
     }
   }
 
@@ -129,7 +128,6 @@
     }
 
     .floating-module-content {
-      background: #1f1f1f;
     }
 
     .action-btn {
@@ -160,6 +158,12 @@
     // 性能优化
     will-change: transform;
     transform: translateZ(0);
+
+    // 透明背景模式（有自定义背景时）
+    &.transparent-bg {
+      background: transparent !important;
+      border-bottom: none !important;
+    }
 
     .drag-icon {
       font-size: 14px;

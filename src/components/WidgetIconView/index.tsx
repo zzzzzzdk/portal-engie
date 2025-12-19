@@ -1,12 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Widget } from '@/types';
-import { Tooltip } from 'antd';
+import { Tooltip, Dropdown, Modal, Button } from 'antd';
+import type { MenuProps } from 'antd';
+import { Settings, Trash2, RefreshCw } from 'lucide-react';
 import { getWidgetIcon } from '@/utils/widgetHelpers';
 import { WidgetIconConfig } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
+import { useStore } from '@/store/useStore';
+import ConfigDialog from '@/components/ConfigDialog';
+import IconRenderer, { getIconValueType } from '@/components/IconRenderer';
 import clsx from 'clsx';
 import './index.scss';
+
+const { confirm } = Modal;
 
 interface WidgetIconViewProps {
   widget: Widget;
@@ -21,6 +28,10 @@ interface WidgetIconViewProps {
 const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onClick }) => {
   const [iconConfig, setIconConfig] = useState<WidgetIconConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const { removeWidget, refreshWidget } = useStore();
 
   // 加载 icon 配置
   useEffect(() => {
@@ -33,6 +44,59 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
     loadIcon();
   }, [widget.id, widget.type, widget.title, widget.config]);
 
+  const handleConfig = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsConfigOpen(true);
+  };
+
+  const handleDelete = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    confirm({
+      title: '删除小部件',
+      content: '确定要删除这个小部件吗？',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => removeWidget(widget.id),
+    });
+  };
+
+  const handleRefresh = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsRefreshing(true);
+    refreshWidget(widget.id);
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 600);
+  };
+
+  // 右键菜单配置
+  const contextMenuItems: MenuProps['items'] = [
+    {
+      key: 'refresh',
+      label: '刷新',
+      icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
+      onClick: () => handleRefresh(),
+      disabled: isRefreshing,
+    },
+    {
+      key: 'config',
+      label: '设置',
+      icon: <Settings size={14} />,
+      onClick: () => handleConfig(),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      icon: <Trash2 size={14} />,
+      danger: true,
+      onClick: () => handleDelete(),
+    },
+  ];
+
   // 处理点击事件
   const handleClick = async () => {
     if (isEditMode) {
@@ -40,7 +104,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
     }
 
     // 如果有自定义点击事件，优先使用
-    if (onClick) {
+    if (onClick) {  
       onClick();
       return;
     }
@@ -68,14 +132,35 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   // 渲染 Icon
   const renderIcon = () => {
+    // 优先使用 widget.config.icon（用户配置的图标）
+    const configIcon = widget.config.icon;
     const svgMarkup = widget.config.iconSvg || iconConfig?.iconSvg;
+
+    // SVG 代码优先
     if (svgMarkup) {
       return (
-        <div
+        <IconRenderer
+          value={svgMarkup}
+          size={56}
+          fallbackText={widget.title}
           className="widget-icon-svg"
-          dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       );
+    }
+
+    // 用户配置的图标（可能是 URL、Ant Design 名称、Iconfont 名称）
+    if (configIcon) {
+      const iconType = getIconValueType(configIcon);
+      if (iconType !== 'empty') {
+        return (
+          <IconRenderer
+            value={configIcon}
+            size={56}
+            fallbackText={widget.title}
+            className="widget-icon-custom"
+          />
+        );
+      }
     }
 
     if (loading) {
@@ -86,7 +171,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
       return null;
     }
 
-    // 图片 URL
+    // 图片 URL（来自 iconConfig）
     if (typeof iconConfig.icon === 'string' && (iconConfig.icon.startsWith('http') || iconConfig.icon.startsWith('data:'))) {
       return (
         <img
@@ -97,7 +182,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
       );
     }
 
-    // React Element (already instantiated)
+    // React Element (already instantiated) - Lucide 图标等
     if (React.isValidElement(iconConfig.icon)) {
       return React.cloneElement(iconConfig.icon as React.ReactElement, {
         size: 56,
@@ -106,7 +191,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
       } as any);
     }
 
-    // React Component Type (needs instantiation)
+    // React Component Type (needs instantiation) - Lucide 图标组件
     if (typeof iconConfig.icon === 'function' || typeof iconConfig.icon === 'object') {
        const IconComponent = iconConfig.icon as React.ComponentType<any>;
        return <IconComponent size={56} strokeWidth={1.5} className="widget-icon-component" />;
@@ -128,32 +213,74 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
   };
 
   const tooltipTitle = isEditMode
-    ? '拖拽调整大小以查看内容'
+    ? '右键打开菜单'
     : '点击打开应用';
+
+  const content = (
+    <div
+      className={clsx('widget-icon-view', {
+        'edit-mode': isEditMode,
+        'clickable': !isEditMode
+      })}
+      onClick={handleClick}
+    >
+      <div className="widget-icon-container">
+        {renderIcon()}
+      </div>
+
+      <div className="widget-icon-title">
+        {widget.title}
+      </div>
+
+      {!isEditMode && (
+        <div className="widget-icon-hint">
+          点击打开
+        </div>
+      )}
+
+      {/* 编辑模式下显示操作按钮 */}
+      {isEditMode && (
+        <div className="widget-icon-actions" onClick={e => e.stopPropagation()}>
+          <Button
+            type="text"
+            size="small"
+            icon={<Settings size={14} />}
+            onClick={handleConfig}
+            className="action-btn"
+          />
+          <Button
+            type="text"
+            size="small"
+            danger
+            icon={<Trash2 size={14} />}
+            onClick={handleDelete}
+            className="action-btn"
+          />
+        </div>
+      )}
+
+      <ConfigDialog
+        isOpen={isConfigOpen}
+        onClose={() => setIsConfigOpen(false)}
+        widget={widget}
+      />
+    </div>
+  );
+
+  // 编辑模式下使用右键菜单包裹
+  if (isEditMode) {
+    return (
+      <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
+        <Tooltip title={tooltipTitle} placement="top">
+          {content}
+        </Tooltip>
+      </Dropdown>
+    );
+  }
 
   return (
     <Tooltip title={tooltipTitle} placement="top">
-      <div
-        className={clsx('widget-icon-view', {
-          'edit-mode': isEditMode,
-          'clickable': !isEditMode
-        })}
-        onClick={handleClick}
-      >
-        <div className="widget-icon-container">
-          {renderIcon()}
-        </div>
-
-        <div className="widget-icon-title">
-          {widget.title}
-        </div>
-
-        {!isEditMode && (
-          <div className="widget-icon-hint">
-            点击打开
-          </div>
-        )}
-      </div>
+      {content}
     </Tooltip>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Select, Table, Switch, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, Select, Switch, message, Empty, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { EventRouteConfig, MicroAppWidgetConfig, EmittableEvent } from '@/types';
 import { useStore } from '@/store/useStore';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
@@ -178,145 +178,119 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
     });
   };
 
-  // Table列定义
-  const columns = [
-    {
-      title: '发送事件',
-      dataIndex: 'eventType',
-      key: 'eventType',
-      width: '25%',
-      render: (eventType: string, _record: EventRouteConfig, index: number) => (
-        <Select
-          style={{ width: '100%' }}
-          placeholder="选择要发送的事件"
-          value={eventType || undefined}
-          onChange={(value) => handleUpdateRoute(index, { eventType: value })}
-          options={currentAppEvents.map(event => ({
-            label: `${event.name}`,
-            value: event.type,
-          }))}
-        />
-      ),
-    },
-    {
-      title: '接收方应用',
-      dataIndex: 'toAppId',
-      key: 'toAppId',
-      width: '25%',
-      render: (toAppId: string, _record: EventRouteConfig, index: number) => (
-        <Select
-          style={{ width: '100%' }}
-          placeholder="选择接收方"
-          value={toAppId || undefined}
-          onChange={(value) => handleSelectReceiverApp(index, value)}
-          options={receiverApps.map(app => ({
-            label: app.appName,
-            value: app.appId,
-          }))}
-        />
-      ),
-    },
-    {
-      title: '接收事件',
-      dataIndex: 'toEventType',
-      key: 'toEventType',
-      width: '25%',
-      render: (toEventType: string, record: EventRouteConfig, index: number) => {
-        const receiverEvents = receiverListenableEvents.get(record.toAppId) || [];
-        const hasReceiverEvents = receiverEvents.length > 0;
-
-        return (
-          <Select
-            style={{ width: '100%' }}
-            placeholder={
-              !record.toAppId
-                ? '请先选择接收方'
-                : !hasReceiverEvents
-                ? '接收方无可监听事件'
-                : '选择接收事件类型'
-            }
-            value={toEventType || undefined}
-            allowClear
-            disabled={!record.toAppId || !hasReceiverEvents}
-            onChange={(value) => handleUpdateRoute(index, { toEventType: value })}
-            options={receiverEvents.map(event => ({
-              label: `${event.name} (${event.type})`,
-              value: event.type,
-            }))}
-          />
-        );
-      },
-    },
-    {
-      title: '启用',
-      dataIndex: 'enabled',
-      key: 'enabled',
-      width: '10%',
-      align: 'center' as const,
-      render: (enabled: boolean, _record: EventRouteConfig, index: number) => (
-        <Switch
-          checked={enabled !== false}
-          onChange={(checked) => handleUpdateRoute(index, { enabled: checked })}
-        />
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: '15%',
-      align: 'center' as const,
-      render: (_: any, _record: EventRouteConfig, index: number) => (
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => handleDeleteRoute(index)}
-        />
-      ),
-    },
-  ];
-
   return (
     <div className="event-route-config">
-      <div className="event-route-config-header">
-        {/* <div className="event-route-config-title">事件路由配置</div> */}
-        <div className="event-route-config-description">
-          配置当前微应用发送的事件要转发给哪些接收方
-        </div>
-      </div>
+       <div className="event-route-header">
+          {/* <div className="title">事件路由</div> */}
+          <div className="subtitle">配置事件流向，将当前微应用的事件分发给其他应用</div>
+       </div>
 
-      <Table
-        dataSource={routes}
-        columns={columns}
-        rowKey={(record, index) => `${record.eventType}-${record.toAppId}-${index}`}
-        pagination={false}
-        size="small"
-        locale={{
-          emptyText: '暂无事件路由配置',
-        }}
-      />
+       <div className="route-list">
+          {routes.length === 0 ? (
+             <Empty 
+                image={Empty.PRESENTED_IMAGE_SIMPLE} 
+                description="暂无事件路由配置" 
+                style={{margin: '24px 0'}}
+             />
+          ) : (
+             routes.map((route, index) => {
+                const receiverEvents = receiverListenableEvents.get(route.toAppId) || [];
+                const hasReceiverEvents = receiverEvents.length > 0;
+                
+                return (
+                   <div key={`${route.eventType}-${route.toAppId}-${index}`} className="route-card">
+                      <div className="route-flow-row">
+                         <div className="flow-node sender">
+                            <span className="node-label">发送事件</span>
+                            <Select
+                               placeholder="选择要发送的事件"
+                               value={route.eventType || undefined}
+                               onChange={val => handleUpdateRoute(index, { eventType: val })}
+                               options={currentAppEvents.map(e => ({label: `${e.name} (${e.type})`, value: e.type}))}
+                               style={{width: '100%'}}
+                               bordered={false}
+                               className="node-select"
+                            />
+                         </div>
+                         <div className="flow-arrow">
+                            <ArrowRightOutlined />
+                         </div>
+                         <div className="flow-node receiver">
+                            <span className="node-label">接收方应用</span>
+                            <Select
+                               placeholder="选择接收方"
+                               value={route.toAppId || undefined}
+                               onChange={val => handleSelectReceiverApp(index, val)}
+                               options={receiverApps.map(a => ({label: a.appName, value: a.appId}))}
+                               style={{width: '100%'}}
+                               bordered={false}
+                               className="node-select"
+                            />
+                         </div>
+                      </div>
+                      
+                      <div className="route-action-row">
+                         <div className="action-item event-type">
+                            <span className="label">目标动作:</span>
+                            <Select
+                               placeholder={!route.toAppId ? '请先选择接收方' : !hasReceiverEvents ? '接收方无可监听事件' : '选择触发动作'}
+                               value={route.toEventType || undefined}
+                               disabled={!route.toAppId || !hasReceiverEvents}
+                               onChange={val => handleUpdateRoute(index, { toEventType: val })}
+                               options={receiverEvents.map(e => ({label: `${e.name} (${e.type})`, value: e.type}))}
+                               style={{width: 240}}
+                               size="small"
+                               allowClear
+                            />
+                         </div>
+                         <div className="action-right">
+                            <div className="action-item switch">
+                               <span className="label">启用</span>
+                               <Switch 
+                                  size="small"
+                                  checked={route.enabled !== false}
+                                  onChange={checked => handleUpdateRoute(index, { enabled: checked })}
+                               />
+                            </div>
+                            <Tooltip title="删除路由">
+                               <Button 
+                                  type="text" 
+                                  danger 
+                                  icon={<DeleteOutlined />} 
+                                  onClick={() => handleDeleteRoute(index)}
+                                  size="small"
+                               />
+                            </Tooltip>
+                         </div>
+                      </div>
+                   </div>
+                );
+             })
+          )}
+       </div>
 
-      <div className="event-route-config-footer">
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={handleAddRoute}
-          block
-          disabled={currentAppEvents.length === 0 || receiverApps.length === 0}
-        >
-          添加事件路由
-        </Button>
-        {currentAppEvents.length === 0 && (
-          <div className="event-route-config-hint">
-            提示: 当前微应用没有配置可发送的事件
-          </div>
-        )}
-        {currentAppEvents.length > 0 && receiverApps.length === 0 && (
-          <div className="event-route-config-hint">
-            提示: 需要先添加其他微应用小部件作为接收方
-          </div>
-        )}
-      </div>
+       <div className="event-route-footer">
+          <Button 
+             type="dashed" 
+             block 
+             icon={<PlusOutlined />} 
+             onClick={handleAddRoute}
+             disabled={currentAppEvents.length === 0 || receiverApps.length === 0}
+          >
+             添加事件路由
+          </Button>
+          
+          {currentAppEvents.length === 0 && (
+            <div style={{color: '#faad14', fontSize: 12, marginTop: 8}}>
+              提示: 当前微应用没有配置可发送的事件
+            </div>
+          )}
+          {currentAppEvents.length > 0 && receiverApps.length === 0 && (
+            <div style={{color: '#faad14', fontSize: 12, marginTop: 8}}>
+              提示: 画布中没有其他微应用可作为接收方
+            </div>
+          )}
+       </div>
     </div>
   );
 };

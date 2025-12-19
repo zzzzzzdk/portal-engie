@@ -34,6 +34,8 @@ import {
 } from '@/services/microApp';
 import { microAppConfigLoader, MICRO_APP_CONFIG_CHANGED_EVENT, MicroAppConfigChangeDetail } from '@/utils/microAppConfig';
 import type { EmittableEvent, MicroAppModule, MicroAppSystem, MicroAppMetadata } from '@/types';
+import IconPicker from '@/components/IconPicker';
+import { getIconValueType } from '@/components/IconPicker/types';
 import './index.scss';
 
 // 使用 MicroAppMetadata 作为 MicroAppConfig 的别名
@@ -212,6 +214,11 @@ const MicroAppConfigPage: React.FC = () => {
       const values = await moduleForm.validateFields();
       setSaving(true);
 
+      // 根据图标值类型分别存储到 icon 或 iconSvg
+      const iconType = getIconValueType(values.icon);
+      const icon = iconType === 'svg' ? '' : (values.icon || '');
+      const iconSvg = iconType === 'svg' ? values.icon?.trim() : '';
+
       const module = editingModule?.module;
       const res = await saveModule({
         id: module?.id, // 数据库ID（编辑时携带）
@@ -221,10 +228,10 @@ const MicroAppConfigPage: React.FC = () => {
         description: values.description,
         url: values.url,
         entry: values.entry,
-        icon: values.icon,
+        icon,
         defaultSize: values.defaultSize || { w: 6, h: 4 },
         forceIconOnly: !!values.forceIconOnly,
-        iconSvg: values.iconSvg?.trim() || undefined,
+        iconSvg: iconSvg || undefined,
       });
 
       if (res.code === 20000) {
@@ -608,7 +615,7 @@ const MicroAppConfigPage: React.FC = () => {
             name="icon"
             label="图标"
           >
-            <Input placeholder="例如: AccountBookOutlined" />
+            <IconPicker mode="simple" placeholder="选择系统图标" />
           </Form.Item>
           <Form.Item
             name="category"
@@ -669,8 +676,12 @@ const MicroAppConfigPage: React.FC = () => {
           >
             <Input placeholder="例如: http://192.168.13.31:3001/" />
           </Form.Item>
-          <Form.Item name="icon" label="图标URL">
-            <Input placeholder="模块图标地址（可选）" />
+          <Form.Item
+            name="icon"
+            label="图标"
+            tooltip="支持选择内置图标、输入URL、上传图片或粘贴SVG代码"
+          >
+            <IconPicker mode="full" placeholder="选择或上传模块图标" />
           </Form.Item>
           <Form.Item
             name="forceIconOnly"
@@ -680,13 +691,6 @@ const MicroAppConfigPage: React.FC = () => {
             initialValue={false}
           >
             <Switch />
-          </Form.Item>
-          <Form.Item
-            name="iconSvg"
-            label="SVG 图标"
-            tooltip="可粘贴完整的 <svg>...</svg> 代码，优先于图标 URL"
-          >
-            <Input.TextArea rows={3} placeholder="<svg viewBox='0 0 24 24'>...</svg>" />
           </Form.Item>
           <Form.Item label="默认尺寸">
             <Space>

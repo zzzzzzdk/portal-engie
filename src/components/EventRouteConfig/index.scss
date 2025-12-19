@@ -1,46 +1,110 @@
 .event-route-config {
-  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 
-  .event-route-config-header {
-    margin-bottom: 16px;
-
-    .event-route-config-title {
+  .event-route-header {
+    .title {
       font-size: 14px;
-      font-weight: 600;
-      color: rgba(0, 0, 0, 0.88);
+      font-weight: 500;
+      color: var(--ant-color-text);
       margin-bottom: 4px;
     }
-
-    .event-route-config-description {
+    .subtitle {
       font-size: 12px;
-      color: rgba(0, 0, 0, 0.45);
+      color: var(--ant-color-text-secondary);
     }
   }
 
-  .event-route-config-footer {
-    margin-top: 12px;
-
-    .event-route-config-hint {
-      margin-top: 8px;
-      padding: 8px 12px;
-      background-color: #f0f0f0;
-      border-radius: 4px;
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.45);
-      text-align: center;
-    }
+  .route-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  // Table样式优化
-  .ant-table {
-    .ant-table-thead > tr > th {
-      background-color: #fafafa;
-      font-weight: 600;
-      font-size: 13px;
+  .route-card {
+    background: var(--ant-color-bg-container);
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.3s;
+
+    &:hover {
+      border-color: var(--ant-color-primary-hover);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
 
-    .ant-table-tbody > tr > td {
-      padding: 8px 12px;
+    .route-flow-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      background: var(--ant-color-bg-layout);
+      padding: 8px;
+      border-radius: 6px;
+
+      .flow-node {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .node-label {
+          font-size: 12px;
+          color: var(--ant-color-text-tertiary);
+        }
+
+        .node-select {
+          .ant-select-selector {
+             padding-left: 0;
+             font-weight: 500;
+          }
+        }
+      }
+
+      .flow-arrow {
+        color: var(--ant-color-text-quaternary);
+        font-size: 16px;
+      }
+    }
+
+    .route-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 4px;
+
+      .action-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .label {
+          font-size: 12px;
+          color: var(--ant-color-text-secondary);
+        }
+      }
+
+      .action-right {
+         display: flex;
+         align-items: center;
+         gap: 16px;
+      }
+    }
+  }
+}
+
+// Dark Mode
+:global(.theme-dark) {
+  .event-route-config {
+    .route-card {
+      background: var(--ant-color-bg-elevated);
+      border-color: var(--ant-color-border);
+      
+      .route-flow-row {
+        background: rgba(255,255,255,0.04);
+      }
     }
   }
 }

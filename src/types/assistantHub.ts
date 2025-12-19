@@ -2,7 +2,7 @@
  * AssistantHub (助手中心) 类型定义
  */
 
-/** 入口项 - 系统下的功能入口 */
+/** 入口项 */
 export interface AssistantEntry {
   id: string;
   name: string;
@@ -18,18 +18,9 @@ export interface AssistantEntry {
   };
 }
 
-/** 系统分类 */
-export interface AssistantSystem {
-  id: string;
-  name: string;
-  icon?: string;              // 系统图标 (Ant Design 图标名称)
-  entries: AssistantEntry[];  // 入口列表
-  expanded?: boolean;         // 默认是否展开
-}
-
 /** AssistantHub 组件 Props */
 export interface AssistantHubProps {
-  systems: AssistantSystem[];   // 静态配置的系统数据
+  entries: AssistantEntry[];    // 入口列表（一级结构）
   collapsedIcon?: string;       // 收起时的图标（Ant Design 图标名称）
   title?: string;               // 悬浮窗标题
   onEntrySelect?: (entry: AssistantEntry) => void;  // 入口选择回调

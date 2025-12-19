@@ -137,9 +137,7 @@ const Layout: React.FC = () => {
         'assistantHub',
         '助手中心',
         {
-          systems: [
-            
-          ],
+          entries: [],
           collapsedIcon: 'CustomerServiceOutlined',
         },
         {
@@ -237,7 +235,7 @@ const Layout: React.FC = () => {
         { label: '排行榜', key: 'topList' },
         { label: '搜索', key: 'search' },
         { label: '数据表格', key: 'dataTable' },
-        { label: '卡片网格', key: 'cardGrid' },
+        // { label: '卡片网格', key: 'cardGrid' },
         { label: '自定义表单', key: 'customForm' },
       ]
     },

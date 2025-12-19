@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Typography, Avatar, Dropdown, Space, MenuProps, theme } from 'antd';
-import * as Icons from '@ant-design/icons';
 import { UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons';
-import Icon from '@/components/Icon';
+import IconRenderer from '@/components/IconRenderer';
 import { WidgetConfig } from '@/types';
 import { useStore } from '@/store/useStore';
 import './index.scss';
@@ -22,14 +21,15 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       return null;
     }
 
-    // 优先尝试渲染为 Ant Design Icon
-    if ((Icons as any)[config.icon]) {
-      const AntIcon = (Icons as any)[config.icon];
-      return <AntIcon style={{ fontSize: '24px', color: '#1890ff', marginRight: 8 }} />;
-    }
-
-    // 如果不是 Ant Design Icon，则尝试渲染为自定义 Icon 组件
-    return <Icon type={config.icon} style={{ fontSize: '24px', color: '#1890ff', marginRight: 8 }} />;
+    return (
+      <IconRenderer
+        value={config.icon}
+        size={24}
+        color="#1890ff"
+        style={{ marginRight: 8 }}
+        fallbackText={config.headerTitle}
+      />
+    );
   };
 
   const backgroundStyle = useMemo(() => {

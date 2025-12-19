@@ -4,7 +4,7 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: var(--ant-color-bg-container, #fff);
+  // background: var(--ant-color-bg-container, #fff);
   position: relative;
 
   // 视图容器
@@ -86,56 +86,24 @@ $transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
-// 系统列表样式
-.system-list {
-  padding: 8px;
+// 入口列表样式
+.entry-list {
+  padding: 12px;
   height: 100%;
   overflow-y: auto;
-
-  .system-group {
-    margin-bottom: 8px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .system-header {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: var(--ant-color-bg-text-hover, rgba(0, 0, 0, 0.04));
-    }
-
-    .system-expand-icon {
-      margin-right: 8px;
-      font-size: 10px;
-      color: var(--ant-color-text-secondary, #666);
-    }
-
-    .system-name {
-      font-size: 13px;
-      color: var(--ant-color-text, #333);
-    }
-  }
-
-  .entry-list {
-    padding: 4px 0 4px 20px;
-  }
 
   .entry-item {
     display: flex;
     align-items: center;
-    padding: 8px 12px;
-    margin-bottom: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
     cursor: pointer;
     border-radius: 8px;
     transition: all 0.2s;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
 
     &:hover {
       background-color: var(--ant-color-bg-text-hover, rgba(0, 0, 0, 0.04));
@@ -151,24 +119,40 @@ $transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .entry-icon {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
-      margin-right: 10px;
+      margin-right: 12px;
       color: #fff;
-      font-size: 14px;
+      font-size: 16px;
+      flex-shrink: 0;
 
       .icon-fallback {
         font-weight: 600;
       }
     }
 
+    .entry-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
     .entry-name {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--ant-color-text, #333);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-desc {
+      font-size: 12px;
+      margin-top: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -243,17 +227,7 @@ $transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
     background: var(--ant-color-bg-container, #141414);
   }
 
-  .system-list {
-    .system-header {
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.08);
-      }
-
-      .system-name {
-        color: var(--ant-color-text, #fff);
-      }
-    }
-
+  .entry-list {
     .entry-item {
       &:hover {
         background-color: rgba(255, 255, 255, 0.08);
