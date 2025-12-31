@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Tabs, ColorPicker, Upload, Select, App as AntdApp } from 'antd';
+import { Form, Input, Tabs, ColorPicker, Upload, Select, App as AntdApp, Slider, InputNumber } from 'antd';
 import { BgColorsOutlined, PictureOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd/es/form';
 import { uploadImage } from '@/services';
@@ -22,6 +22,7 @@ interface BackgroundSettingsProps {
     backgroundColor?: string;
     backgroundImage?: string;
     backgroundGradient?: string;
+    backdropBlur?: number;  // 背景模糊度 (px)
   };
 }
 
@@ -65,8 +66,16 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
         </span>
       ),
       children: (
-        <Form.Item name="backgroundColor" label="选择颜色">
-          <ColorPicker showText />
+        <Form.Item
+          name="backgroundColor"
+          label="选择颜色"
+          tooltip="使用背景模糊时，建议设置半透明颜色（调低透明度滑块）"
+        >
+          <ColorPicker
+            showText
+            format="rgb"
+            defaultFormat="rgb"
+          />
         </Form.Item>
       ),
     },
@@ -244,6 +253,31 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
         size="small"
         style={{ marginTop: 8 }}
       />
+      <Form.Item
+        label="背景模糊"
+        tooltip="设置毛玻璃效果，值越大越模糊 (0-20px)"
+        style={{ marginTop: 16 }}
+      >
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Form.Item name="backdropBlur" noStyle>
+            <Slider
+              min={0}
+              max={20}
+              step={1}
+              style={{ flex: 1 }}
+            />
+          </Form.Item>
+          <Form.Item name="backdropBlur" noStyle>
+            <InputNumber
+              min={0}
+              max={20}
+              step={1}
+              style={{ width: 70 }}
+              suffix="px"
+            />
+          </Form.Item>
+        </div>
+      </Form.Item>
     </>
   );
 };

@@ -145,24 +145,19 @@ export const useSystemStore = create<SystemState & SystemActions>((set, get) => 
     }
   },
 
-  // 初始化系统（并行获取系统配置和用户信息）
+  // 初始化系统
+  // fetchSysConfig 不需要 token，可以在未登录状态获取
+  // fetchUserInfo 需要 token，只在已登录时获取
   initializeSystem: async () => {
     set({ initialized: false, initError: null });
     try {
-      // 并行请求系统配置和用户信息
-      const results = await Promise.allSettled([
-        get().fetchSysConfig(),
-        get().fetchUserInfo(),
-      ]);
+      // 1. 先获取系统配置（不需要 token）
+      await get().fetchSysConfig();
 
-      // 检查是否有失败的请求
-      const failures = results.filter((r) => r.status === 'rejected');
-      if (failures.length > 0) {
-        const errors = failures
-          .map((f: any) => f.reason?.message || '未知错误')
-          .join('; ');
-        set({ initError: errors, initialized: false });
-        throw new Error(errors);
+      // 2. 如果有 token，再获取用户信息
+      const token = getToken();
+      if (token) {
+        await get().fetchUserInfo();
       }
 
       set({ initialized: true, initError: null });

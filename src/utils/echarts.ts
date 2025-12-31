@@ -37,7 +37,6 @@ import type {
 } from 'echarts/core';
 
 // 通过 ComposeOption 来组合出一个只有必须组件和图表的 Option 类型
-// @ts-expect-error - Type definition for future use
 type ECOption = ComposeOption<
   | BarSeriesOption
   | LineSeriesOption

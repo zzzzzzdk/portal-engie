@@ -1,7 +1,7 @@
 import { Layout } from 'react-grid-layout';
 
 export const GRID_DENSITY_PRESETS = {
-  compact: { label: '紧凑', cellHeight: 60, margin: 0, columnCount: 24 },
+  compact: { label: '紧凑', cellHeight: 40, margin: 0, columnCount: 36 },
   standard: { label: '标准', cellHeight: 120, margin: 0, columnCount: 12 },
   spacious: { label: '宽松', cellHeight: 150, margin: 0, columnCount: 8 },
 } as const;
@@ -23,11 +23,30 @@ export type WidgetType =
   | 'typography'       // 文本/标题组件
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule'   // 悬浮模块
-  | 'pageNavigator';   // 页面切换工具
+  | 'pageNavigator'    // 页面切换工具
+  | 'iconNav'          // 图标导航组件
+  | 'navGroup';        // 导航组组件
+
+/**
+ * 导航项数据结构（用于 NavGroupWidget 接口返回）
+ */
+export interface NavItem {
+  id?: string;
+  url: string;
+  icon?: string;
+  name: string;
+  description?: string;
+  openInNew?: boolean;
+  // 样式配置（可由接口返回，前端有默认值）
+  iconBgColor?: string;   // 图标背景色（不返回则使用随机渐变色）
+  iconColor?: string;     // 图标颜色（默认白色）
+  textColor?: string;     // 文字颜色（默认黑色）
+}
 
 export interface WidgetConfig {
   title?: string;
   showTitle?: boolean; // 是否显示标题
+  titleColor?: string; // 标题颜色
   refreshInterval?: number; // in seconds
   apiEndpoint?: string;
   forceIconOnly?: boolean;

@@ -1,47 +1,6 @@
 // 系统配置和用户信息相关接口服务
 import ajax from '../utils/axios.config';
 
-// 系统信息
-export interface SystemInfo {
-  sys_name: string;
-  sys_description: string;
-  logo: string;
-}
-
-// 系统配置
-export interface SystemConfig {
-  login_url: string;
-  logout_url: string;
-  manage_url: string;
-}
-
-// 场景信息
-export interface SceneInfo {
-  id: number;
-  scene_name: string;
-}
-
-// 模型信息
-export interface ModelInfo {
-  id: number;
-  model_name: string;
-  api_url: string;
-  api_key?: string;
-  context_max_len?: number;
-  is_default?: boolean; // 是否为默认模型
-}
-
-// 标签信息
-export interface LabelInfo {
-  id: number;
-  class_name: string;
-  children: Array<{
-    id: number;
-    label_en: string;
-    lebel_zh: string;
-  }>;
-}
-
 // 地图配置
 export interface MapConfig {
   map_crs: number;
@@ -71,28 +30,25 @@ export interface MapConfig {
   };
 }
 
-// 系统配置响应
+// 系统配置响应（扁平结构）
 export interface SysConfigResponse {
-  sys_info: SystemInfo;
-  sys_config: SystemConfig;
-  sys_scene_info: SceneInfo[];
-  sys_model_info: {
-    llm: ModelInfo[];
-    detection: ModelInfo[];
-    img_text_relation: ModelInfo[];
-  };
-  sys_label_info: LabelInfo[];
-  province: string;
-  water_mark: boolean;
+  // 基础配置
+  water_mark?: boolean;
+  waterMark?: boolean;
   login_url: string;
   logout_url: string;
-  help_url: string;
-  manage_url: string;
-  chrome_url: string;
-  mlflow_web_url: string;
-  ws_url: string;
-  post_error: string;
-  map: MapConfig;
+  sys_text?: string;  // 系统名称
+
+  // API 配置
+  api_host?: string;
+  iamUrl?: string;
+  editPasswordUrl?: string;
+
+  // 安全配置
+  public_key?: string;
+
+  // 地图配置
+  map?: MapConfig;
 }
 
 // 用户基本信息

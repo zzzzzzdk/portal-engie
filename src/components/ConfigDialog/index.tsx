@@ -142,16 +142,39 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             .catch(error => console.warn('Failed to load module for icon:', error));
         }
       } else {
+        // 规范化颜色值的辅助函数（用于初始化表单，保留透明度）
+        const normalizeColorForForm = (color: any): string | undefined => {
+          if (!color) return undefined;
+          if (typeof color === 'string') return color;
+          // 优先使用 toRgbString 保留透明度信息
+          if (typeof color === 'object' && color?.toRgbString) {
+            return color.toRgbString();
+          }
+          if (typeof color === 'object' && color?.toHexString) {
+            return color.toHexString();
+          }
+          return undefined;
+        };
+
+        // 规范化 config 中的颜色值，防止 ColorPicker 报错
+        const normalizedConfig = {
+          ...widget.config,
+          iconColor: normalizeColorForForm(widget.config.iconColor),
+          itemIconColor: normalizeColorForForm(widget.config.itemIconColor),
+          backgroundColor: normalizeColorForForm(widget.config.backgroundColor),
+          titleColor: normalizeColorForForm(widget.config.titleColor),
+        };
+
         form.setFieldsValue({
           title: widget.title,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           showTitle: widget.config.showTitle !== false,
+          titleColor: normalizedConfig.titleColor,
           backgroundType: widget.config.backgroundType || 'color',
-          backgroundColor: widget.config.backgroundColor,
           backgroundImage: widget.config.backgroundImage,
           backgroundGradient: widget.config.backgroundGradient,
-          ...widget.config,
+          ...normalizedConfig,
         });
       }
 
@@ -443,12 +466,34 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           });
         } else {
           // 其他小部件配置
-          const { title, showTitle, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
+          const { title, showTitle, titleColor, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
 
-          // Normalize color
-          let normalizedColor = backgroundColor;
-          if (typeof normalizedColor === 'object' && normalizedColor?.toHexString) {
-            normalizedColor = normalizedColor.toHexString();
+          // 规范化颜色值的辅助函数
+          const normalizeColor = (color: any): string | undefined => {
+            if (!color) return undefined;
+            if (typeof color === 'string') return color;
+            // 优先使用 toRgbString 保留透明度信息
+            if (typeof color === 'object' && color?.toRgbString) {
+              return color.toRgbString();
+            }
+            if (typeof color === 'object' && color?.toHexString) {
+              return color.toHexString();
+            }
+            return undefined;
+          };
+
+          // Normalize background color (使用 rgba 格式保留透明度)
+          const normalizedBgColor = normalizeColor(backgroundColor);
+          // Normalize title color
+          const normalizedTitleColor = normalizeColor(titleColor);
+
+          // 规范化 restConfig 中的所有颜色值
+          const normalizedRestConfig = { ...restConfig };
+          if (normalizedRestConfig.iconColor) {
+            normalizedRestConfig.iconColor = normalizeColor(normalizedRestConfig.iconColor);
+          }
+          if (normalizedRestConfig.itemIconColor) {
+            normalizedRestConfig.itemIconColor = normalizeColor(normalizedRestConfig.itemIconColor);
           }
 
           updateWidget(widget.id, {
@@ -456,13 +501,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             config: {
               ...widget.config,
               showTitle,
+              titleColor: normalizedTitleColor,
               refreshInterval,
               apiEndpoint,
               backgroundType,
-              backgroundColor: normalizedColor,
+              backgroundColor: normalizedBgColor,
               backgroundImage,
               backgroundGradient,
-              ...restConfig,
+              ...normalizedRestConfig,
             },
           });
         }
@@ -484,18 +530,23 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <Input />
         </Form.Item>
 
-        <Form.Item
-          name="showTitle"
-          label="显示标题"
-          valuePropName="checked"
-          tooltip={
-            isFloatingModule
-              ? "关闭后将显示透明拖拽条，编辑模式下仍可进行操作"
-              : "关闭后小部件将不显示头部标题栏"
-          }
-        >
-          <Switch />
-        </Form.Item>
+        <div className="form-row-2">
+          <Form.Item
+            name="showTitle"
+            label="显示标题"
+            valuePropName="checked"
+            tooltip={
+              isFloatingModule
+                ? "关闭后将显示透明拖拽条，编辑模式下仍可进行操作"
+                : "关闭后小部件将不显示头部标题栏"
+            }
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item name="titleColor" label="标题颜色">
+            <ColorPicker showText allowClear format="rgb" />
+          </Form.Item>
+        </div>
 
         {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp'].includes(widget.type) && (
           <Form.Item
@@ -518,8 +569,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const renderComponentTab = () => {
     // 检查是否有特定组件配置
     const hasComponentConfig = [
-      'typography', 'headerBar', 'link', 'dataTable', 
-      'customForm', 'pageNavigator', 'microApp', 'search'
+      'typography', 'headerBar', 'link', 'dataTable',
+      'customForm', 'pageNavigator', 'microApp', 'search',
+      'iconNav', 'navGroup'
     ].includes(widget.type) || isAssistantHub;
 
     if (!hasComponentConfig) {
@@ -571,6 +623,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   <Select.Option value="bold">加粗</Select.Option>
                   <Select.Option value={500}>500</Select.Option>
                   <Select.Option value={600}>600</Select.Option>
+                </Select>
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="linkUrl" label="跳转链接">
+                <Input placeholder="输入链接地址，点击文本可跳转" />
+              </Form.Item>
+              <Form.Item name="linkTarget" label="打开方式">
+                <Select allowClear placeholder="默认当前页面">
+                  <Select.Option value="_self">当前页面</Select.Option>
+                  <Select.Option value="_blank">新窗口</Select.Option>
                 </Select>
               </Form.Item>
             </div>
@@ -744,7 +807,65 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         )}
         
         {widget.type === 'search' && (
-           <div className="empty-hint">请在“数据与交互”标签页配置搜索路由</div>
+           <div className="empty-hint">请在"数据与交互"标签页配置搜索路由</div>
+        )}
+
+        {widget.type === 'iconNav' && (
+          <>
+            <Form.Item name="icon" label="图标">
+              <IconPicker mode="full" />
+            </Form.Item>
+            <Form.Item name="url" label="跳转链接">
+              <Input placeholder="请输入跳转链接" />
+            </Form.Item>
+            <div className="form-row-2">
+              <Form.Item name="openInNew" label="新窗口打开" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+              <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16, max: 128 }]}>
+                <InputNumber style={{ width: '100%' }} suffix="px" />
+              </Form.Item>
+            </div>
+            <Form.Item name="iconColor" label="图标颜色">
+              <ColorPicker showText allowClear />
+            </Form.Item>
+            {/* <Form.Item name="tooltip" label="提示文本">
+              <Input placeholder="鼠标悬停时显示的提示文本" />
+            </Form.Item> */}
+          </>
+        )}
+
+        {widget.type === 'navGroup' && (
+          <>
+            <Form.Item name="layout" label="布局模式">
+              <Select>
+                <Select.Option value="flex">自适应布局</Select.Option>
+                <Select.Option value="grid">网格布局</Select.Option>
+                <Select.Option value="list">列表布局</Select.Option>
+              </Select>
+            </Form.Item>
+            <div className="form-row-2">
+              <Form.Item name="columns" label="列数" rules={[{ type: 'number', min: 2, max: 8 }]} tooltip="仅网格布局生效">
+                <InputNumber style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16, max: 64 }]}>
+                <InputNumber style={{ width: '100%' }} suffix="px" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="showLabel" label="显示名称" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+              <Form.Item name="itemIconColor" label="图标颜色">
+                <ColorPicker showText allowClear />
+              </Form.Item>
+            </div>
+            <Form.Item name="itemGap" label="导航项间距" rules={[{ type: 'number', min: 0, max: 100 }]}>
+              <InputNumber style={{ width: '100%' }} suffix="px" />
+            </Form.Item>
+            {/* <div className="config-section-title">数据配置</div>
+            <div className="empty-hint">请在"数据与交互"标签页配置数据接口</div> */}
+          </>
         )}
       </>
     );
@@ -752,8 +873,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
   const renderDataTab = () => {
     const hasDataConfig = [
-      'chart', 'stats', 'customForm', 'dataTable', 
-      'microApp', 'search'
+      'chart', 'stats', 'customForm', 'dataTable',
+      'microApp', 'search', 'navGroup'
     ].includes(widget.type);
 
     if (!hasDataConfig) {
@@ -762,10 +883,16 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
     return (
       <>
-         {['chart', 'stats', 'customForm', 'dataTable'].includes(widget.type) && (
+         {['chart', 'stats', 'customForm', 'dataTable', 'navGroup'].includes(widget.type) && (
             <Form.Item name="apiEndpoint" label="数据接口">
               <Input placeholder="/api/data" />
             </Form.Item>
+         )}
+
+         {widget.type === 'navGroup' && (
+            <div className="empty-hint" style={{ marginTop: 8 }}>
+              接口应返回格式：{`{ code: 0, data: [{ url, icon, name, description?, iconBgColor?, iconColor?, textColor? }] }`}
+            </div>
          )}
 
          {widget.type === 'microApp' && (
@@ -896,15 +1023,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
   // 根据类型构建 tabs
   const items = isGroup
-    ? [{ key: 'group', label: '分组配置', children: renderGroupTab() }]
+    ? [{ key: 'group', label: '分组配置', children: renderGroupTab(), forceRender: true }]
     : [
-        { key: 'basic', label: '基础配置', children: renderBasicTab() },
-        { key: 'component', label: '组件配置', children: renderComponentTab() },
-        { key: 'data', label: '数据与交互', children: renderDataTab() },
+        { key: 'basic', label: '基础配置', children: renderBasicTab(), forceRender: true },
+        { key: 'component', label: '组件配置', children: renderComponentTab(), forceRender: true },
+        { key: 'data', label: '数据与交互', children: renderDataTab(), forceRender: true },
       ];
 
   if (isFloatingModule) {
-    items.push({ key: 'floating', label: '悬浮配置', children: renderFloatingTab() });
+    items.push({ key: 'floating', label: '悬浮配置', children: renderFloatingTab(), forceRender: true });
   }
 
   // 确定对话框标题

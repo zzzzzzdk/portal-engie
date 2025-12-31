@@ -95,7 +95,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       const newBackgroundStyle: React.CSSProperties = {};
       const {
         backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-        backgroundSize, backgroundRepeat, backgroundPosition
+        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur
       } = widget.config;
       // console.log(widget.config)
       if (backgroundType === 'image' && backgroundImage) {
@@ -108,99 +108,108 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       } else if (backgroundType === 'color' && backgroundColor) {
         newBackgroundStyle.backgroundColor = backgroundColor;
       }
+      // 应用背景模糊效果
+      if (backdropBlur && backdropBlur > 0) {
+        newBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`;
+        newBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`; // Safari 兼容
+      }
       return newBackgroundStyle
     }, [widget.config])
 
-    // 预览模式下不显示右键菜单
-    if (isPreviewMode) {
-      return (
-        <div
-          ref={ref}
-          style={{ ...style }}
-          className={clsx('widget-wrapper', className, widget.type, {
-            'no-header': !showTitle,
-          })}
-          {...props}
-        >
-          {showTitle && (
-            <div className="widget-header">
-              <h3 className="widget-title">{widget.title}</h3>
-            </div>
-          )}
-          <div className="widget-content" style={{ ...backgroundStyle() }}>
-            {children}
+    // 判断是否有自定义背景（包括模糊效果）
+    const hasCustomBackground = widget.config.backgroundType && (
+      (widget.config.backgroundType === 'color' && widget.config.backgroundColor) ||
+      (widget.config.backgroundType === 'image' && widget.config.backgroundImage) ||
+      (widget.config.backgroundType === 'gradient' && widget.config.backgroundGradient)
+    );
+
+    // 是否有背景模糊效果
+    const hasBackdropBlur = widget.config.backdropBlur && widget.config.backdropBlur > 0;
+
+    // 渲染主体内容
+    const renderContent = () => (
+      <div
+        ref={ref}
+        style={{ ...style, ...backgroundStyle() }}
+        className={clsx('widget-wrapper', className, widget.type, {
+          'edit-mode': isEditMode,
+          'no-header': !showTitle && !isEditMode,
+          'has-custom-bg': hasCustomBackground,
+          'has-backdrop-blur': hasBackdropBlur,
+        })}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onTouchEnd={onTouchEnd}
+        onContextMenu={isEditMode ? handleContextMenu : undefined}
+        {...props}
+      >
+        {shouldShowHeader && (
+          <div className={clsx('widget-header grid-drag-handle', {
+            'widget-header--minimal': !showTitle && isEditMode
+          })}>
+            {showTitle && (
+              <h3
+                className="widget-title"
+                style={widget.config.titleColor ? { color: widget.config.titleColor } : undefined}
+              >
+                {widget.title}
+              </h3>
+            )}
+            {isEditMode && (
+              <div
+                className="widget-actions"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {
+                  !!widget.config.refreshInterval ?
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                    />
+                    : ''
+                }
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Settings size={14} />}
+                  onClick={handleConfig}
+                />
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<Trash2 size={14} />}
+                  onClick={handleDelete}
+                />
+              </div>
+            )}
           </div>
-        </div>
-      );
+        )}
+        <div className="widget-content">{children}</div>
+
+        <ConfigDialog
+          isOpen={isConfigOpen}
+          onClose={() => setIsConfigOpen(false)}
+          widget={widget}
+        />
+      </div>
+    );
+
+    // 预览模式或非编辑模式下不显示右键菜单
+    if (isPreviewMode || !isEditMode) {
+      return renderContent();
     }
 
+    // 编辑模式下使用右键菜单包裹
     return (
       <Dropdown
         menu={{ items: contextMenuItems }}
         trigger={['contextMenu']}
       >
-        <div
-          ref={ref}
-          style={{ ...style }}
-          className={clsx('widget-wrapper', className, widget.type, {
-            'edit-mode': isEditMode,
-            'no-header': !showTitle && !isEditMode,
-          })}
-          onMouseDown={onMouseDown}
-          onMouseUp={onMouseUp}
-          onTouchEnd={onTouchEnd}
-          onContextMenu={handleContextMenu}
-          {...props}
-        >
-          {shouldShowHeader && (
-            <div className={clsx('widget-header grid-drag-handle', {
-              'widget-header--minimal': !showTitle && isEditMode
-            })}>
-              {showTitle && <h3 className="widget-title">{widget.title}</h3>}
-              {isEditMode && (
-                <div
-                  className="widget-actions"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  {
-                    !!widget.config.refreshInterval ?
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
-                      />
-                      : ''
-                  }
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<Settings size={14} />}
-                    onClick={handleConfig}
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<Trash2 size={14} />}
-                    onClick={handleDelete}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <div
-            className="widget-content"
-            style={{ ...backgroundStyle() }}
-          >{children}</div>
-
-          <ConfigDialog
-            isOpen={isConfigOpen}
-            onClose={() => setIsConfigOpen(false)}
-            widget={widget}
-          />
-        </div>
+        {renderContent()}
       </Dropdown>
     );
   }

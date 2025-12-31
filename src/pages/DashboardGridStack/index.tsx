@@ -672,7 +672,7 @@ function createGroupGridWidget(
       // itemClass: 'grid-stack-group-wrap',
       class: 'grid-stack-group-wrap',
       // handle: true,
-      subGridDynamic: true,
+      subGridDynamic: false,  // 禁用自动销毁空分组，由 store 管理分组生命周期
       children,
     },
   };
