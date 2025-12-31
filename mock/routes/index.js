@@ -56,73 +56,19 @@ router.get("/v1/common/get-sysconfig", function (req, res, next) {
   // 'DaX1bBq7rJonyqU909d98t11FTjz7GSVkBoEnoDGG85UIPy7uE2BIUr6JXe/LmSviafO8agg=='
 
   req.json.data = {
-    "sys_info": {
-      "sys_name": "极光极光训推用一体平台",
-      "sys_description": "一个一站式AI模型生产与应用平台，针对各行各业定制AI需求，提供了包括数据集管理、数据标注、数据处理、模型训练、评估、部署及应用等全流程功能。",
-      "logo": ""
-    },
-    "sys_config": {
-      "login_url": "登陆url",
-      "logout_url": "退出url",
-      "manage_url": "iam url"
-    },
-    "sys_scene_info": [
-      {
-        "id": 1,
-        "scene_name": "智慧公安"
-      }
-    ],
-    "sys_model_info": {
-      "llm": [
-        {
-          "id": 1,
-          "model_name": "chat-gpt",
-          "api_url": "http://1.1.1.1:800/chat",
-          "api_key": "cr_gkjh23**************",
-          "context_max_len": 4096,
-          "is_default": true
-        }
-      ],
-      "detection": [
-        {
-          "id": 2,
-          "model_name": "yolo-v8",
-          "api_url": "http://mock.url:1111/detect",
-          "is_default": true
-        }
-      ],
-      "img_text_relation": [
-        {
-          "id": 3,
-          "model_name": "clip",
-          "api_url": "http://mock.url:1111/img2vector",
-          "is_default": true
-        }
-      ]
-    },
-    "sys_label_info": [
-      {
-        "id": 1,
-        "class_name": "类别名称",
-        "children": [
-          {
-            "id": 1,
-            "label_en": "person",
-            "lebel_zh": "人"
-          }
-        ]
-      }
-    ],
-    province: "鲁",
+
+
     water_mark: true,
     login_url: "./login.html?",
     logout_url: "./login.html?",
-    help_url: "/syshelp",
-    manage_url: "http://192.168.5.57:30080/#/applypanel",
-    chrome_url: "1111",
-    mlflow_web_url: "http://192.168.5.57:30087",
-    ws_url: "ws://192.168.5.57:86/video",
-    post_error: "",
+    "sys_text": "沧澜门户-微前端",
+    "api_host": "http://192.168.5.60:29081",
+    "iamUrl": "http://192.168.11.12:80/main.html",
+    // "login_url": "http://192.168.11.12:80/#/login?apply=50a79e81-2b86-159c-2757-fd5b138bf333",
+    // "logout_url": "http://192.168.11.12:80/#/logout?apply=50a79e81-2b86-159c-2757-fd5b138bf333",
+    "editPasswordUrl": "http://192.168.11.12:80/#/personalcenter?type=1&model=1",
+    "waterMark": false,
+    "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApuRHyeBATfR3urZrGDpA\naeozcnQaXmDbQKJhj4tWEvXT6IzdrFd5ZOR2vplKIfKMpDDtBn+/sR6FtGiEsFvM\ncS7gVfaPa6dI466WkCuVtaTeUkg+4u3jF8dhRDvKfXgo67auLAvhO/jy4jfBwBHd\nDdjezNmMwQRrBGNOaK3JwlXQeB9QKagSDdyZzMu7523uviTs2CNjUZ7aMavomEkU\n2vIIPXprcaEcPwb9Btmu6cuAIvRVDPPPJj32kfoSXX773Lxx7HazKWVD/lL/5nq9\n/zAGJL+uk9lP2z6BYr25xdC64vfK04oTdWpMqIiC5HCHRfRAL5c0pY0YJ7V8xhFO\nawIDAQAB\n-----END PUBLIC KEY-----",
     map: {
       map_crs: 3857,
       center: [120.205252, 35.965781],
@@ -212,7 +158,7 @@ router.all("/v1/user/info", async function (req, res, next) {
           },
         ],
       },
-   
+
       {
         title: "工作台",
         icon: "fill_gongzuotai",
@@ -411,6 +357,65 @@ router.post("/micro-app/save-config", async (req, res) => {
   res.json(req.json);
 });
 
+
+/**
+ * @api {get} /api/nav-group 获取导航组数据
+ * @apiName getNavGroup
+ * @apiGroup NavGroup
+ *
+ * @apiSuccess {Array} data 导航项数组
+ */
+router.get("/api/nav-group", async (req, res) => {
+  await req.sleep(0.3);
+  req.json.data = [
+    { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '仪表盘', description: '数据可视化面板' },
+    { id: '2', url: '/settings', icon: 'SettingOutlined', name: '系统设置', description: '系统配置管理' },
+    { id: '3', url: '/users', icon: 'UserOutlined', name: '用户管理', description: '用户账号管理' },
+    { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件管理', description: '文件存储管理' },
+    { id: '5', url: '/messages', icon: 'MessageOutlined', name: '消息中心', description: '系统消息通知' },
+    { id: '6', url: '/analytics', icon: 'LineChartOutlined', name: '数据分析', description: '业务数据分析' },
+    { id: '7', url: '/calendar', icon: 'CalendarOutlined', name: '日程安排', description: '个人日程管理' },
+    { id: '8', url: '/help', icon: 'QuestionCircleOutlined', name: '帮助中心', description: '使用帮助文档' },
+  ];
+  res.json(req.json);
+});
+
+/**
+ * @api {get} /api/nav-group/:id 获取指定导航组数据
+ * @apiName getNavGroupById
+ * @apiGroup NavGroup
+ *
+ * @apiParam {String} id 导航组ID
+ *
+ * @apiSuccess {Array} data 导航项数组
+ */
+router.get("/api/nav-group/:id", async (req, res) => {
+  await req.sleep(0.2);
+  const { id } = req.params;
+
+  // 根据不同ID返回不同的导航数据
+  const navGroups = {
+    'main': [
+      { id: '1', url: '/home', icon: 'HomeOutlined', name: '首页' },
+      { id: '2', url: '/dashboard', icon: 'DashboardOutlined', name: '工作台' },
+      { id: '3', url: '/apps', icon: 'AppstoreOutlined', name: '应用中心' },
+    ],
+    'tools': [
+      { id: '1', url: '/calculator', icon: 'CalculatorOutlined', name: '计算器' },
+      { id: '2', url: '/translate', icon: 'TranslationOutlined', name: '翻译' },
+      { id: '3', url: '/converter', icon: 'SwapOutlined', name: '转换器' },
+    ],
+    'admin': [
+      { id: '1', url: '/users', icon: 'TeamOutlined', name: '用户管理' },
+      { id: '2', url: '/roles', icon: 'SafetyOutlined', name: '角色管理' },
+      { id: '3', url: '/permissions', icon: 'KeyOutlined', name: '权限管理' },
+      { id: '4', url: '/logs', icon: 'FileSearchOutlined', name: '操作日志' },
+    ],
+  };
+
+  req.json.data = navGroups[id] || navGroups['main'];
+  res.json(req.json);
+});
 
 module.exports = {
   router,

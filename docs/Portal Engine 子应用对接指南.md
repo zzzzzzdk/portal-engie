@@ -1,7 +1,7 @@
 # Portal Engine 子应用对接指南
 
-> 版本: 1.0.0
-> 更新时间: 2025-12-02
+> 版本: 1.2.0
+> 更新时间: 2025-12-31
 
 ## 文档目的
 
@@ -11,11 +11,13 @@
 
 1. [对接流程概述](#对接流程概述)
 2. [子应用改造指南](#子应用改造指南)
-3. [Token 接收与使用](#token-接收与使用)
-4. [事件通信机制](#事件通信机制)
-5. [配置信息提交](#配置信息提交)
-6. [测试与验证](#测试与验证)
-7. [常见问题](#常见问题)
+3. [主应用状态接收](#主应用状态接收)
+4. [主题与尺寸适配](#主题与尺寸适配)
+5. [事件通信机制](#事件通信机制)
+6. [配置信息提交](#配置信息提交)
+7. [开发检查清单](#开发检查清单)
+8. [测试与验证](#测试与验证)
+9. [常见问题](#常见问题)
 
 ---
 
@@ -200,10 +202,38 @@ if (window.__POWERED_BY_WUJIE__) {
 创建 `src/types/wujie.d.ts`:
 
 ```typescript
+/** 尺寸信息 */
+interface SizeInfo {
+  grid: {
+    columns: number;  // 占用的网格列数 (1-12)
+    rows: number;     // 占用的网格行数
+  };
+  displayMode: 'icon-only' | 'minimal' | 'compact' | 'normal' | 'large';
+}
+
+/** 背景配置 */
+interface BackgroundConfig {
+  type: 'color' | 'image' | 'gradient';
+  color?: string;
+  image?: string;
+  gradient?: string;
+}
+
+/** 主应用注入的 Props */
 interface WujieProps {
-  token?: string;
-  appId?: string;
+  token?: string;                        // 用户 Token
+  appId?: string;                        // 应用 ID (格式: systemId-moduleId)
+  theme?: 'light' | 'dark';              // 当前主题
+  __sizeInfo?: SizeInfo;                 // 尺寸信息
+  backgroundConfig?: BackgroundConfig;   // 背景配置
   [key: string]: any;
+}
+
+/** state:change 事件载荷 */
+interface StateChangePayload {
+  theme: 'light' | 'dark';
+  __sizeInfo: SizeInfo;
+  backgroundConfig: BackgroundConfig;
 }
 
 interface Window {
@@ -252,26 +282,102 @@ function Layout() {
 
 ---
 
-## Token 接收与使用
+## 主应用状态接收
 
-### 1. Token 注入方式
+### 1. Props 注入
 
-主应用会通过 Wujie 的 `props` 将 Token 注入到您的子应用：
+主应用在加载子应用时会自动注入以下 props：
 
 ```typescript
-// 子应用中获取 Token
+interface WujieProps {
+  token: string;                // 用户 Token
+  appId: string;                // 应用 ID (格式: systemId-moduleId)
+  theme: 'light' | 'dark';      // 当前主题
+  __sizeInfo: SizeInfo;         // 尺寸信息
+  backgroundConfig: BackgroundConfig;  // 背景配置
+}
+```
+
+### 2. 获取 Props
+
+```typescript
+// 获取所有 props
+const getProps = () => {
+  return window.$wujie?.props || {};
+};
+
+// 获取 Token
 const getToken = (): string | undefined => {
   if (window.__POWERED_BY_WUJIE__) {
-    // 从主应用注入的 props 中获取
     return window.$wujie?.props?.token;
-  } else {
-    // 独立运行时从本地获取
-    return localStorage.getItem('token') || undefined;
   }
+  return localStorage.getItem('token') || undefined;
+};
+
+// 获取应用 ID
+const getAppId = (): string => {
+  return window.$wujie?.props?.appId || 'standalone-mode';
+};
+
+// 获取当前主题
+const getTheme = (): 'light' | 'dark' => {
+  return window.$wujie?.props?.theme || 'light';
+};
+
+// 获取尺寸信息
+const getSizeInfo = () => {
+  return window.$wujie?.props?.__sizeInfo;
 };
 ```
 
-### 2. Token 使用示例
+### 3. 监听主应用事件
+
+主应用会通过 bus 广播以下事件：
+
+| 事件名称 | 说明 | 载荷 |
+|----------|------|------|
+| `token:update` | Token 更新 | `string` (token 值) |
+| `state:change` | 状态变更（主题、尺寸、背景） | `StateChangePayload` |
+
+```typescript
+import { useEffect } from 'react';
+
+const useMainAppEvents = () => {
+  useEffect(() => {
+    const bus = window.$wujie?.bus;
+    if (!bus) return;
+
+    // 监听 Token 更新
+    const handleTokenUpdate = (token: string) => {
+      console.log('Token 已更新:', token);
+      // 更新本地存储或状态管理
+      localStorage.setItem('token', token);
+    };
+
+    // 监听状态变更（主题、尺寸、背景）
+    const handleStateChange = (state: StateChangePayload) => {
+      const { theme, __sizeInfo, backgroundConfig } = state;
+      console.log('状态变更:', { theme, __sizeInfo, backgroundConfig });
+
+      // 处理主题变更
+      applyTheme(theme);
+
+      // 处理尺寸变更
+      handleSizeChange(__sizeInfo);
+    };
+
+    bus.$on('token:update', handleTokenUpdate);
+    bus.$on('state:change', handleStateChange);
+
+    return () => {
+      bus.$off('token:update', handleTokenUpdate);
+      bus.$off('state:change', handleStateChange);
+    };
+  }, []);
+};
+```
+
+### 4. Token 使用示例
 
 ```typescript
 // utils/request.ts
@@ -294,17 +400,269 @@ request.interceptors.request.use((config) => {
 export default request;
 ```
 
-### 3. 获取应用 ID
+---
+
+## 主题与尺寸适配
+
+### 1. 主题适配（必须）
+
+子应用必须支持 `light` 和 `dark` 两种主题。
+
+**推荐方案：CSS 变量**
+
+```css
+/* 主题变量定义 */
+:root, [data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #e8e8e8;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1f1f1f;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --border-color: #404040;
+}
+
+/* 极简风格（可选，适用于小尺寸展示） */
+[data-theme="minimal"] {
+  --bg-primary: transparent;
+  --bg-secondary: rgba(255, 255, 255, 0.1);
+  --text-primary: inherit;
+  --text-secondary: inherit;
+  --border-color: transparent;
+}
+```
+
+**主题切换实现**
 
 ```typescript
-// 获取当前子应用的唯一标识
-const getAppId = (): string => {
-  if (window.__POWERED_BY_WUJIE__) {
-    return window.$wujie?.props?.appId || '';
-  }
-  return 'standalone-mode';
+// 应用主题
+const applyTheme = (theme: 'light' | 'dark') => {
+  document.documentElement.setAttribute('data-theme', theme);
+};
+
+// 初始化
+const initTheme = () => {
+  const theme = window.$wujie?.props?.theme || 'light';
+  applyTheme(theme);
+};
+
+// 监听变更
+window.$wujie?.bus?.$on('state:change', ({ theme }) => {
+  applyTheme(theme);
+});
+
+initTheme();
+```
+
+### 2. 尺寸自适应（必须）
+
+子应用必须实现响应式布局适配，支持以下两种方式（可选其一或组合使用）：
+
+#### 方案一：CSS 容器查询 / ResizeObserver（推荐）
+
+子应用自行监听容器尺寸变化，使用 CSS 原生能力实现响应式布局。此方案与主应用解耦，更加灵活。
+
+**CSS Container Query**：
+
+```css
+/* 定义容器 */
+.app-container {
+  container-type: inline-size;
+  container-name: app;
+  width: 100%;
+  height: 100%;
+}
+
+/* 根据容器宽度适配 */
+@container app (max-width: 200px) {
+  .content { display: none; }
+  .icon-view { display: flex; }
+}
+
+@container app (min-width: 201px) and (max-width: 400px) {
+  .sidebar { display: none; }
+  .content { padding: 8px; }
+}
+
+@container app (min-width: 401px) {
+  .sidebar { display: block; }
+  .content { padding: 16px; }
+}
+```
+
+**ResizeObserver（JavaScript）**：
+
+```typescript
+import { useEffect, useRef, useState } from 'react';
+
+type ViewMode = 'icon' | 'compact' | 'full';
+
+const useContainerSize = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('full');
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+
+      if (width <= 200 && height <= 200) {
+        setViewMode('icon');
+      } else if (width <= 400) {
+        setViewMode('compact');
+      } else {
+        setViewMode('full');
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  return { containerRef, viewMode };
 };
 ```
+
+#### 方案二：通过 sizeInfo 适配
+
+主应用会传递 `__sizeInfo` 对象，包含网格尺寸和显示模式建议。此方案可获取精确的网格信息。
+
+**displayMode 说明**
+
+| displayMode | 条件 | 建议展示 |
+|-------------|------|----------|
+| `icon-only` | w ≤ 2 且 h ≤ 2 | 仅显示图标，隐藏所有内容 |
+| `minimal` | 面积 ≤ 4 | 极简视图，只显示核心信息 |
+| `compact` | 面积 ≤ 12 | 紧凑视图，隐藏次要信息 |
+| `normal` | 面积 ≤ 24 | 标准视图 |
+| `large` | 面积 > 24 | 完整视图，可展示更多细节 |
+
+> **注**: 面积 = columns × rows
+
+**实现示例**
+
+```typescript
+const handleSizeChange = (sizeInfo: SizeInfo) => {
+  const { displayMode, grid } = sizeInfo;
+
+  switch (displayMode) {
+    case 'icon-only':
+      setViewMode('icon');
+      break;
+    case 'minimal':
+      setViewMode('minimal');
+      break;
+    case 'compact':
+      setViewMode('compact');
+      break;
+    case 'normal':
+    case 'large':
+      setViewMode('full');
+      break;
+  }
+};
+
+// 初始化
+const sizeInfo = window.$wujie?.props?.__sizeInfo;
+if (sizeInfo) handleSizeChange(sizeInfo);
+
+// 监听变化
+window.$wujie?.bus?.$on('state:change', ({ __sizeInfo }) => {
+  if (__sizeInfo) handleSizeChange(__sizeInfo);
+});
+```
+
+**React 组件示例（sizeInfo 方案）**
+
+```tsx
+import React, { useState, useEffect } from 'react';
+
+type ViewMode = 'icon' | 'minimal' | 'compact' | 'full';
+
+const AdaptiveComponent: React.FC = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>('full');
+
+  useEffect(() => {
+    const handleStateChange = ({ __sizeInfo }: StateChangePayload) => {
+      if (!__sizeInfo) return;
+
+      switch (__sizeInfo.displayMode) {
+        case 'icon-only':
+          setViewMode('icon');
+          break;
+        case 'minimal':
+          setViewMode('minimal');
+          break;
+        case 'compact':
+          setViewMode('compact');
+          break;
+        default:
+          setViewMode('full');
+      }
+    };
+
+    // 初始化
+    const sizeInfo = window.$wujie?.props?.__sizeInfo;
+    if (sizeInfo) handleStateChange({ __sizeInfo: sizeInfo } as any);
+
+    // 监听变化
+    window.$wujie?.bus?.$on('state:change', handleStateChange);
+
+    return () => {
+      window.$wujie?.bus?.$off('state:change', handleStateChange);
+    };
+  }, []);
+
+  // 根据 viewMode 渲染不同视图
+  if (viewMode === 'icon') return <IconView />;
+  if (viewMode === 'minimal') return <MinimalView />;
+  if (viewMode === 'compact') return <CompactView />;
+  return <FullView />;
+};
+```
+
+#### 方案选择建议
+
+| 场景 | 推荐方案 |
+|------|----------|
+| 新开发的子应用 | 方案一（CSS Container Query） |
+| 已有响应式布局的应用 | 方案一（复用现有逻辑） |
+| 需要精确控制网格尺寸 | 方案二（sizeInfo） |
+| 需要根据业务逻辑切换视图 | 方案二（sizeInfo） |
+| 两者组合 | 方案一处理常规响应式，方案二处理 icon-only 模式 |
+
+### 3. 图标配置（必须）
+
+子应用必须在配置中提供图标，用于小尺寸展示：
+
+```json
+{
+  "id": "module-id",
+  "name": "模块名称",
+  "icon": "DashboardOutlined",
+  "iconSvg": "<svg>...</svg>",
+  "forceIconOnly": false
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `icon` | Ant Design 图标名或图片 URL |
+| `iconSvg` | 自定义 SVG 代码（优先级高于 icon） |
+| `forceIconOnly` | 设为 `true` 则始终以图标形式显示 |
+
+**图标设计要求**：
+- 尺寸：建议 48x48 或 64x64
+- 格式：SVG（推荐）、PNG
+- 需适配浅色/深色主题
 
 ---
 
@@ -739,18 +1097,64 @@ const TableComponent = () => {
 
 ---
 
+## 开发检查清单
+
+在提交子应用之前，请确保完成以下检查项：
+
+### 必须项
+
+| 检查项 | 说明 | 状态 |
+|--------|------|------|
+| 无界生命周期 | 正确实现 `__WUJIE_MOUNT` 和 `__WUJIE_UNMOUNT` | ☐ |
+| 跨域配置 | 开发/生产环境均已配置 CORS | ☐ |
+| Token 接收 | 监听 `token:update` 事件 | ☐ |
+| 状态同步 | 监听 `state:change` 事件 | ☐ |
+| 浅色主题 | 支持 `light` 主题 | ☐ |
+| 深色主题 | 支持 `dark` 主题 | ☐ |
+| 尺寸自适应 | CSS Container Query 或 sizeInfo 方案（二选一） | ☐ |
+| 图标模式 | `icon-only` 模式时显示图标视图 | ☐ |
+| 提供图标 | 配置 `icon` 或 `iconSvg` | ☐ |
+| 事件文档 | 声明 `emittableEvents` 和 `listenableEvents` | ☐ |
+
+### 可选项
+
+| 检查项 | 说明 | 状态 |
+|--------|------|------|
+| 极简风格 | 支持 `minimal` 主题（适用于嵌入式场景） | ☐ |
+| 路由适配 | 嵌入模式下隐藏顶部/侧边导航 | ☐ |
+| 独立运行 | 支持脱离主应用独立运行 | ☐ |
+
+---
+
 ## 测试与验证
 
 ### 功能检查清单
 
 - [ ] 子应用能在主应用中正常加载
 - [ ] Token 注入成功，API 请求正常
+- [ ] 主题切换正常（light/dark）
+- [ ] 尺寸变化时视图自适应正常
+- [ ] 小尺寸时图标模式显示正常
 - [ ] 能够发送事件到其他子应用
 - [ ] 能够接收来自其他子应用的事件
 - [ ] 样式隔离正常，无样式冲突
 - [ ] 路由切换正常
 - [ ] 独立运行模式正常工作
 
+### 调试方法
+
+```typescript
+// 在子应用中添加调试代码
+console.log('=== 子应用调试信息 ===');
+console.log('是否在 Wujie 环境:', !!window.__POWERED_BY_WUJIE__);
+console.log('Token:', window.$wujie?.props?.token);
+console.log('AppId:', window.$wujie?.props?.appId);
+console.log('Theme:', window.$wujie?.props?.theme);
+console.log('SizeInfo:', window.$wujie?.props?.__sizeInfo);
+console.log('Bus:', !!window.$wujie?.bus);
+```
+
+---
 
 ## 常见问题
 
@@ -795,6 +1199,16 @@ console.log('Token:', window.$wujie?.props?.token);
 
 ### 版本历史
 
+- v1.2.0 (2025-12-31):
+  - 尺寸自适应支持两种方案：CSS Container Query / ResizeObserver 和 sizeInfo
+  - 新增方案选择建议表格
+- v1.1.0 (2025-12-31):
+  - 新增 `主应用状态接收` 章节，详述 Props 注入和事件监听
+  - 新增 `主题与尺寸适配` 章节，包含完整的 displayMode 说明
+  - 新增 `开发检查清单` 章节，提供必须项和可选项
+  - 更新 TypeScript 类型定义（SizeInfo、BackgroundConfig、StateChangePayload）
+  - 修正 displayMode 值为实际实现（icon-only/minimal/compact/normal/large）
+  - 补充调试方法和测试验证要点
 - v1.0.0 (2025-12-02): 初始版本
 
 ---

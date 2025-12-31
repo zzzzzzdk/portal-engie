@@ -29,6 +29,8 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
 };
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
+const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_NAV_GROUP_LAYOUT = { w: 5, h: 4, x: 0, y: 0, minW: 2, minH: 2 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
@@ -94,6 +96,29 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
           { name: '工作台', path: '' },
           { name: '首页', path: '' }
         ]
+      };
+    case 'iconNav':
+      return {
+        ...baseConfig,
+        title: '图标导航',
+        showTitle: false,  // 默认不显示标题
+        icon: 'AppstoreOutlined',
+        url: '',
+        openInNew: false,
+        iconSize: 48,
+        iconColor: '#1890ff',
+      };
+    case 'navGroup':
+      return {
+        ...baseConfig,
+        title: '导航组',
+        showTitle: true,   // 默认显示标题
+        layout: 'grid',
+        columns: 4,
+        showLabel: true,
+        iconSize: 32,
+        itemIconColor: '#1890ff',
+        itemGap: 12,
       };
     default:
       return baseConfig;
@@ -162,6 +187,10 @@ export const useStore = create<AppState>()(
           layoutConfig = DEFAULT_HEADER_BAR_LAYOUT;
         } else if (type === 'pageNavigator') {
           layoutConfig = DEFAULT_NAVIGATOR_LAYOUT;
+        } else if (type === 'iconNav') {
+          layoutConfig = DEFAULT_ICON_NAV_LAYOUT;
+        } else if (type === 'navGroup') {
+          layoutConfig = DEFAULT_NAV_GROUP_LAYOUT;
         }
 
         const newWidget: Widget = {

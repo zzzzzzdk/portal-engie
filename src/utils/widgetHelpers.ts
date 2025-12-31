@@ -8,8 +8,8 @@ import * as Icons from 'lucide-react';
  * 判断小组件的显示模式
  */
 export const getWidgetDisplayMode = (w: number, h: number): WidgetDisplayMode => {
-  // 严格 1x1 为 icon-only
-  if (w === 1 && h === 1) {
+  // 严格 2x2 为 icon-only
+  if (w <= 2 && h <= 2) {
     return 'icon-only';
   }
 
@@ -26,7 +26,7 @@ export const getWidgetDisplayMode = (w: number, h: number): WidgetDisplayMode =>
  * 判断是否为 icon-only 模式
  */
 export const isIconOnlyMode = (w: number, h: number): boolean => {
-  return w === 1 && h === 1;
+  return w <= 2 && h <= 2;
 };
 
 /**
@@ -60,6 +60,8 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
   headerBar: Icons.PanelTop,
   typography: Icons.Type,
   pageNavigator: Icons.Layers,
+  iconNav: Icons.Navigation,
+  navGroup: Icons.Grid3x3,
 };
 
 /**
@@ -164,6 +166,8 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
     headerBar: { columns: 12, rows: 1 },
     typography: { columns: 4, rows: 2 },
     pageNavigator: { columns: 12, rows: 1 },
+    iconNav: { columns: 2, rows: 2 },
+    navGroup: { columns: 5, rows: 4 },
   };
 
   return defaultSizes[type] || { columns: 4, rows: 3 };

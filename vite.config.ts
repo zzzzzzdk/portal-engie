@@ -23,7 +23,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // 或者 host: '0.0.0.0'，允许局域网访问
-    port: 3001,
+    port: 3002,
     proxy: {
       '/api': {
         target: 'http://localhost:4001/',

@@ -3,6 +3,7 @@ import { Input, Button, message, Select, Space } from 'antd';
 import { SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
+import './index.scss'
 
 const { bus } = WujieReact;
 

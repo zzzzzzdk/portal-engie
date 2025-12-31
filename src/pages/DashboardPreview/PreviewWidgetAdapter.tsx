@@ -23,7 +23,9 @@ import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
-import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget'
+import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget';
+import IconNavWidget from '@/components/widgets/IconNavWidget';
+import NavGroupWidget from '@/components/widgets/NavGroupWidget';
 import { WidgetType } from '@/types';
 
 interface PreviewWidgetAdapterProps {
@@ -43,8 +45,11 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
   const { w, h } = resolvedWidget.layout;
   const forceIconOnly = resolvedWidget.config.forceIconOnly;
 
+  // iconNav 类型本身就是图标导航组件，不需要切换到 icon-only 视图
+  const skipIconOnlyMode = type === 'iconNav';
+
   // 判断是否为 icon-only 模式
-  if (forceIconOnly || isIconOnlyMode(w, h)) {
+  if (!skipIconOnlyMode && (forceIconOnly || isIconOnlyMode(w, h))) {
     return (
       <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
         <WidgetIconView
@@ -55,7 +60,7 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
     );
   }
 
-  const commonProps = { config: resolvedWidget.config, widget: resolvedWidget };
+  const commonProps = { config: resolvedWidget.config, widget: resolvedWidget, isEditMode: false };
 
   const renderWidgetContent = () => {
     switch (type) {
@@ -87,6 +92,10 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <MicroAppWidget {...commonProps} />;
       case 'pageNavigator':
         return <PageNavigatorWidget {...commonProps} />;
+      case 'iconNav':
+        return <IconNavWidget {...commonProps} />;
+      case 'navGroup':
+        return <NavGroupWidget {...commonProps} />;
       default:
         return <div>Unknown Widget Type: {type}</div>;
     }

@@ -166,6 +166,8 @@ const Layout: React.FC = () => {
       customForm: '自定义表单',
       headerBar: '头部栏',
       pageNavigator: '页面切换工具',
+      iconNav: '图标导航',
+      navGroup: '导航组',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
@@ -223,7 +225,7 @@ const Layout: React.FC = () => {
     },
     {
       type: 'group',
-      label: '基础小部',
+      label: '基础小部件',
       children: [
         { label: '文本', key: 'typography' },
         { label: '时钟', key: 'clock' },
@@ -237,6 +239,17 @@ const Layout: React.FC = () => {
         { label: '数据表格', key: 'dataTable' },
         // { label: '卡片网格', key: 'cardGrid' },
         { label: '自定义表单', key: 'customForm' },
+      ]
+    },
+    {
+      type: 'divider',
+    },
+    {
+      type: 'group',
+      label: '导航组件',
+      children: [
+        { label: '图标导航', key: 'iconNav' },
+        { label: '导航组', key: 'navGroup' },
       ]
     },
     {

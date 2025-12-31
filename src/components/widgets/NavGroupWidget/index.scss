@@ -1,0 +1,127 @@
+.nav-group-widget {
+  height: 100%;
+
+  // 加载/空状态容器
+  &__status {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // Flex 自适应布局容器（默认）
+  &__flex {
+    height: 100%;
+    overflow: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    // justify-content: center;
+  }
+
+  // Flex 导航项
+  &__flex-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    // padding: 8px;
+    transition: all 0.2s ease;
+    background-color: transparent;
+
+    &--clickable {
+      cursor: pointer;
+
+      // &:hover {
+      //   background-color: rgba(0, 0, 0, 0.04);
+      //   transform: scale(1.05);
+      // }
+    }
+  }
+
+  // Flex 项标签
+  &__flex-label {
+    font-size: 12px;
+    text-align: center;
+    max-width: 80px;
+  }
+
+  // 网格布局容器（固定列数）
+  &__grid {
+    height: 100%;
+    overflow: auto;
+    display: grid;
+    align-content: start;
+  }
+
+  // 网格导航项
+  &__grid-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background-color: transparent;
+
+    &--clickable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+        transform: scale(1.05);
+      }
+    }
+  }
+
+  // 图标背景容器
+  &__icon-bg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 22px;
+  }
+
+  // 网格项标签
+  &__grid-label {
+    font-size: 12px;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  // 列表布局容器
+  &__list {
+    height: 100%;
+    overflow: auto;
+    padding: 8px;
+  }
+
+  // 列表导航项
+  &__list-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    margin-bottom: 4px;
+
+    &--clickable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+    }
+  }
+
+  // 列表项内容区
+  &__list-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  // 列表项描述
+  &__list-description {
+    display: block;
+    font-size: 12px;
+  }
+}

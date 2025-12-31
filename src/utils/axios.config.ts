@@ -1,9 +1,10 @@
 import axios, { AxiosRequestConfig } from 'axios'
 import { isObject } from '@/utils/is'
 import { message } from "antd";
-import { getToken } from "./cookie";
+import { getToken, removeToken } from "./cookie";
 import omit from '@/utils/omit'
-import { getApiBaseUrl } from '@/config/env'
+import { getApiBaseUrl, isDevelopment } from '@/config/env'
+import { useSystemStore } from '@/store'
 
 let destroy = false
 export const getPageDestroy = () => destroy;
@@ -138,10 +139,19 @@ function ajax<T = any, U = object>(ajaxData: AjaxDataProps) {
           switch (response.status) {
             case 401:
               message.error("用户权限已失效！")
+              // 清除 token
+              removeToken()
               // 如果是在登录页,不需要重定向
               if (window.location.hash.indexOf('#/login') == -1) {
-                if (window.YISACONF?.login_url) {
-                  window.location.href = window.YISACONF.login_url + '&target_url=' + encodeURIComponent(window.location.href)
+                // 从 Zustand store 获取系统配置
+                const sysConfig = useSystemStore.getState().sysConfig
+                const loginUrl = isDevelopment() ? '/#/login' : sysConfig?.login_url
+                if (loginUrl) {
+                  if (isDevelopment()) {
+                    window.location.href = loginUrl
+                  } else {
+                    window.location.href = loginUrl + '&target_url=' + encodeURIComponent(window.location.href)
+                  }
                 }
               }
               break

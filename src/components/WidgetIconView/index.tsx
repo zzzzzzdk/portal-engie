@@ -214,7 +214,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   const tooltipTitle = isEditMode
     ? '右键打开菜单'
-    : '点击打开应用';
+    : '';
 
   const content = (
     <div
@@ -232,11 +232,11 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
         {widget.title}
       </div>
 
-      {!isEditMode && (
+      {/* {!isEditMode && (
         <div className="widget-icon-hint">
           点击打开
         </div>
-      )}
+      )} */}
 
       {/* 编辑模式下显示操作按钮 */}
       {isEditMode && (

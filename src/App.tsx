@@ -11,49 +11,16 @@ import '@/assets/css/index.scss'
 import { isDevelopment } from './config/env'
 
 /**
- * 登录状态检查组件
- * 检查 Cookie 中的 token，不存在时跳转登录页
- */
-function LoginGuard({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const isLogin = useSystemStore((state) => state.isLogin)
-  const sysConfig = useSystemStore((state) => state.sysConfig)
-
-  useEffect(() => {
-    // 获取当前路径
-    const currentPath = location.pathname
-
-    // 登录页和公开页面不需要检查
-    const publicPaths = ['/login', '/403', '/404']
-    if (publicPaths.includes(currentPath)) {
-      return
-    }
-
-    // 检查 Cookie 中的 token
-    const token = getToken()
-
-    // token 不存在且不是登录页，跳转到登录页
-    if (!token && !isLogin) {
-      console.warn('未检测到登录凭证，跳转到登录页')
-      const loginUrl = isDevelopment() ? '/login' : sysConfig?.login_url
-      navigate(loginUrl || '', { replace: true })
-    }
-  }, [location.pathname, isLogin, navigate])
-
-  return <>{children}</>
-}
-
-/**
  * 系统初始化包装组件
  * 在系统加载完成前显示加载状态
  * 同时初始化仪表盘数据
  */
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const initialized = useSystemStore((state) => state.initialized)
   const initError = useSystemStore((state) => state.initError)
-  const isLogin = useSystemStore((state) => state.isLogin)
+  const sysConfig = useSystemStore((state) => state.sysConfig)
   const initializeSystem = useSystemStore((state) => state.initializeSystem)
 
   // 仪表盘初始化
@@ -61,28 +28,44 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
   const [retryCount, setRetryCount] = useState(0)
   const [dashboardInitialized, setDashboardInitialized] = useState(false)
 
-  // 检查是否是公开页面（不需要初始化系统）
+  // 检查是否是公开页面（不需要登录验证）
   const publicPaths = ['/login', '/403', '/404']
   const isPublicPath = publicPaths.includes(location.pathname)
 
-  // 系统初始化
+  // 系统初始化 - 始终执行，不依赖 token
+  // fetchSysConfig 不需要 token
+  // fetchUserInfo 只在有 token 时获取（由 initializeSystem 内部判断）
   useEffect(() => {
-    // 公开页面不需要初始化系统
-    if (isPublicPath) {
-      return
-    }
+    initializeSystem()
+  }, [retryCount, initializeSystem])
 
-    // 只有在已登录的情况下才初始化系统
+  // 系统配置获取成功后，检查 token，未登录则跳转登录页
+  useEffect(() => {
+    // 公开页面不需要检查登录状态
+    if (isPublicPath) return
+    // 系统配置未获取到时不检查
+    if (!sysConfig) return
+
     const token = getToken()
-    if (token || isLogin) {
-      initializeSystem()
+    if (!token) {
+      // 未登录，跳转到系统配置的登录地址或本地登录页
+      const loginUrl = isDevelopment() ? '/login' : sysConfig?.login_url
+      if (loginUrl) {
+        console.warn('未检测到登录凭证，跳转到登录页')
+        if (isDevelopment()) {
+          navigate(loginUrl, { replace: true })
+        } else {
+          window.location.href = loginUrl
+        }
+      }
     }
-  }, [retryCount, isLogin, isPublicPath, initializeSystem])
+  }, [sysConfig, isPublicPath, navigate])
 
   // 仪表盘数据初始化
   useEffect(() => {
-    // 只在系统初始化完成且未初始化仪表盘时执行
-    if (initialized && !isPublicPath && !dashboardInitialized) {
+    // 只在系统初始化完成、有 token、且未初始化仪表盘时执行
+    const token = getToken()
+    if (initialized && !isPublicPath && !dashboardInitialized && token) {
       loadDashboard()
       setEditMode(true)
       setDashboardInitialized(true)
@@ -155,11 +138,10 @@ function App() {
   return (
     <HashRouter>
       <ThemeProvider>
-        <LoginGuard>
-          <AppInitializer>
-            <APPRouter />
-          </AppInitializer>
-        </LoginGuard>
+        {/* LoginGuard 已移除，登录检查逻辑已合并到 AppInitializer 中 */}
+        <AppInitializer>
+          <APPRouter />
+        </AppInitializer>
       </ThemeProvider>
     </HashRouter>
   )
