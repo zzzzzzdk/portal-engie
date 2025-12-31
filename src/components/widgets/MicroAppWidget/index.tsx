@@ -81,8 +81,8 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
       }
 
       // 注入 token
-      bus.$emit('subApp:setToken', getToken());
-      bus.$emit('subApp:config', {
+      bus.$emit('token:update', getToken());
+      bus.$emit('state:change', {
         theme: themeMode,
         __sizeInfo: sizeInfo,
         backgroundConfig
@@ -103,7 +103,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
 
   // 监听上下文变化并通知子应用（主题、尺寸、背景）
   useEffect(() => {
-    bus.$emit('subApp:config', {
+    bus.$emit('state:change', {
       theme: themeMode,
       __sizeInfo: sizeInfo,
       backgroundConfig

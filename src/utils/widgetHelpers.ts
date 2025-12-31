@@ -166,8 +166,8 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
     headerBar: { columns: 12, rows: 1 },
     typography: { columns: 4, rows: 2 },
     pageNavigator: { columns: 12, rows: 1 },
-    iconNav: { columns: 1, rows: 1 },
-    navGroup: { columns: 4, rows: 3 },
+    iconNav: { columns: 2, rows: 2 },
+    navGroup: { columns: 5, rows: 4 },
   };
 
   return defaultSizes[type] || { columns: 4, rows: 3 };

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker } from 'antd';
+import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
@@ -161,8 +161,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           ...widget.config,
           iconColor: normalizeColorForForm(widget.config.iconColor),
           itemIconColor: normalizeColorForForm(widget.config.itemIconColor),
+          itemColor: normalizeColorForForm(widget.config.itemColor),
           backgroundColor: normalizeColorForForm(widget.config.backgroundColor),
           titleColor: normalizeColorForForm(widget.config.titleColor),
+          displayMode: widget.config.displayMode || 'text',
         };
 
         form.setFieldsValue({
@@ -170,7 +172,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           showTitle: widget.config.showTitle !== false,
-          titleColor: normalizedConfig.titleColor,
+          // titleColor: normalizedConfig.titleColor,
           backgroundType: widget.config.backgroundType || 'color',
           backgroundImage: widget.config.backgroundImage,
           backgroundGradient: widget.config.backgroundGradient,
@@ -728,6 +730,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         )}
 
         {widget.type === 'pageNavigator' && (
+          <>
+            <div className="form-row-2">
+              <Form.Item name="displayMode" label="显示模式">
+                <Radio.Group>
+                  <Radio.Button value="text">文字</Radio.Button>
+                  <Radio.Button value="icon">图标</Radio.Button>
+                </Radio.Group>
+              </Form.Item>
+              <Form.Item name="itemColor" label="颜色">
+                <ColorPicker showText allowClear />
+              </Form.Item>
+            </div>
+            <Divider style={{ margin: '12px 0' }} />
             <Form.List name="items">
               {(fields, { add, remove }) => (
                 <div className="config-list-container">
@@ -735,12 +750,24 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     <div key={key} className="config-item-card">
                        <div className="card-header" style={{cursor: 'default'}}>
                           <div className="header-content">
-                             <div className="form-row-2" style={{width: '100%', marginBottom: 0}}>
+                             <div className="form-row-4" style={{width: '100%', marginBottom: 0}}>
                                 <Form.Item {...restField} name={[name, 'name']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                                   <Input placeholder="名称" />
                                 </Form.Item>
-                                <Form.Item {...restField} name={[name, 'path']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                <Form.Item {...restField} name={[name, 'path']} rules={[
+                                  { required: true, message: '请输入路径' },
+                                  { pattern: /^(\/|https?:\/\/|\/\/)/, message: '路径需以 / 或 http(s):// 开头' }
+                                ]} style={{ marginBottom: 0 }}>
                                   <Input placeholder="路径" />
+                                </Form.Item>
+                                <Form.Item {...restField} name={[name, 'icon']} style={{ marginBottom: 0 }}>
+                                  <IconPicker mode="simple" />
+                                </Form.Item>
+                                <Form.Item {...restField} name={[name, 'openInNew']} initialValue={false} style={{ marginBottom: 0 }}>
+                                  <Select size="small" style={{ width: 90 }} options={[
+                                    { label: '当前页', value: false },
+                                    { label: '新窗口', value: true },
+                                  ]} />
                                 </Form.Item>
                              </div>
                           </div>
@@ -756,6 +783,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 </div>
               )}
             </Form.List>
+          </>
         )}
 
         {widget.type === 'microApp' && (

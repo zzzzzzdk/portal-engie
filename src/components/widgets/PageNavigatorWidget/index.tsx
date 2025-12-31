@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import { WidgetConfig } from '@/types';
+import IconRenderer from '../../IconRenderer';
 import './index.scss';
 
 interface NavigationItem {
   name: string;
   path: string;
+  icon?: string;  // Ant Design 图标名或图片 URL
+  openInNew?: boolean;  // 是否在新窗口打开
 }
 
 interface PageNavigatorWidgetConfig extends WidgetConfig {
   items?: NavigationItem[];
+  displayMode?: 'icon' | 'text';  // 显示模式：仅图标或仅文字
+  itemSize?: 'small' | 'medium' | 'large';  // 项目大小
+  itemColor?: string | { toHexString?: () => string };  // 颜色配置
 }
 
 interface PageNavigatorWidgetProps {
@@ -19,120 +24,109 @@ interface PageNavigatorWidgetProps {
 }
 
 const DEFAULT_ITEMS: NavigationItem[] = [
-  { name: '沧澜架构', path: 'http://192.168.5.60:30093/#/preview/61f2c8c8-f50b-4f99-adda-8eee5bb7b92b' },
-  { name: '工作台', path: 'http://192.168.5.60:30093/#/preview/61f2c8c8-f50b-4f99-adda-8eee5bb7b92b' },
-  { name: '首页', path: 'http://192.168.5.60:30093/#/preview/61f2c8c8-f50b-4f99-adda-8eee5bb7b92b' }
+  { name: '首页', path: '/', icon: 'HomeOutlined' },
+  { name: '工作台', path: '/workspace', icon: 'AppstoreOutlined' },
+  { name: '设置', path: '/settings', icon: 'SettingOutlined' }
 ];
 
-const variants = {
-  center: { 
-    x: "-50%", 
-    left: "50%", 
-    scale: 1.2, 
-    zIndex: 10, 
-    opacity: 1,
-    transition: { type: "spring", stiffness: 300, damping: 30 }
-  },
-  left: { 
-    x: "-50%", 
-    left: "calc(50% - 220px)", 
-    scale: 0.9, 
-    zIndex: 5, 
-    opacity: 0.8,
-    transition: { type: "spring", stiffness: 300, damping: 30 }
-  },
-  right: { 
-    x: "-50%", 
-    left: "calc(50% + 220px)", 
-    scale: 0.9, 
-    zIndex: 5, 
-    opacity: 0.8,
-    transition: { type: "spring", stiffness: 300, damping: 30 }
-  },
-  hidden: { 
-    x: "-50%", 
-    left: "50%", 
-    scale: 0.5, 
-    zIndex: 0, 
-    opacity: 0 
+// 根据 itemSize 获取导航项的宽度
+const getItemWidth = (size: 'small' | 'medium' | 'large', mode: 'icon' | 'text'): number => {
+  if (mode === 'icon') {
+    switch (size) {
+      case 'small': return 40;
+      case 'large': return 60;
+      default: return 50;
+    }
   }
+  switch (size) {
+    case 'small': return 80;
+    case 'large': return 140;
+    default: return 110;
+  }
+};
+
+// 解析颜色值
+const normalizeColor = (color: string | { toHexString?: () => string } | undefined): string | undefined => {
+  if (!color) return undefined;
+  if (typeof color === 'string') return color;
+  if (typeof color === 'object' && color.toHexString) {
+    return color.toHexString();
+  }
+  return undefined;
 };
 
 const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isEditMode } = useStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
   const items = config.items && config.items.length > 0 ? config.items : DEFAULT_ITEMS;
-  
-  // State to track the active (centered) item index
-  const [activeIndex, setActiveIndex] = useState<number>(1);
+  const displayMode = config.displayMode || 'text';
+  const itemSize = config.itemSize || 'medium';
+  const itemColor = normalizeColor(config.itemColor);
 
-  // Initialize active index based on current path
+  // 监听容器宽度变化
   useEffect(() => {
-    const currentIndex = items.findIndex(item => {
-      if (item.path === location.pathname) return true;
-      return false;
-    });
-    
-    if (currentIndex !== -1) {
-      setActiveIndex(currentIndex);
-    } else {
-      if (items.length > 0) {
-         setActiveIndex(Math.floor(items.length / 2));
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
       }
+    };
+
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
     }
-  }, [location.pathname, items]);
 
-  const handleNavigate = (path: string, index: number) => {
-    // Set active index immediately to trigger animation
-    setActiveIndex(index);
+    return () => resizeObserver.disconnect();
+  }, []);
 
+  // 计算每个导航项的位置
+  const itemPositions = useMemo(() => {
+    const count = items.length;
+    if (count === 0 || containerWidth === 0) return [];
+
+    const itemWidth = getItemWidth(itemSize, displayMode);
+    const gap = 8; // 导航项间距
+    const totalWidth = itemWidth * count + gap * (count - 1);
+    const startX = (containerWidth - totalWidth) / 2;
+
+    return items.map((_, index) => ({
+      left: startX + index * (itemWidth + gap),
+    }));
+  }, [items, containerWidth, itemSize, displayMode]);
+
+  const handleNavigate = (item: NavigationItem) => {
     if (isEditMode) return;
-    
-    if (!path) return;
-    
-    // Delay navigation to allow animation to play
-    setTimeout(() => {
-      if (path.startsWith('http') || path.startsWith('//')) {
-        window.open(path, '_blank');
-      } else {
-        navigate(path);
-      }
-    }, 600); // 600ms delay to allow spring animation to settle mostly
-  };
+    if (!item.path) return;
 
-  const getPositionVariant = (index: number) => {
-    const len = items.length;
-    // Calculate relative position based on circular buffer
-    // 0 -> center, 1 -> right, len-1 -> left
-    const diff = (index - activeIndex + len) % len;
-    
-    if (diff === 0) return 'center';
-    if (diff === 1) return 'right';
-    if (diff === len - 1) return 'left';
-    return 'hidden';
+    if (item.openInNew) {
+      window.open(item.path, '_blank');
+    } else {
+      navigate(item.path);
+    }
   };
 
   return (
-    <div className="page-navigator-widget">
+    <div className={`page-navigator-widget mode-${displayMode} size-${itemSize}`} ref={containerRef}>
       <div className="nav-container">
-        {items.map((item, index) => {
-          const variant = getPositionVariant(index);
-          const isCenter = variant === 'center';
-          
-          return (
-            <motion.div 
-              key={`${index}-${item.name}`}
-              className={`nav-item ${isCenter ? 'center-item' : ''}`}
-              initial={false}
-              animate={variant}
-              variants={variants}
-              onClick={() => handleNavigate(item.path, index)}
-            >
+        {items.map((item, index) => (
+          <div
+            key={`${index}-${item.name}`}
+            className="nav-item"
+            style={{ left: itemPositions[index]?.left ?? 0, color: itemColor }}
+            onClick={() => handleNavigate(item)}
+            title={displayMode === 'icon' ? item.name : undefined}
+          >
+            {displayMode === 'icon' ? (
+              <IconRenderer value={item.icon || 'AppstoreOutlined'} size={itemSize === 'small' ? 20 : itemSize === 'large' ? 32 : 24} color={itemColor} />
+            ) : (
               <span>{item.name}</span>
-            </motion.div>
-          );
-        })}
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -293,6 +293,7 @@ const DashboardInner: React.FC = () => {
           minW: widget.layout.minW || 1,
           minH: widget.layout.minH || 1,
           autoPosition: shouldAutoPosition ? true : undefined,
+          locked: true,
           content: JSON.stringify({
             name: 'WidgetAdapter',
             props: {
@@ -597,6 +598,7 @@ function createWidgetGridNode(widget: Widget): GridStackWidget & { id: string } 
     h: widget.layout.h,
     minW: widget.layout.minW || 1,
     minH: widget.layout.minH || 1,
+    locked: true,
     autoPosition: shouldAutoPosition ? true : undefined,
     content: JSON.stringify({
       name: 'WidgetAdapter',
@@ -653,6 +655,7 @@ function createGroupGridWidget(
     h: group.layout.h,
     minW: group.layout.minW || 2,
     minH: group.layout.minH || 2,
+    locked: true,
     content: JSON.stringify({
       name: 'GroupAdapter',
       props: {

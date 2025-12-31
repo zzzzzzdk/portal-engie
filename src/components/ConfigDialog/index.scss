@@ -1,6 +1,10 @@
 .config-dialog {
   width: 700px !important;
   
+  .ant-input {
+   height: 34px;
+  }
+
   .ant-input-number {
     width: 100%;
   }
@@ -219,6 +223,15 @@
      gap: 16px;
      margin-bottom: 24px;
      .ant-form-item { flex: 1; margin-bottom: 0; }
+  }
+
+  .form-row-4 {
+     display: flex;
+     gap: 12px;
+     margin-bottom: 24px;
+     align-items: center;
+     .ant-form-item { flex: 1; margin-bottom: 0; }
+     .ant-form-item:last-child { flex: 0 0 auto; }
   }
 
   @keyframes slideDown {

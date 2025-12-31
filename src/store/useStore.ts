@@ -29,8 +29,8 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
 };
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
-const DEFAULT_ICON_NAV_LAYOUT = { w: 1, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_NAV_GROUP_LAYOUT = { w: 4, h: 3, x: 0, y: 0, minW: 2, minH: 2 };
+const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_NAV_GROUP_LAYOUT = { w: 5, h: 4, x: 0, y: 0, minW: 2, minH: 2 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
