@@ -1,9 +1,10 @@
 // 配置状态管理 - Zustand Store
 import { create } from 'zustand';
-import type { IBaseColors, ISemanticTokens } from '@/theme/tokens/semantic';
+import type { IBaseColors, ISemanticTokens, IWidgetStyleTokens, StyleMode } from '@/theme/tokens/semantic';
 import type { ThemePresetName } from '@/theme/tokens/presets';
 import { lightPreset } from '@/theme/tokens/presets/light';
 import { getThemePreset } from '@/theme/tokens/presets';
+import { getStylePreset } from '@/theme/tokens/styles';
 
 /**
  * 主题模式类型
@@ -18,6 +19,8 @@ interface ConfigState {
   themePreset: ThemePresetName;
   baseColors: IBaseColors;
   customTokens: ISemanticTokens;
+  styleMode: StyleMode;
+  styleTokens: IWidgetStyleTokens;
   collapsed: boolean;
   locale: string;
 }
@@ -33,6 +36,7 @@ interface ConfigActions {
   updateCustomTokens: (tokens: Partial<ISemanticTokens>) => void;
   setCustomTokens: (tokens: ISemanticTokens) => void;
   resetToPreset: (preset: ThemePresetName) => void;
+  setStyleMode: (mode: StyleMode) => void;
   setCollapsed: (collapsed: boolean) => void;
   setLocale: (locale: string) => void;
 }
@@ -43,14 +47,18 @@ interface ConfigActions {
 const getInitialState = (): ConfigState => {
   const themeMode = localStorage.getItem('themeMode') as ThemeMode;
   const themePreset = localStorage.getItem('themePreset') as ThemePresetName;
+  const styleMode = (localStorage.getItem('styleMode') as StyleMode) || 'normal';
 
   if (themeMode && themePreset) {
     const preset = getThemePreset(themePreset);
+    const isDark = themeMode === 'dark';
     return {
       themeMode,
       themePreset,
       baseColors: preset.colors,
       customTokens: preset,
+      styleMode,
+      styleTokens: getStylePreset(styleMode, isDark),
       collapsed: false,
       locale: localStorage.getItem('locale') || 'zh-CN',
     };
@@ -61,12 +69,15 @@ const getInitialState = (): ConfigState => {
     themePreset: 'light',
     baseColors: lightPreset.colors,
     customTokens: lightPreset,
+    styleMode: 'normal',
+    styleTokens: getStylePreset('normal', false),
     collapsed: false,
     locale: 'zh-CN',
   };
 
   localStorage.setItem('themeMode', defaultState.themeMode);
   localStorage.setItem('themePreset', defaultState.themePreset);
+  localStorage.setItem('styleMode', defaultState.styleMode);
 
   return defaultState;
 };
@@ -80,7 +91,11 @@ export const useConfigStore = create<ConfigState & ConfigActions>((set) => ({
   // 设置主题模式
   setThemeMode: (mode: ThemeMode) => {
     localStorage.setItem('themeMode', mode);
-    set({ themeMode: mode });
+    set((state) => ({
+      themeMode: mode,
+      // 同步更新风格预设（根据新的明暗模式）
+      styleTokens: getStylePreset(state.styleMode, mode === 'dark'),
+    }));
   },
 
   // 设置主题预设
@@ -149,6 +164,15 @@ export const useConfigStore = create<ConfigState & ConfigActions>((set) => ({
     set({ themePreset: preset });
   },
 
+  // 设置显示风格模式
+  setStyleMode: (mode: StyleMode) => {
+    localStorage.setItem('styleMode', mode);
+    set((state) => ({
+      styleMode: mode,
+      styleTokens: getStylePreset(mode, state.themeMode === 'dark'),
+    }));
+  },
+
   // 设置侧边栏折叠状态
   setCollapsed: (collapsed: boolean) => {
     set({ collapsed });
@@ -164,3 +188,4 @@ export const useConfigStore = create<ConfigState & ConfigActions>((set) => ({
 // 兼容性类型导出
 export type ThemeType = ThemePresetName | 'custom';
 export type { ISemanticTokens as IThemeColors };
+export type { StyleMode } from '@/theme/tokens/semantic';

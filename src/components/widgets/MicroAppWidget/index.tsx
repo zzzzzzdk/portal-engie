@@ -19,7 +19,7 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
-  const { themeMode } = useTheme();
+  const { themeMode, styleMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
@@ -84,6 +84,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
       bus.$emit('token:update', getToken());
       bus.$emit('state:change', {
         theme: themeMode,
+        styleMode,  // 极简/标准风格
         __sizeInfo: sizeInfo,
         backgroundConfig
       });
@@ -101,14 +102,15 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.systemId, config.moduleId]);
 
-  // 监听上下文变化并通知子应用（主题、尺寸、背景）
+  // 监听上下文变化并通知子应用（主题、风格、尺寸、背景）
   useEffect(() => {
     bus.$emit('state:change', {
       theme: themeMode,
+      styleMode,  // 极简/标准风格
       __sizeInfo: sizeInfo,
       backgroundConfig
     });
-  }, [themeMode, sizeInfo, backgroundConfig]);
+  }, [themeMode, styleMode, sizeInfo, backgroundConfig]);
 
   const handleRetry = () => {
     initMicroApp();

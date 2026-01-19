@@ -64,11 +64,11 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
       console.log('打开链接:', link.title, link.url);
       // 内网环境，仅输出日志
       // 如需跳转可取消下方注释
-      // if (link.openInNew) {
-      //   window.open(link.url, '_blank');
-      // } else {
-      //   window.location.href = link.url;
-      // }
+      if (link.openInNew) {
+        window.open(link.url, '_blank');
+      } else {
+        window.location.href = link.url;
+      }
     }
   };
 

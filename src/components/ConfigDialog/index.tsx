@@ -65,6 +65,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           title: group.title,
           showTitle: config.showTitle !== false,
           titleColor: config.titleColor,
+          titleFontSize: config.titleFontSize,
+          titleFontWeight: config.titleFontWeight,
           backgroundType: config.backgroundType || 'color',
           backgroundColor: config.backgroundColor,
           backgroundImage: config.backgroundImage,
@@ -225,6 +227,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           title,
           showTitle,
           titleColor,
+          titleFontSize,
+          titleFontWeight,
           backgroundType,
           backgroundColor,
           backgroundImage,
@@ -260,6 +264,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         updateGroupConfig(group.id, {
           showTitle,
           titleColor: normalizedTitleColor,
+          titleFontSize,
+          titleFontWeight,
           backgroundType,
           backgroundColor: normalizedBgColor,
           backgroundImage,
@@ -662,6 +668,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                <Form.Item name="textColor" label="文字颜色">
                  <Input type="color" style={{ width: 60, padding: 4 }} />
                </Form.Item>
+               <Form.Item name="headerFontSize" label="字体大小">
+                 <InputNumber min={12} max={48} placeholder="24" addonAfter="px" />
+               </Form.Item>
+            </div>
+            <div className="form-row-2">
                <Form.Item name="fontFamily" label="字体">
                  <Select showSearch allowClear options={[
                      { value: 'YouSheBiaoTiHei', label: 'YouSheBiaoTiHei (优设标题黑)' },
@@ -671,6 +682,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                      { value: 'sans-serif', label: 'sans-serif (无衬线)' },
                    ]}
                  />
+               </Form.Item>
+               <Form.Item name="showThemeSwitcher" label="显示换肤按钮" valuePropName="checked">
+                 <Switch />
                </Form.Item>
             </div>
             <Form.Item name="icon" label="图标">
@@ -1012,6 +1026,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         </Form.Item>
         <Form.Item name="titleColor" label="标题颜色">
           <ColorPicker showText allowClear />
+        </Form.Item>
+      </div>
+      <div className="form-row-2">
+        <Form.Item name="titleFontSize" label="标题字号" rules={[{ type: 'number', min: 12, max: 48 }]}>
+          <InputNumber style={{ width: '100%' }} suffix="px" placeholder="14" />
+        </Form.Item>
+        <Form.Item name="titleFontWeight" label="标题字重">
+          <Select placeholder="500">
+            <Select.Option value={400}>常规 (400)</Select.Option>
+            <Select.Option value={500}>中等 (500)</Select.Option>
+            <Select.Option value={600}>半粗 (600)</Select.Option>
+            <Select.Option value={700}>粗体 (700)</Select.Option>
+          </Select>
         </Form.Item>
       </div>
 

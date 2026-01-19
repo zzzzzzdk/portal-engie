@@ -85,7 +85,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
   const iconSize = widgetConfig?.iconSize || 32;
   const showLabel = widgetConfig?.showLabel !== false;
   const staticItems = widgetConfig?.staticItems;
-  const itemIconColor = normalizeColor(widgetConfig?.itemIconColor, '#1890ff');
+  const itemIconColor = normalizeColor(widgetConfig?.itemIconColor, '#FFFFFF');
   const itemGap = widgetConfig?.itemGap || 12;
 
   // 加载数据
@@ -157,11 +157,11 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
       console.log('导航组点击:', item.name, item.url);
       // 内网环境，仅输出日志
       // 如需跳转可取消下方注释
-      // if (item.openInNew) {
-      //   window.open(item.url, '_blank');
-      // } else {
-      //   window.location.href = item.url;
-      // }
+      if (item.openInNew) {
+        window.open(item.url, '_blank');
+      } else {
+        window.location.href = item.url;
+      }
     }
   };
 

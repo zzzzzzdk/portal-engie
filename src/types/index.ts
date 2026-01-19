@@ -1,7 +1,7 @@
 import { Layout } from 'react-grid-layout';
 
 export const GRID_DENSITY_PRESETS = {
-  compact: { label: '紧凑', cellHeight: 40, margin: 0, columnCount: 36 },
+  compact: { label: '紧凑', cellHeight: 30, margin: 0, columnCount: 36 },
   standard: { label: '标准', cellHeight: 120, margin: 0, columnCount: 12 },
   spacious: { label: '宽松', cellHeight: 150, margin: 0, columnCount: 8 },
 } as const;
@@ -59,6 +59,7 @@ export interface WidgetConfig {
   backgroundSize?: string;     // 背景大小
   backgroundRepeat?: string;   // 背景重复
   backgroundPosition?: string; // 背景位置
+  boxShadow?: string;          // 阴影效果
   [key: string]: any; // Allow custom properties for different widgets
 }
 
@@ -76,6 +77,8 @@ export interface WidgetGroupConfig {
   // 标题设置
   showTitle?: boolean;          // 是否显示标题，默认 true
   titleColor?: string;          // 标题颜色
+  titleFontSize?: number;       // 标题字体大小，默认 14
+  titleFontWeight?: number | string;  // 标题字重，默认 500
 
   // 背景设置
   backgroundType?: 'color' | 'image' | 'gradient';

@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useConfigStore } from '@/store'
 import type { ThemeMode } from '@/store'
-import type { IBaseColors, ISemanticTokens } from './tokens/semantic'
+import type { IBaseColors, ISemanticTokens, StyleMode } from './tokens/semantic'
 import type { ThemePresetName } from './tokens/presets'
 import { getThemePreset } from './tokens/presets'
 
@@ -15,12 +15,15 @@ export const useTheme = () => {
   const themePreset = useConfigStore((state) => state.themePreset)
   const baseColors = useConfigStore((state) => state.baseColors)
   const customTokens = useConfigStore((state) => state.customTokens)
+  const styleMode = useConfigStore((state) => state.styleMode)
+  const styleTokens = useConfigStore((state) => state.styleTokens)
   const setThemeMode = useConfigStore((state) => state.setThemeMode)
   const setThemePreset = useConfigStore((state) => state.setThemePreset)
   const setBaseColor = useConfigStore((state) => state.setBaseColor)
   const setBaseColors = useConfigStore((state) => state.setBaseColors)
   const updateCustomTokens = useConfigStore((state) => state.updateCustomTokens)
   const setCustomTokens = useConfigStore((state) => state.setCustomTokens)
+  const setStyleModeAction = useConfigStore((state) => state.setStyleMode)
 
   // 使用 useCallback 避免无限循环
   const toggleThemeMode = useCallback(() => {
@@ -73,6 +76,10 @@ export const useTheme = () => {
     setCustomTokens(tokens)
   }, [setCustomTokens])
 
+  const setStyle = useCallback((mode: StyleMode) => {
+    setStyleModeAction(mode)
+  }, [setStyleModeAction])
+
   const getCSSVar = useCallback((path: string, prefix = 'ant') => {
     return `var(--${prefix}-${path.replace(/\./g, '-')})`
   }, [])
@@ -83,6 +90,7 @@ export const useTheme = () => {
       {
         themeMode: state.themeMode,
         themePreset: state.themePreset,
+        styleMode: state.styleMode,
         baseColors: state.baseColors,
         customTokens: state.customTokens,
       },
@@ -96,6 +104,7 @@ export const useTheme = () => {
       const config = JSON.parse(jsonString)
       if (config.themeMode) setThemeMode(config.themeMode)
       if (config.themePreset) setThemePreset(config.themePreset)
+      if (config.styleMode) setStyleModeAction(config.styleMode)
       if (config.baseColors) setBaseColors(config.baseColors)
       if (config.customTokens) setCustomTokens(config.customTokens)
       return true
@@ -103,15 +112,18 @@ export const useTheme = () => {
       console.error('Failed to import theme:', e)
       return false
     }
-  }, [setThemeMode, setThemePreset, setBaseColors, setCustomTokens])
+  }, [setThemeMode, setThemePreset, setStyleModeAction, setBaseColors, setCustomTokens])
 
   return {
     // === 状态 ===
     themeMode,
     themePreset,
+    styleMode,
     baseColors,
     customTokens,
+    styleTokens,
     isDark: themeMode === 'dark',
+    isMinimal: styleMode === 'minimal',
 
     // === 主题模式操作 ===
     /**
@@ -136,6 +148,12 @@ export const useTheme = () => {
      * 重置为当前预设（放弃自定义修改）
      */
     resetTheme,
+
+    // === 显示风格操作 ===
+    /**
+     * 设置显示风格（normal | minimal）
+     */
+    setStyle,
 
     // === 颜色操作 ===
     /**
