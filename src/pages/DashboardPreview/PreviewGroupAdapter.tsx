@@ -16,9 +16,7 @@ const PreviewGroupAdapter: React.FC<PreviewGroupAdapterProps> = ({ groupId }) =>
 
   // 计算容器样式（背景和边框）
   const containerStyle = useMemo(() => {
-    if (!group?.config) return {};
-
-    const config = group.config;
+    const config = group?.config || {};
     const style: React.CSSProperties = {};
 
     // 背景设置
@@ -33,19 +31,18 @@ const PreviewGroupAdapter: React.FC<PreviewGroupAdapterProps> = ({ groupId }) =>
       style.background = config.backgroundGradient;
     }
 
-    // 边框设置
-    if (config.borderStyle && config.borderStyle !== 'none') {
-      style.borderStyle = config.borderStyle;
+    // 边框设置 - 默认显示实线边框
+    const borderStyle = config.borderStyle ?? 'solid';
+    if (borderStyle !== 'none') {
+      style.borderStyle = borderStyle;
       style.borderWidth = config.borderWidth ?? 2;
       style.borderColor = config.borderColor || 'var(--ant-color-border)';
-    } else if (config.borderStyle === 'none') {
+    } else {
       style.border = 'none';
     }
 
-    // 圆角
-    if (config.borderRadius !== undefined) {
-      style.borderRadius = config.borderRadius;
-    }
+    // 圆角 - 默认 8px
+    style.borderRadius = config.borderRadius ?? 8;
 
     // 内边距
     if (config.padding !== undefined) {
@@ -57,9 +54,21 @@ const PreviewGroupAdapter: React.FC<PreviewGroupAdapterProps> = ({ groupId }) =>
 
   // 标题样式
   const titleStyle = useMemo(() => {
-    if (!group?.config?.titleColor) return {};
-    return { color: group.config.titleColor };
-  }, [group?.config?.titleColor]);
+    const config = group?.config || {};
+    const style: React.CSSProperties = {};
+
+    if (config.titleColor) {
+      style.color = config.titleColor;
+    }
+    if (config.titleFontSize) {
+      style.fontSize = config.titleFontSize;
+    }
+    if (config.titleFontWeight) {
+      style.fontWeight = config.titleFontWeight;
+    }
+
+    return style;
+  }, [group?.config]);
 
   if (!group) {
     return null;

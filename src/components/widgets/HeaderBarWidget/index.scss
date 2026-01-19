@@ -15,6 +15,7 @@
 
     // 标题区域
     .title-section {
+      height: 100%;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -32,14 +33,48 @@
       }
     }
 
-    // 用户个人中心区域
-    .user-profile-section {
-      line-height: 60px;
-      margin-left: auto; // 自动推到最右侧
-      z-index: 2; // 确保在标题之上（如果有重叠）
+    // 右侧区域（包含换肤按钮和个人中心）
+    .right-section {
+      margin-left: auto;
       display: flex;
       align-items: center;
-      color: #fff;
+      gap: 16px;
+      z-index: 2;
+
+      // 换肤按钮区域
+      .theme-switcher-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .ant-radio-group {
+          .ant-radio-button-wrapper {
+            // 适配深色背景
+            // background: rgba(255, 255, 255, 0.3);
+            // border-color: rgba(255, 255, 255, 0.3);
+            // color: #fff;
+
+            // &:hover {
+            //   background: rgba(255, 255, 255, 0.25);
+            //   color: #fff;
+            // }
+
+            // &.ant-radio-button-wrapper-checked {
+            //   background: var(--ant-color-bg-base);
+            //   border-color: var(--ant-color-bg-base);
+            //   color: var(--ant-blue);
+            // }
+          }
+        }
+      }
+
+      // 用户个人中心区域
+      .user-profile-section {
+        line-height: 60px;
+        display: flex;
+        align-items: center;
+        color: #fff;
+      }
     }
   }
 
@@ -53,14 +88,11 @@
         left: 50%;
         transform: translateX(-50%);
         // 确保不会覆盖到右侧的用户信息（简单处理：设置最大宽度）
-        max-width: calc(100% - 200px);
+        max-width: calc(100% - 300px);
       }
 
-      // 用户信息仍然在右侧，因为 margin-left: auto 在 flex container 中
-      // 但这里我们已经在 parent 上用了 justify-content: center
-      // 所以 user-profile-section 需要绝对定位到右侧，或者 override parent 的 justify
-
-      .user-profile-section {
+      // 右侧区域绝对定位到右侧
+      .right-section {
         position: absolute;
         right: 0;
       }

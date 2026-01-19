@@ -343,6 +343,18 @@ const Layout: React.FC = () => {
       return
     }
 
+    // 处理风格切换
+    if (key === 'style-normal') {
+      themeSystem.setStyle('normal')
+      message.success('已切换到标准风格')
+      return
+    }
+    if (key === 'style-minimal') {
+      themeSystem.setStyle('minimal')
+      message.success('已切换到极简风格')
+      return
+    }
+
     // 使用新的主题系统切换预设
     themeSystem.applyPreset(key as 'light' | 'dark' | 'blue' | 'purple', true)
   }
@@ -374,6 +386,17 @@ const Layout: React.FC = () => {
     {
       key: 'dark',
       label: '暗黑主题',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'style-normal',
+      label: `标准风格 ${themeSystem.styleMode === 'normal' ? '✓' : ''}`,
+    },
+    {
+      key: 'style-minimal',
+      label: `极简风格 ${themeSystem.styleMode === 'minimal' ? '✓' : ''}`,
     },
     // {
     //   type: 'divider',

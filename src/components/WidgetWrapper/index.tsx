@@ -95,7 +95,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       const newBackgroundStyle: React.CSSProperties = {};
       const {
         backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur
+        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow
       } = widget.config;
       // console.log(widget.config)
       if (backgroundType === 'image' && backgroundImage) {
@@ -112,6 +112,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       if (backdropBlur && backdropBlur > 0) {
         newBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`;
         newBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`; // Safari 兼容
+      }
+      // 应用阴影效果
+      if (boxShadow) {
+        newBackgroundStyle.boxShadow = boxShadow;
       }
       return newBackgroundStyle
     }, [widget.config])

@@ -101,20 +101,16 @@
   }
 
   &.grid-stack-sub-grid {
-    // 默认更明显的样式
-    border: 2px solid var(--ant-color-border);
+    // 边框和背景样式由 .group-background 内联样式控制
+    // 这里只保留基础的过渡效果
+    border: none;
     border-radius: 8px;
-    background-color: rgba(0, 0, 0, 0.02);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-    transition: border-color 0.2s, box-shadow 0.2s;
-
-    &:hover {
-      border-color: var(--ant-color-primary);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+    background: transparent;
+    transition: box-shadow 0.2s;
 
     .grid-stack-item-content {
-      overflow: hidden;
+      overflow-y: visible;
+      overflow-x: visible;
       border-radius: inherit;
     }
 
@@ -134,7 +130,9 @@
 .grid-stack-item-content {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+  overflow: visible !important;  // 允许 box-shadow 显示，内部内容溢出由 .widget-content 控制
   border-radius: 4px;
 }
 

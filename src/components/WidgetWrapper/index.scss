@@ -2,17 +2,21 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: var(--ant-color-bg-container, #fff);
-  border-radius: 8px;
-  // box-shadow: 0 1px 3px var(--ant-color-border, rgba(0, 0, 0, 0.1));
-  transition: box-shadow 0.3s;
+  // 使用风格 CSS 变量，支持极简/标准风格切换
+  background: var(--widget-background, var(--ant-color-bg-container, #fff));
+  backdrop-filter: var(--widget-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--widget-backdrop-filter, none);
+  border-radius: var(--widget-border-radius, 8px);
+  // border: var(--widget-border-width, 1px) solid var(--widget-border-color, transparent);
+  // box-shadow: var(--widget-box-shadow, none);
+  transition: box-shadow 0.3s, background 0.3s, backdrop-filter 0.3s;
   // 支持背景图片覆盖
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 
   &:hover {
-    box-shadow: 0 4px 12px var(--ant-color-border-secondary, rgba(0, 0, 0, 0.15));
+    box-shadow: var(--widget-box-shadow, 0 4px 12px var(--ant-color-border-secondary, rgba(0, 0, 0, 0.15)));
   }
 
   .widget-header {
@@ -20,8 +24,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    background: var(--ant-color-bg-container, #fff);
-    border-bottom: 1px solid var(--ant-color-border, #f0f0f0);
+    background: transparent;
+    border-bottom: 1px solid var(--widget-border-color, var(--ant-color-border, #f0f0f0));
     cursor: grab;
     user-select: none;
     transition: all 0.3s ease;
@@ -37,6 +41,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: var(--widget-title-color, inherit);
     }
 
     .widget-actions {
@@ -100,7 +105,8 @@
     overflow: auto;
     padding: 12px;
     position: relative;
-    background-color: var(--ant-color-bg-container, #fff);
+    background-color: transparent;
+    color: var(--widget-text-color, inherit);
   }
 
   // 有自定义背景时，让 header 和 content 背景透明

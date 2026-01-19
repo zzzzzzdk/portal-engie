@@ -17,8 +17,24 @@ import {
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 
-const DEFAULT_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_GROUP_LAYOUT = { w: 6, h: 4, x: 0, y: Infinity, minW: 2, minH: 2 };
+// cellHeight=30 时的默认布局尺寸
+// 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
+const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: number; minH?: number }> = {
+  clock: { w: 4, h: 6, minW: 2, minH: 3 },
+  stats: { w: 10, h: 6, minW: 4, minH: 3 },
+  chart: { w: 8, h: 9, minW: 4, minH: 4 },
+  link: { w: 5, h: 5, minW: 2, minH: 2 },
+  news: { w: 6, h: 10, minW: 4, minH: 4 },
+  topList: { w: 5, h: 9, minW: 3, minH: 4 },
+  search: { w: 8, h: 4, minW: 4, minH: 2 },
+  dataTable: { w: 10, h: 8, minW: 6, minH: 4 },
+  customForm: { w: 8, h: 11, minW: 4, minH: 4 },
+  typography: { w: 4, h: 3, minW: 2, minH: 1 },
+  cardGrid: { w: 8, h: 6, minW: 4, minH: 3 },
+};
+
+const DEFAULT_LAYOUT = { w: 4, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_GROUP_LAYOUT = { w: 6, h: 5, x: 0, y: Infinity, minW: 2, minH: 2 };
 const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
   showTitle: true,
   borderStyle: 'solid',
@@ -27,10 +43,10 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
   backgroundType: 'color',
   backgroundColor: 'rgba(0, 0, 0, 0.02)',
 };
-const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 1, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 2, x: 0, y: 0, minW: 6, minH: 1 };
-const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_NAV_GROUP_LAYOUT = { w: 5, h: 4, x: 0, y: 0, minW: 2, minH: 2 };
+const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 6, minH: 1 };
+const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
+const DEFAULT_NAV_GROUP_LAYOUT = { w: 10, h: 10, x: 0, y: 0, minW: 4, minH: 4 };
 
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
@@ -45,7 +61,7 @@ const sanitizeLayout = (layout: Layout): Layout => {
     x: sanitizeLayoutValue(layout.x, 0, 0),
     y: sanitizeLayoutValue(layout.y, 0, 0),
     w: sanitizeLayoutValue(layout.w, 4, 1),
-    h: sanitizeLayoutValue(layout.h, 1, 1),
+    h: sanitizeLayoutValue(layout.h, 3, 1),  // 默认 h=3（cellHeight=30 时约 90px）
     minW: sanitizeLayoutValue(layout.minW, 1, 1),
     minH: sanitizeLayoutValue(layout.minH, 1, 1),
   };
@@ -73,7 +89,7 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         textColor: '#ffffff',  // 白色文字
         fontFamily: 'YouSheBiaoTiHei',  // 默认字体
         backgroundType: 'gradient',
-        backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',  // 默认渐变背景
+        // backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',  // 默认渐变背景
       };
     case 'typography':
       return { ...baseConfig, title: '文本组件', content: '这是一段文本', showTitle: false };
@@ -117,7 +133,7 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         columns: 4,
         showLabel: true,
         iconSize: 32,
-        itemIconColor: '#1890ff',
+        itemIconColor: '#ffffff',
         itemGap: 12,
       };
     default:
@@ -181,8 +197,9 @@ export const useStore = create<AppState>()(
 
       addWidget: (type: WidgetType) => {
         const id = uuidv4();
-        // 使用特定的布局配置
-        let layoutConfig = DEFAULT_LAYOUT;
+        // 根据组件类型获取对应的默认布局配置
+        let layoutConfig: { w: number; h: number; x: number; y: number; minW: number; minH: number };
+
         if (type === 'headerBar') {
           layoutConfig = DEFAULT_HEADER_BAR_LAYOUT;
         } else if (type === 'pageNavigator') {
@@ -191,6 +208,19 @@ export const useStore = create<AppState>()(
           layoutConfig = DEFAULT_ICON_NAV_LAYOUT;
         } else if (type === 'navGroup') {
           layoutConfig = DEFAULT_NAV_GROUP_LAYOUT;
+        } else if (WIDGET_DEFAULT_LAYOUTS[type]) {
+          // 使用各小部件特定的默认尺寸
+          const widgetLayout = WIDGET_DEFAULT_LAYOUTS[type];
+          layoutConfig = {
+            w: widgetLayout.w,
+            h: widgetLayout.h,
+            x: 0,
+            y: 0,
+            minW: widgetLayout.minW || 1,
+            minH: widgetLayout.minH || 1,
+          };
+        } else {
+          layoutConfig = DEFAULT_LAYOUT;
         }
 
         const newWidget: Widget = {
@@ -208,7 +238,7 @@ export const useStore = create<AppState>()(
 
       addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule) => {
         const id = uuidv4();
-        const defaultSize = module.defaultSize || { w: 6, h: 4 };
+        const defaultSize = module.defaultSize || { w: 6, h: 5 };
         const newWidget: Widget = {
           id,
           type: 'microApp',
@@ -295,6 +325,7 @@ export const useStore = create<AppState>()(
               minW: Math.max(width, 2),
               minH: Math.max(height, 2),
             }),
+            config: { ...DEFAULT_GROUP_CONFIG },
           };
 
           const updatedWidgets = state.widgets.map((widget) =>
@@ -473,7 +504,7 @@ export const useStore = create<AppState>()(
               x: 0,
               y: 0,
               w: 4,
-              h: 2,
+              h: 3,
               minW: 1,
               minH: 1,
             };

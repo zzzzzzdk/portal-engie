@@ -4,6 +4,32 @@ import zhCN from 'antd/locale/zh_CN'
 import { useConfigStore } from '@/store'
 import { generatePalette, injectColorPalette, injectCSSVariables } from './algorithms'
 import { baseTokens } from './tokens/base'
+import type { IWidgetStyleTokens } from './tokens/semantic'
+
+/**
+ * 注入风格 Token 到 CSS 变量
+ */
+const injectStyleTokens = (tokens: IWidgetStyleTokens, root: HTMLElement) => {
+  // 注入 widget 风格变量
+  const { widget, card } = tokens
+
+  // Widget 变量（处理可选属性）
+  root.style.setProperty('--widget-background', widget.background)
+  root.style.setProperty('--widget-backdrop-filter', widget.backdropFilter ?? 'none')
+  root.style.setProperty('--widget-border-radius', `${widget.borderRadius}px`)
+  root.style.setProperty('--widget-border-color', widget.borderColor ?? 'transparent')
+  root.style.setProperty('--widget-border-width', `${widget.borderWidth ?? 0}px`)
+  root.style.setProperty('--widget-box-shadow', widget.boxShadow ?? 'none')
+  root.style.setProperty('--widget-title-color', widget.titleColor ?? 'inherit')
+  root.style.setProperty('--widget-text-color', widget.textColor ?? 'inherit')
+
+  // Card 变量（处理可选属性）
+  root.style.setProperty('--card-background', card.background)
+  root.style.setProperty('--card-backdrop-filter', card.backdropFilter)
+  root.style.setProperty('--card-border-radius', `${card.borderRadius ?? 8}px`)
+  root.style.setProperty('--card-border-color', card.borderColor ?? 'transparent')
+  root.style.setProperty('--card-box-shadow', card.boxShadow ?? 'none')
+}
 
 /**
  * 主题提供者组件
@@ -11,13 +37,16 @@ import { baseTokens } from './tokens/base'
  * 1. 生成调色板并注入 CSS 变量
  * 2. 注入基础 Token 到 CSS 变量
  * 3. 注入自定义 Token 到 CSS 变量
- * 4. 配置 Ant Design 主题
+ * 4. 注入风格 Token 到 CSS 变量
+ * 5. 配置 Ant Design 主题
  */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const themeMode = useConfigStore((state) => state.themeMode)
   const themePreset = useConfigStore((state) => state.themePreset)
   const baseColors = useConfigStore((state) => state.baseColors)
   const customTokens = useConfigStore((state) => state.customTokens)
+  const styleMode = useConfigStore((state) => state.styleMode)
+  const styleTokens = useConfigStore((state) => state.styleTokens)
   console.log(customTokens)
   // 生成调色板（基于基础颜色）
   const palette = useMemo(() => generatePalette(baseColors), [baseColors])
@@ -44,13 +73,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 使用 important 优先级，确保覆盖 Ant Design 的默认值
       injectCSSVariables(customTokens.layout, 'ant', 'layout')
 
-      // 4. 设置主题模式到 data 属性（供 CSS 选择器使用）
+      // 4. 注入风格 Token（--ant-widget-background, --ant-widget-backdrop-filter 等）
+      injectStyleTokens(styleTokens, root)
+
+      // 5. 设置主题模式到 data 属性（供 CSS 选择器使用）
       root.dataset.theme = themeMode
       root.dataset.preset = themePreset
+      root.dataset.style = styleMode
     }, 0)
 
     return () => clearTimeout(timeoutId)
-  }, [palette, themeMode, themePreset, customTokens])
+  }, [palette, themeMode, themePreset, customTokens, styleMode, styleTokens])
 
   // Ant Design 主题配置
   const antdThemeConfig = useMemo(() => {

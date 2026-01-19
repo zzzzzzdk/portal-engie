@@ -23,6 +23,7 @@ interface BackgroundSettingsProps {
     backgroundImage?: string;
     backgroundGradient?: string;
     backdropBlur?: number;  // 背景模糊度 (px)
+    boxShadow?: string;     // 阴影效果
   };
 }
 
@@ -277,6 +278,13 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
             />
           </Form.Item>
         </div>
+      </Form.Item>
+      <Form.Item
+        name="boxShadow"
+        label="阴影效果"
+        tooltip="CSS box-shadow 属性，如: 0 4px 12px rgba(0,0,0,0.15)"
+      >
+        <Input placeholder="0 4px 12px rgba(0,0,0,0.15)" allowClear />
       </Form.Item>
     </>
   );
