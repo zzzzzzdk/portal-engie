@@ -429,18 +429,18 @@ const Layout: React.FC = () => {
 
           <Space size="middle">
             {/* 主题切换按钮 - 仅在开发环境显示 */}
-            {isDevelopment() && (
-              <Dropdown
-                menu={{
-                  items: themeMenuItems,
-                  onClick: handleThemeChange,
-                  selectedKeys: [themeSystem.themePreset],
-                }}
-                placement="bottomRight"
-              >
-                <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
-              </Dropdown>
-            )}
+            {/* {isDevelopment() && ( */}
+            <Dropdown
+              menu={{
+                items: themeMenuItems,
+                onClick: handleThemeChange,
+                selectedKeys: [themeSystem.themePreset],
+              }}
+              placement="bottomRight"
+            >
+              <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
+            </Dropdown>
+            {/* )} */}
 
             {/* 微应用配置按钮 */}
             <Tooltip title="微应用配置">

@@ -74,7 +74,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundSize: config.backgroundSize,
           backgroundRepeat: config.backgroundRepeat,
           backgroundPosition: config.backgroundPosition,
-          borderStyle: config.borderStyle || 'solid',
+          borderStyle: config.borderStyle || 'none',
           borderColor: config.borderColor,
           borderWidth: config.borderWidth ?? 2,
           borderRadius: config.borderRadius ?? 8,
@@ -170,15 +170,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         };
 
         form.setFieldsValue({
+          ...normalizedConfig,
+          // 🔧 title 必须放在 normalizedConfig 之后，否则会被 widget.config.title（默认标题）覆盖
           title: widget.title,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           showTitle: widget.config.showTitle !== false,
-          // titleColor: normalizedConfig.titleColor,
           backgroundType: widget.config.backgroundType || 'color',
           backgroundImage: widget.config.backgroundImage,
           backgroundGradient: widget.config.backgroundGradient,
-          ...normalizedConfig,
         });
       }
 
@@ -1046,9 +1046,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       <div className="form-row-2">
         <Form.Item name="borderStyle" label="边框样式">
           <Select>
+            <Select.Option value="none">无边框</Select.Option>
             <Select.Option value="solid">实线</Select.Option>
             <Select.Option value="dashed">虚线</Select.Option>
-            <Select.Option value="none">无边框</Select.Option>
           </Select>
         </Form.Item>
         <Form.Item name="borderWidth" label="边框宽度" rules={[{ type: 'number', min: 0, max: 10 }]}>
