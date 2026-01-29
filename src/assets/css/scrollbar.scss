@@ -1,28 +1,52 @@
+// ============================================
+// 全局滚动条样式
+// ============================================
 
+// 基础滚动条样式（浅色主题）
 * {
+  // Firefox 滚动条
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+
+  // Webkit/Blink 滚动条
   &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   &::-webkit-scrollbar-track {
-    background: var(--ant-color-bg-layout, rgba(0, 0, 0, 0.04));
-    border-radius: 4px;
+    background: transparent;
+    border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--ant-color-border, rgba(0, 0, 0, 0.15));
-    border-radius: 4px;
-    // transition: background 0.3s ease;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    &:active {
+      background: rgba(0, 0, 0, 0.35);
+    }
   }
 
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
-
+// ============================================
+// 深色主题滚动条
+// ============================================
 [data-theme="dark"] {
   * {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+
     &::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.06);
+      background: transparent;
     }
 
     &::-webkit-scrollbar-thumb {
@@ -36,13 +60,22 @@
         background: rgba(255, 255, 255, 0.35);
       }
     }
-
-    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.06);
   }
 }
 
-
+// ============================================
+// 滚动条尺寸变体
+// ============================================
 .scrollbar-thin {
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+.scrollbar-normal {
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -51,27 +84,64 @@
 
 .scrollbar-thick {
   &::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 5px;
   }
 }
 
+// ============================================
+// 滚动条显示控制
+// ============================================
 .scrollbar-hidden {
-  scrollbar-width: none; // Firefox
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
-    display: none; // Webkit/Blink
+    display: none;
   }
 }
 
-.scrollbar-always {
+.scrollbar-auto {
   &::-webkit-scrollbar {
     display: block;
   }
 }
 
+// 悬停时显示滚动条
+.scrollbar-hover {
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
 
+  &:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+  }
+}
+
+[data-theme="dark"] .scrollbar-hover {
+  &:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+// ============================================
+// 主题色滚动条
+// ============================================
 .scrollbar-primary {
+  scrollbar-color: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.3)) transparent;
+
   &::-webkit-scrollbar-thumb {
     background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.3));
 
@@ -83,39 +153,159 @@
       background: var(--ant-color-primary, rgba(24, 144, 255, 0.7));
     }
   }
-
-  scrollbar-color: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.3))
-                   var(--ant-color-bg-layout, rgba(0, 0, 0, 0.04));
 }
 
+// ============================================
+// 特定区域滚动条样式
+// ============================================
 
+// Widget 内容区域 - 更细的滚动条
 .widget-content {
+  scrollbar-width: thin;
+
   &::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
   }
 }
 
+[data-theme="dark"] .widget-content {
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Dashboard 容器
 .dashboard-container {
   &::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-}
 
-.ant-modal-body,
-.ant-drawer-body {
-  &::-webkit-scrollbar {
-    width: 6px;
+  &::-webkit-scrollbar-thumb {
+    border-radius: 4px;
   }
 }
 
-@media (max-width: 768px) {
+// Modal 和 Drawer 内容区域
+.ant-modal-body,
+.ant-drawer-body {
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+[data-theme="dark"] {
+  .ant-modal-body,
+  .ant-drawer-body {
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+}
+
+// Dropdown 和 Select 下拉菜单
+.ant-dropdown,
+.ant-select-dropdown,
+.ant-picker-dropdown {
   * {
-    scrollbar-width: none; // Firefox
+    scrollbar-width: thin;
 
     &::-webkit-scrollbar {
-      display: none; // Webkit/Blink
+      width: 4px;
+      height: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+  }
+}
+
+[data-theme="dark"] {
+  .ant-dropdown,
+  .ant-select-dropdown,
+  .ant-picker-dropdown {
+    * {
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+      }
+    }
+  }
+}
+
+// Table 表格滚动区域
+.ant-table-body,
+.ant-table-content {
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+[data-theme="dark"] {
+  .ant-table-body,
+  .ant-table-content {
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+}
+
+// ============================================
+// 移动端隐藏滚动条
+// ============================================
+@media (max-width: 768px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
     }
   }
 }

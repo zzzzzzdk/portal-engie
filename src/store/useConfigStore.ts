@@ -37,6 +37,7 @@ interface ConfigActions {
   setCustomTokens: (tokens: ISemanticTokens) => void;
   resetToPreset: (preset: ThemePresetName) => void;
   setStyleMode: (mode: StyleMode) => void;
+  setStyleTokens: (tokens: IWidgetStyleTokens) => void;  // 直接设置风格 Token（预览模式使用）
   setCollapsed: (collapsed: boolean) => void;
   setLocale: (locale: string) => void;
 }
@@ -171,6 +172,11 @@ export const useConfigStore = create<ConfigState & ConfigActions>((set) => ({
       styleMode: mode,
       styleTokens: getStylePreset(mode, state.themeMode === 'dark'),
     }));
+  },
+
+  // 直接设置风格 Token（预览模式使用，不更新 localStorage）
+  setStyleTokens: (tokens: IWidgetStyleTokens) => {
+    set({ styleTokens: tokens });
   },
 
   // 设置侧边栏折叠状态

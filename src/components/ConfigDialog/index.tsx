@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio } from 'antd';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { Drawer, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
+import { useConfigStore } from '@/store/useConfigStore';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import { uploadImage } from '@/services';
@@ -22,11 +23,46 @@ interface ConfigDialogProps {
   widget: Widget;
 }
 
+// 规范化颜色值（处理 ColorPicker 对象和序列化后的 JSON 对象）
+const normalizeColorValue = (color: any, defaultColor?: string): string | undefined => {
+  if (!color) return defaultColor;
+  if (typeof color === 'string') return color;
+  // 优先使用 toRgbString 保留透明度信息
+  if (typeof color === 'object' && color?.toRgbString) {
+    return color.toRgbString();
+  }
+  if (typeof color === 'object' && color?.toHexString) {
+    return color.toHexString();
+  }
+  // 处理序列化后的 ColorPicker 对象（包含 metaColor）
+  if (typeof color === 'object' && color?.metaColor) {
+    const { r, g, b, a } = color.metaColor;
+    if (a !== undefined && a < 1) {
+      return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+    }
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+  }
+  return defaultColor;
+};
+
 const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) => {
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules, groups, updateGroup, updateGroupConfig } = useStore();
+  const styleTokens = useConfigStore((state) => state.styleTokens);
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<any[]>([]);
   const [bgUploading, setBgUploading] = useState(false);
+
+  // 计算 navGroup 导航项的默认样式（基于当前风格 Token）
+  const navGroupItemDefaults = useMemo(() => {
+    // 使用风格 Token 中的 card 背景色作为导航项默认背景
+    const defaultBgColor = styleTokens?.card?.background || 'rgba(255, 255, 255, 0.2)';
+    // 使用风格 Token 中的 widget 文字颜色作为导航项默认文字颜色
+    const defaultTextColor = styleTokens?.widget?.textColor || '#222222';
+    return {
+      itemBgColor: defaultBgColor,
+      itemTextColor: defaultTextColor,
+    };
+  }, [styleTokens]);
 
   // 判断是否为分组（通过 widget.type === 'group' 或在 groups 中查找）
   const isGroup = (widget as any).type === 'group' || groups.some(g => g.id === widget.id);
@@ -145,8 +181,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
       } else {
         // 规范化颜色值的辅助函数（用于初始化表单，保留透明度）
-        const normalizeColorForForm = (color: any): string | undefined => {
-          if (!color) return undefined;
+        const normalizeColorForForm = (color: any, defaultColor?: string): string | undefined => {
+          if (!color) return defaultColor;
           if (typeof color === 'string') return color;
           // 优先使用 toRgbString 保留透明度信息
           if (typeof color === 'object' && color?.toRgbString) {
@@ -155,7 +191,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           if (typeof color === 'object' && color?.toHexString) {
             return color.toHexString();
           }
-          return undefined;
+          // 处理序列化后的 ColorPicker 对象（包含 metaColor）
+          if (typeof color === 'object' && color?.metaColor) {
+            const { r, g, b, a } = color.metaColor;
+            if (a !== undefined && a < 1) {
+              return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+            }
+            return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+          }
+          return defaultColor;
         };
 
         // 规范化 config 中的颜色值，防止 ColorPicker 报错
@@ -165,7 +209,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           itemIconColor: normalizeColorForForm(widget.config.itemIconColor),
           itemColor: normalizeColorForForm(widget.config.itemColor),
           backgroundColor: normalizeColorForForm(widget.config.backgroundColor),
-          titleColor: normalizeColorForForm(widget.config.titleColor),
+          // 标题颜色默认值
+          titleColor: normalizeColorForForm(widget.config.titleColor, '#222222'),
+          // navGroup 导航项样式颜色（使用风格 Token 默认值）
+          itemBgColor: normalizeColorForForm(widget.config.itemBgColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemBgColor : undefined),
+          itemTextColor: normalizeColorForForm(widget.config.itemTextColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemTextColor : undefined),
           displayMode: widget.config.displayMode || 'text',
         };
 
@@ -179,6 +227,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundType: widget.config.backgroundType || 'color',
           backgroundImage: widget.config.backgroundImage,
           backgroundGradient: widget.config.backgroundGradient,
+          // backdropBlur 由 BackgroundSettings 组件根据主题自动设置默认值
         });
       }
 
@@ -200,9 +249,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           theme: widget.config.theme || 'auto',
           borderRadius: widget.config.borderRadius || 12,
           zIndex: widget.config.zIndex || 9999,
-          // 折叠状态尺寸
+          // 折叠状态配置
           collapsedWidth: widget.config.collapsedWidth || 60,
           collapsedHeight: widget.config.collapsedHeight || 60,
+          collapsedIcon: widget.config.collapsedIcon || widget.config.icon || '',
+          collapsedBgColor: normalizeColorValue(widget.config.collapsedBgColor, '#1677ff'),
+          collapsedIconSize: widget.config.collapsedIconSize || 28,
         });
 
         // 助手中心特有配置
@@ -215,7 +267,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
       }
     }
-  }, [isOpen, widget, form, isFloatingModule, isGroup, group]);
+  }, [isOpen, widget, form, isFloatingModule, isGroup, group, navGroupItemDefaults]);
 
   const handleOk = async () => {
     try {
@@ -304,9 +356,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             theme,
             borderRadius,
             zIndex,
-            // 折叠状态尺寸
+            // 折叠状态配置
             collapsedWidth,
             collapsedHeight,
+            collapsedIcon,
+            collapsedBgColor,
+            collapsedIconSize,
             // 微应用特定字段
             systemId,
             moduleId,
@@ -324,6 +379,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           const iconValueType = getIconValueType(rawIcon);
           const icon = iconValueType === 'svg' ? '' : (rawIcon || '');
           const cleanedIconSvg = iconValueType === 'svg' ? rawIcon?.trim() : '';
+          // 规范化折叠背景色
+          const normalizedCollapsedBgColor = normalizeColorValue(collapsedBgColor);
 
         updateFloatingModule(widget.id, { title }); // 更新 title
 
@@ -348,9 +405,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             theme,
             borderRadius,
             zIndex,
-            // 折叠状态尺寸
+            // 折叠状态配置
             collapsedWidth,
             collapsedHeight,
+            collapsedIcon,
+            collapsedBgColor: normalizedCollapsedBgColor,
+            collapsedIconSize,
             // 微应用配置
             microApp: {
               ...widget.config.microApp,
@@ -409,9 +469,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             theme,
             borderRadius,
             zIndex,
-            // 折叠状态尺寸
+            // 折叠状态配置
             collapsedWidth,
             collapsedHeight,
+            collapsedIcon,
+            collapsedBgColor: normalizedCollapsedBgColor,
+            collapsedIconSize,
             // 本地组件配置
             localComponent: updatedLocalComponent,
             ...restConfig,
@@ -422,9 +485,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         if (widget.type === 'microApp') {
           // 微应用配置
           const {
-            title, showTitle, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon: rawIcon,
+            title, showTitle, titleColor, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon: rawIcon,
             backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-            backgroundSize, backgroundRepeat, backgroundPosition, forceIconOnly
+            backgroundSize, backgroundRepeat, backgroundPosition, forceIconOnly, contentPadding
           } = values;
           const normalizedForceIcon = !!forceIconOnly;
           // 根据图标值类型分别存储到 icon 或 iconSvg
@@ -432,10 +495,16 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           const icon = iconType === 'svg' ? '' : (rawIcon || '');
           const cleanedIconSvg = iconType === 'svg' ? rawIcon?.trim() : '';
 
-          // Normalize color
-          let normalizedColor = backgroundColor;
-          if (typeof normalizedColor === 'object' && normalizedColor?.toHexString) {
-            normalizedColor = normalizedColor.toHexString();
+          // Normalize colors
+          let normalizedBgColor = backgroundColor;
+          if (typeof normalizedBgColor === 'object' && normalizedBgColor?.toHexString) {
+            normalizedBgColor = normalizedBgColor.toHexString();
+          }
+          let normalizedTitleColor = titleColor;
+          if (typeof normalizedTitleColor === 'object' && normalizedTitleColor?.toRgbString) {
+            normalizedTitleColor = normalizedTitleColor.toRgbString();
+          } else if (typeof normalizedTitleColor === 'object' && normalizedTitleColor?.toHexString) {
+            normalizedTitleColor = normalizedTitleColor.toHexString();
           }
 
           updateWidget(widget.id, {
@@ -443,6 +512,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             config: {
               ...widget.config,
               showTitle,
+              titleColor: normalizedTitleColor,
               refreshInterval,
               systemId,
               moduleId,
@@ -453,12 +523,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               forceIconOnly: normalizedForceIcon,
               eventRoutes: eventRoutes || [],
               backgroundType,
-              backgroundColor: normalizedColor,
+              backgroundColor: normalizedBgColor,
               backgroundImage,
               backgroundGradient,
               backgroundSize,
               backgroundRepeat,
               backgroundPosition,
+              contentPadding,
             },
           });
 
@@ -474,7 +545,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           });
         } else {
           // 其他小部件配置
-          const { title, showTitle, titleColor, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, ...restConfig } = values;
+          const { title, showTitle, titleColor, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, contentPadding, ...restConfig } = values;
 
           // 规范化颜色值的辅助函数
           const normalizeColor = (color: any): string | undefined => {
@@ -503,6 +574,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           if (normalizedRestConfig.itemIconColor) {
             normalizedRestConfig.itemIconColor = normalizeColor(normalizedRestConfig.itemIconColor);
           }
+          if (normalizedRestConfig.itemBgColor) {
+            normalizedRestConfig.itemBgColor = normalizeColor(normalizedRestConfig.itemBgColor);
+          }
+          if (normalizedRestConfig.itemTextColor) {
+            normalizedRestConfig.itemTextColor = normalizeColor(normalizedRestConfig.itemTextColor);
+          }
 
           updateWidget(widget.id, {
             title,
@@ -516,6 +593,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               backgroundColor: normalizedBgColor,
               backgroundImage,
               backgroundGradient,
+              contentPadding,
               ...normalizedRestConfig,
             },
           });
@@ -552,8 +630,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             <Switch />
           </Form.Item>
           <Form.Item name="titleColor" label="标题颜色">
-            <ColorPicker showText allowClear format="rgb" />
+            <ColorPicker showText allowClear />
           </Form.Item>
+        </div>
+
+        <div className="form-row-2">
+          <Form.Item
+            name="contentPadding"
+            label="内容边距"
+            tooltip="设置组件内容区域的内边距（单位：像素）"
+          >
+            <InputNumber min={0} max={100} placeholder="12" addonAfter="px" style={{ width: '100%' }} />
+          </Form.Item>
+          <div></div>
         </div>
 
         {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp'].includes(widget.type) && (
@@ -864,7 +953,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               <Form.Item name="openInNew" label="新窗口打开" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16, max: 128 }]}>
+              <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16 }]}>
                 <InputNumber style={{ width: '100%' }} suffix="px" />
               </Form.Item>
             </div>
@@ -884,29 +973,118 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 <Select.Option value="flex">自适应布局</Select.Option>
                 <Select.Option value="grid">网格布局</Select.Option>
                 <Select.Option value="list">列表布局</Select.Option>
+                <Select.Option value="text">文本列表</Select.Option>
+                <Select.Option value="tag">标签导航</Select.Option>
               </Select>
             </Form.Item>
+
+            {/* flex/grid/list 图标模式的特有配置 */}
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.layout !== cur.layout}>
+              {({ getFieldValue }) => {
+                const layout = getFieldValue('layout');
+                const isIconMode = ['flex', 'grid', 'list'].includes(layout);
+                if (!isIconMode) return null;
+                return (
+                  <>
+                    <div className="form-row-2">
+                      <Form.Item name="columns" label="列数" rules={[{ type: 'number', min: 2, max: 8 }]} tooltip="仅网格布局生效">
+                        <InputNumber style={{ width: '100%' }} />
+                      </Form.Item>
+                      <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16 }]}>
+                        <InputNumber style={{ width: '100%' }} suffix="px" />
+                      </Form.Item>
+                    </div>
+                    <Form.Item name="showLabel" label="显示名称" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                  </>
+                );
+              }}
+            </Form.Item>
+
+            {/* text 文本列表模式的特有配置 */}
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.layout !== cur.layout}>
+              {({ getFieldValue }) => {
+                const layout = getFieldValue('layout');
+                if (layout !== 'text') return null;
+                return (
+                  <>
+                    <div className="form-row-2">
+                      <Form.Item name="textIcon" label="统一图标" tooltip="留空则使用各项自己的图标">
+                        <IconPicker mode="simple" placeholder="SearchOutlined" />
+                      </Form.Item>
+                      <Form.Item name="textIconSize" label="图标大小" rules={[{ type: 'number', min: 12 }]}>
+                        <InputNumber style={{ width: '100%' }} suffix="px" placeholder="16" />
+                      </Form.Item>
+                    </div>
+                    <Form.Item name="textColumns" label="列数" rules={[{ type: 'number', min: 1, max: 4 }]}>
+                      <InputNumber style={{ width: '100%' }} placeholder="1" />
+                    </Form.Item>
+                  </>
+                );
+              }}
+            </Form.Item>
+
+            {/* 所有模式共用的样式配置 */}
+            <Divider style={{ margin: '12px 0' }}>导航项样式</Divider>
+
+            {/* 根据布局模式显示提示信息 */}
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.layout !== cur.layout}>
+              {({ getFieldValue }) => {
+                const layout = getFieldValue('layout');
+                const isIconMode = ['flex', 'grid', 'list'].includes(layout);
+                if (isIconMode) {
+                  return (
+                    <div className="config-hint" style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(22, 119, 255, 0.1)', borderRadius: 6, fontSize: 12, color: '#1677ff' }}>
+                      提示：当前模式下，颜色优先级为：数据配置 &gt; 组件配置 &gt; 默认值（随机渐变/主题色）
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            </Form.Item>
+
             <div className="form-row-2">
-              <Form.Item name="columns" label="列数" rules={[{ type: 'number', min: 2, max: 8 }]} tooltip="仅网格布局生效">
-                <InputNumber style={{ width: '100%' }} />
+              <Form.Item name="itemSize" label="尺寸">
+                <Select placeholder="中">
+                  <Select.Option value="small">小</Select.Option>
+                  <Select.Option value="middle">中</Select.Option>
+                  <Select.Option value="large">大</Select.Option>
+                </Select>
               </Form.Item>
-              <Form.Item name="iconSize" label="图标大小" rules={[{ type: 'number', min: 16, max: 64 }]}>
-                <InputNumber style={{ width: '100%' }} suffix="px" />
+              <Form.Item name="itemBorderRadius" label="圆角" rules={[{ type: 'number', min: 0 }]}>
+                <InputNumber style={{ width: '100%' }} suffix="px" placeholder="4" />
               </Form.Item>
             </div>
             <div className="form-row-2">
-              <Form.Item name="showLabel" label="显示名称" valuePropName="checked">
-                <Switch />
+              <Form.Item name="itemBgColor" label="背景色">
+                <ColorPicker showText allowClear />
               </Form.Item>
-              <Form.Item name="itemIconColor" label="图标颜色">
+              <Form.Item name="itemTextColor" label="文字颜色">
                 <ColorPicker showText allowClear />
               </Form.Item>
             </div>
-            <Form.Item name="itemGap" label="导航项间距" rules={[{ type: 'number', min: 0, max: 100 }]}>
-              <InputNumber style={{ width: '100%' }} suffix="px" />
+            <div className="form-row-2">
+              <Form.Item name="itemIconColor" label="图标颜色">
+                <ColorPicker showText allowClear />
+              </Form.Item>
+              <Form.Item name="itemGap" label="间距" rules={[{ type: 'number', min: 0 }]}>
+                <InputNumber style={{ width: '100%' }} suffix="px" />
+              </Form.Item>
+            </div>
+            <Form.Item
+              label="背景模糊"
+              tooltip="背景模糊效果，需配合半透明背景色使用"
+            >
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <Form.Item name="itemBlur" noStyle>
+                  <Slider min={0} max={30} step={1} style={{ flex: 1 }} />
+                </Form.Item>
+                <Form.Item name="itemBlur" noStyle>
+                  <InputNumber min={0} max={30} step={1} style={{ width: 70 }} suffix="px" />
+                </Form.Item>
+              </div>
             </Form.Item>
-            {/* <div className="config-section-title">数据配置</div>
-            <div className="empty-hint">请在"数据与交互"标签页配置数据接口</div> */}
           </>
         )}
       </>
@@ -989,7 +1167,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                <Select.Option value="dark">暗色</Select.Option>
              </Select>
            </Form.Item>
-           <Form.Item name="borderRadius" label="角大小" rules={[{ type: 'number', min: 0, max: 50 }]}>
+           <Form.Item name="borderRadius" label="圆角大小" rules={[{ type: 'number', min: 0 }]}>
              <InputNumber style={{ width: '100%' }} suffix="px" />
            </Form.Item>
         </div>
@@ -998,12 +1176,24 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <InputNumber style={{ width: '100%' }} />
         </Form.Item>
 
+        <Divider>折叠状态</Divider>
         <div className="form-row-2">
-           <Form.Item label="折叠宽度" name="collapsedWidth" rules={[{ type: 'number', min: 40, max: 100 }]}>
+           <Form.Item label="折叠宽度" name="collapsedWidth" rules={[{ type: 'number', min: 40 }]}>
               <InputNumber style={{width: '100%'}} suffix="px" />
            </Form.Item>
-           <Form.Item label="折叠高度" name="collapsedHeight" rules={[{ type: 'number', min: 40, max: 100 }]}>
+           <Form.Item label="折叠高度" name="collapsedHeight" rules={[{ type: 'number', min: 40 }]}>
               <InputNumber style={{width: '100%'}} suffix="px" />
+           </Form.Item>
+        </div>
+        <div className="form-row-3">
+           <Form.Item label="折叠图标" name="collapsedIcon" tooltip="支持图标名称、图片URL、上传图片或SVG代码">
+              <IconPicker mode="full" placeholder="CustomerServiceOutlined" />
+           </Form.Item>
+           <Form.Item label="图标大小" name="collapsedIconSize" rules={[{ type: 'number', min: 12 }]}>
+              <InputNumber style={{width: '100%'}} suffix="px" />
+           </Form.Item>
+           <Form.Item label="折叠背景" name="collapsedBgColor">
+              <ColorPicker showText allowClear />
            </Form.Item>
         </div>
     </>
@@ -1029,7 +1219,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         </Form.Item>
       </div>
       <div className="form-row-2">
-        <Form.Item name="titleFontSize" label="标题字号" rules={[{ type: 'number', min: 12, max: 48 }]}>
+        <Form.Item name="titleFontSize" label="标题字号" rules={[{ type: 'number', min: 12 }]}>
           <InputNumber style={{ width: '100%' }} suffix="px" placeholder="14" />
         </Form.Item>
         <Form.Item name="titleFontWeight" label="标题字重">
@@ -1051,7 +1241,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             <Select.Option value="dashed">虚线</Select.Option>
           </Select>
         </Form.Item>
-        <Form.Item name="borderWidth" label="边框宽度" rules={[{ type: 'number', min: 0, max: 10 }]}>
+        <Form.Item name="borderWidth" label="边框宽度" rules={[{ type: 'number', min: 0 }]}>
           <InputNumber style={{ width: '100%' }} suffix="px" />
         </Form.Item>
       </div>
@@ -1059,14 +1249,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         <Form.Item name="borderColor" label="边框颜色">
           <ColorPicker showText allowClear />
         </Form.Item>
-        <Form.Item name="borderRadius" label="圆角" rules={[{ type: 'number', min: 0, max: 50 }]}>
+        <Form.Item name="borderRadius" label="圆角" rules={[{ type: 'number', min: 0 }]}>
           <InputNumber style={{ width: '100%' }} suffix="px" />
         </Form.Item>
       </div>
-
-      <Form.Item name="padding" label="内边距" rules={[{ type: 'number', min: 0, max: 100 }]}>
-        <InputNumber style={{ width: '100%' }} suffix="px" />
-      </Form.Item>
 
       <Divider>背景设置</Divider>
       <BackgroundSettings
@@ -1076,13 +1262,26 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     </>
   );
 
-  // 根据类型构建 tabs
+  // 判断是否有组件配置
+  const hasComponentConfig = [
+    'typography', 'headerBar', 'link', 'dataTable',
+    'customForm', 'pageNavigator', 'microApp', 'search',
+    'iconNav', 'navGroup'
+  ].includes(widget.type) || isAssistantHub;
+
+  // 判断是否有数据与交互配置
+  const hasDataConfig = [
+    'chart', 'stats', 'customForm', 'dataTable',
+    'microApp', 'search', 'navGroup'
+  ].includes(widget.type);
+
+  // 根据类型构建 tabs（按需显示）
   const items = isGroup
     ? [{ key: 'group', label: '分组配置', children: renderGroupTab(), forceRender: true }]
     : [
         { key: 'basic', label: '基础配置', children: renderBasicTab(), forceRender: true },
-        { key: 'component', label: '组件配置', children: renderComponentTab(), forceRender: true },
-        { key: 'data', label: '数据与交互', children: renderDataTab(), forceRender: true },
+        ...(hasComponentConfig ? [{ key: 'component', label: '组件配置', children: renderComponentTab(), forceRender: true }] : []),
+        ...(hasDataConfig ? [{ key: 'data', label: '数据与交互', children: renderDataTab(), forceRender: true }] : []),
       ];
 
   if (isFloatingModule) {
@@ -1097,21 +1296,25 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       : `配置小部件: ${widget.title}`;
 
   return (
-    <Modal
+    <Drawer
       title={dialogTitle}
       open={isOpen}
-      onOk={handleOk}
-      onCancel={onClose}
+      onClose={onClose}
       destroyOnHidden
+      placement="right"
       className="config-dialog"
-      width={600}
-      style={{ top: 40 }}
-      styles={{ body: { maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', paddingTop: 0 } }}
+      styles={{ wrapper: { width: 480 } }}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button onClick={onClose}>取消</Button>
+          <Button type="primary" onClick={handleOk}>保存</Button>
+        </div>
+      }
     >
       <Form form={form} layout="vertical" size="small">
          <Tabs defaultActiveKey={isGroup ? "group" : "component"} items={items} className="config-tabs" />
       </Form>
-    </Modal>
+    </Drawer>
   );
 };
 

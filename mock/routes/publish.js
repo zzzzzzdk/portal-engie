@@ -383,48 +383,294 @@ router.get('/v1/dashboard/publish', async (req, res) => {
       "publishedAt": "2026-01-19 16:58:02"
     },
     pub_1: {
-      id: 'pub_1',
-      title: '默认仪表盘',
-      publishTime: '2025-12-01T10:00:00.000Z',
-      widgets: [
+      "id": "bab6f5a9-cdf8-4bc0-bdf6-4c8fef36ef69",
+      "title": "沧澜门户（极简）",
+      "widgets": [
         {
-          id: 'widget-1',
-          type: 'clock',
-          layout: { x: 0, y: 0, w: 3, h: 2 },
-          config: { title: '时钟', showTitle: true },
+          "id": "aec0f5e8-6837-4bfa-b797-870712be15db",
+          "type": "headerBar",
+          "title": "“沧澜”垂域新质生产力引擎",
+          "layout": {
+            "h": 2,
+            "i": "aec0f5e8-6837-4bfa-b797-870712be15db",
+            "w": 36,
+            "x": 0,
+            "y": 0,
+            "minH": 1,
+            "minW": 1
+          },
+          "config": {
+            "title": "头部栏",
+            "showTitle": false,
+            "textColor": "#ffffff",
+            "fontFamily": "YouSheBiaoTiHei",
+            "titleColor": "rgb(34,34,34)",
+            "headerTitle": "“沧澜”垂域新质生产力引擎",
+            "backdropBlur": 20,
+            "backgroundType": "color",
+            "headerFontSize": 32,
+            "backgroundColor": "rgba(255,255,255,0.2)",
+            "backgroundImage": "",
+            "headerAlignment": "left",
+            "showUserProfile": true,
+            "backgroundRepeat": "no-repeat",
+            "showThemeSwitcher": false
+          },
+          "groupId": null
         },
         {
-          id: 'widget-2',
-          type: 'stats',
-          layout: { x: 3, y: 0, w: 3, h: 2 },
-          config: { title: '统计', showTitle: true },
+          "id": "6cfa3270-3f0a-49b6-b26d-6c42a64bde2b",
+          "type": "microApp",
+          "title": "门户对话框",
+          "layout": {
+            "h": 2,
+            "i": "6cfa3270-3f0a-49b6-b26d-6c42a64bde2b",
+            "w": 16,
+            "x": 10,
+            "y": 6,
+            "minH": 1,
+            "minW": 1
+          },
+          "config": {
+            "icon": "AppstoreOutlined",
+            "sync": true,
+            "alive": true,
+            "title": "门户对话框",
+            "moduleId": "7670dd74-b3a1-42a8-aaa0-7facaf8e46ff",
+            "systemId": "c666d5f4-1b82-448c-9b81-0529a6da6cb7",
+            "showTitle": false,
+            "eventRoutes": [],
+            "microAppUrl": "http://192.168.5.57:9998/ChatInput",
+            "forceIconOnly": false,
+            "microAppEntry": "http://192.168.5.57:9998/ChatInput",
+            "backgroundType": "color",
+            "backgroundColor": "#00000000",
+            "backgroundImage": "",
+            "refreshInterval": 60
+          },
+          "groupId": null
         },
+        {
+          "id": "ecf35776-fd20-4f2c-9345-62e31d13d6bf",
+          "type": "typography",
+          "title": "文本组件",
+          "layout": {
+            "h": 2,
+            "i": "ecf35776-fd20-4f2c-9345-62e31d13d6bf",
+            "w": 16,
+            "x": 10,
+            "y": 4,
+            "minH": 1,
+            "minW": 1
+          },
+          "config": {
+            "color": "#ffffff",
+            "level": 1,
+            "title": "文本组件",
+            "content": "沧澜，你的超级工作助手",
+            "fontSize": 32,
+            "showTitle": false,
+            "textAlign": "center",
+            "fontWeight": "bold",
+            "titleColor": "#222222",
+            "backdropBlur": 1,
+            "backgroundSize": "cover",
+            "backgroundType": "color",
+            "backgroundColor": "rgba(255,255,255,0)",
+            "backgroundImage": "",
+            "backgroundRepeat": "no-repeat",
+            "backgroundPosition": "center"
+          },
+          "groupId": null
+        },
+        {
+          "id": "c8ec74c4-196d-4432-b2e6-765c88df6f85",
+          "type": "typography",
+          "title": "Typography",
+          "layout": {
+            "h": 2,
+            "i": "c8ec74c4-196d-4432-b2e6-765c88df6f85",
+            "w": 3,
+            "x": 8,
+            "y": 14,
+            "minH": 1,
+            "minW": 2
+          },
+          "config": {
+            "color": "#ffffff",
+            "level": 2,
+            "title": "文本组件",
+            "content": "推荐",
+            "fontSize": 22,
+            "showTitle": false,
+            "textAlign": "left",
+            "fontWeight": "bold",
+            "titleColor": "#222222",
+            "backdropBlur": 1,
+            "backgroundType": "color",
+            "backgroundColor": "rgba(255,255,255,0)"
+          },
+          "groupId": null
+        },
+        {
+          "id": "a3748fa7-4e03-402f-bdb9-c87fef4a74c7",
+          "type": "navGroup",
+          "title": "NavGroup",
+          "layout": {
+            "h": 5,
+            "i": "a3748fa7-4e03-402f-bdb9-c87fef4a74c7",
+            "w": 21,
+            "x": 8,
+            "y": 15,
+            "minH": 4,
+            "minW": 4
+          },
+          "config": {
+            "title": "导航组",
+            "layout": "tag",
+            "columns": 4,
+            "itemGap": 12,
+            "tagBlur": 16,
+            "iconSize": 32,
+            "tagColor": "rgba(255,255,255,0.2)",
+            "showLabel": true,
+            "showTitle": false,
+            "titleColor": "#222222",
+            "apiEndpoint": "http://192.168.5.60:29081/Seaie-api/canglan/recommend",
+            "backdropBlur": 1,
+            "tagTextColor": "rgb(255,255,255)",
+            "itemIconColor": "#ffffff",
+            "backgroundType": "color",
+            "backgroundColor": "rgba(0,0,0,0)",
+            "tagBorderRadius": 14
+          },
+          "groupId": null
+        }
       ],
-      groups: [],
-      floatingModules: [],
-      dashboardConfig: {
-        backgroundType: 'color',
-        backgroundColor: '#f0f2f5',
+      "groups": [],
+      "floatingModules": [
+        {
+          "id": "floating-module-1767761084553",
+          "type": "floatingModule",
+          "title": "chat对话",
+          "layout": {
+            "h": 0,
+            "i": "floating-module-1767761084553",
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "config": {
+            "icon": "MessageOutlined",
+            "theme": "auto",
+            "zIndex": 9999,
+            "closable": true,
+            "maxWidth": 800,
+            "microApp": {
+              "url": "http://192.168.5.57:9998/chat",
+              "entry": "http://192.168.5.57:9998/chat",
+              "moduleId": "caf58685-6480-4b2c-95f2-efaa924359ad",
+              "systemId": "c666d5f4-1b82-448c-9b81-0529a6da6cb7"
+            },
+            "minWidth": 300,
+            "position": {
+              "x": 1809,
+              "y": 824
+            },
+            "draggable": true,
+            "maxHeight": 900,
+            "minHeight": 400,
+            "resizable": true,
+            "showTitle": true,
+            "isExpanded": false,
+            "showHeader": true,
+            "titleColor": "#222222",
+            "collapsible": true,
+            "contentType": "microApp",
+            "borderRadius": 12,
+            "collapsedIcon": "http://192.168.5.60:29081/canglan-trial/static/uploads/2026_01_27/181935_852535.gif",
+            "backgroundType": "image",
+            "collapsedWidth": 64,
+            "collapsedHeight": 64,
+            "defaultPosition": "bottom-right",
+            "backgroundRepeat": "no-repeat",
+            "collapsedBgColor": "rgba(22,119,255,0)",
+            "collapsedIconSize": 64
+          }
+        }
+      ],
+      "dashboardConfig": {
+        "title": "沧澜门户（极简）",
+        "backgroundType": "image",
+        "backgroundColor": "#f5f5f5",
+        "backgroundImage": "http://192.168.5.60:29081/canglan-trial/static/uploads/2026_01_26/113041_636364.png"
       },
+      "publishedAt": "2026-01-26 14:53:23"
     },
     pub_2: {
-      id: 'pub_2',
-      title: '数据监控面板',
-      publishTime: '2025-12-05T14:30:00.000Z',
-      widgets: [
+      "id": "",
+      "title": "22",
+      "widgets": [
         {
-          id: 'widget-1',
-          type: 'chart',
-          layout: { x: 0, y: 0, w: 6, h: 3 },
-          config: { title: '数据图表', showTitle: true },
-        },
+          "id": "86eac051-5285-48b5-8746-151616f31c1a",
+          "type": "microApp",
+          "title": "表单",
+          "layout": {
+            "i": "86eac051-5285-48b5-8746-151616f31c1a",
+            "x": 12,
+            "y": 1,
+            "w": 8,
+            "h": 6,
+            "minW": 1,
+            "minH": 1
+          },
+          "config": {
+            "title": "表单",
+            "showTitle": true,
+            "refreshInterval": 60,
+            "systemId": "db_001",
+            "moduleId": "db_mod_001",
+            "microAppUrl": "http://localhost:8083/#/input-only",
+            "microAppEntry": "http://localhost:8083/#/input-only",
+            "sync": true,
+            "alive": true,
+            "icon": "http://192.168.13.31:8083/static/images/gongan.png",
+            "forceIconOnly": false,
+            "eventRoutes": [],
+            "backgroundType": "color",
+            "backgroundColor": "rgba(255,255,255,0.20)",
+            "contentPadding": 44
+          }
+        }
       ],
-      groups: [],
-      floatingModules: [],
-      dashboardConfig: {
-        backgroundType: 'gradient',
-        backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      },
+      "groups": [],
+      "floatingModules": [],
+      "dashboardConfig": {
+        "backgroundType": "image",
+        "backgroundColor": "rgba(255,255,255,0.20)",
+        "backgroundImage": "http://localhost:4001/uploads/1769589303012_x1rhzhyss.png",
+        "themeMode": "light",
+        "styleMode": "minimal",
+        "styleTokens": {
+          "widget": {
+            "background": "rgba(255,255,255,0.20)",
+            "backdropFilter": "blur(10px)",
+            "borderRadius": 12,
+            "borderColor": "rgba(65,123,214,0.28)",
+            "borderWidth": 1,
+            "boxShadow": "0px 6px 12px 0px rgba(42,44,46,0.09)",
+            "titleColor": "#222",
+            "textColor": "#222"
+          },
+          "card": {
+            "background": "rgba(255,255,255,0.20)",
+            "backdropFilter": "blur(10px)",
+            "borderRadius": 10,
+            "borderColor": "rgba(255,255,255,0.20)",
+            "boxShadow": "0px 6px 12px 0px rgba(42,44,46,0.09)"
+          }
+        }
+      }
     },
   };
 

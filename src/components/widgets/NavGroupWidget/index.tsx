@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Spin, Empty, Tooltip, Typography } from 'antd';
+import { Spin, Empty, Tooltip, Typography, Tag } from 'antd';
 import { AppstoreOutlined } from '@ant-design/icons';
 import { WidgetConfig, Widget, NavItem } from '@/types';
 import IconRenderer from '@/components/IconRenderer';
@@ -12,13 +12,25 @@ import './index.scss'
  */
 interface NavGroupWidgetConfig extends WidgetConfig {
   groupTitle?: string;        // 导航组标题（可覆盖 widget title）
-  layout?: 'flex' | 'grid' | 'list';   // 布局模式：flex(默认自适应)、grid(固定列数)、list(列表)
+  layout?: 'flex' | 'grid' | 'list' | 'text' | 'tag';   // 布局模式
   columns?: number;           // 网格列数（grid 模式）
   iconSize?: number;          // 图标大小
   showLabel?: boolean;        // 是否显示导航项名称
   staticItems?: NavItem[];    // 静态导航项（无接口时使用）
-  itemIconColor?: string;     // 统一图标颜色
   itemGap?: number;           // 导航项间距
+
+  // 通用样式配置（所有模式共用）
+  itemBgColor?: string;       // 导航项背景色
+  itemTextColor?: string;     // 导航项文字颜色
+  itemIconColor?: string;     // 导航项图标颜色
+  itemBlur?: number;          // 导航项背景模糊（px）
+  itemBorderRadius?: number;  // 导航项圆角（px）
+  itemSize?: 'small' | 'middle' | 'large';  // 导航项尺寸
+
+  // text 模式特有配置
+  textIcon?: string;          // 文本模式统一图标（默认 SearchOutlined）
+  textIconSize?: number;      // 文本模式图标大小（默认 16）
+  textColumns?: number;       // 文本模式列数（默认 1）
 }
 
 interface NavGroupWidgetProps {
@@ -26,12 +38,21 @@ interface NavGroupWidgetProps {
   widget?: Widget;
 }
 
-// 规范化颜色值
+// 规范化颜色值（处理 ColorPicker 对象和序列化后的 JSON 对象）
 const normalizeColor = (color: any, defaultColor: string): string => {
   if (!color) return defaultColor;
   if (typeof color === 'string') return color;
+  // 处理 ColorPicker 实例（有 toHexString/toRgbString 方法）
   if (typeof color === 'object' && color?.toHexString) {
     return color.toHexString();
+  }
+  // 处理序列化后的 ColorPicker 对象（包含 metaColor）
+  if (typeof color === 'object' && color?.metaColor) {
+    const { r, g, b, a } = color.metaColor;
+    if (a !== undefined && a < 1) {
+      return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+    }
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
   }
   return defaultColor;
 };
@@ -59,8 +80,8 @@ const getRandomGradient = (index: number): string => {
 
 // 默认导航数据
 const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '仪表盘' },
-  { id: '2', url: '/settings', icon: 'SettingOutlined', name: '设置' },
+  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '仪表盘仪表盘仪表盘仪表盘仪表盘仪表盘仪表盘' },
+  { id: '2', url: '/settings', icon: 'SettingOutlined', name: '设置设置设置设置设置设置设置设置' },
   { id: '3', url: '/users', icon: 'UserOutlined', name: '用户' },
   { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件' },
   { id: '5', url: '/files', icon: 'FolderOutlined', name: '文件' },
@@ -85,8 +106,20 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
   const iconSize = widgetConfig?.iconSize || 32;
   const showLabel = widgetConfig?.showLabel !== false;
   const staticItems = widgetConfig?.staticItems;
-  const itemIconColor = normalizeColor(widgetConfig?.itemIconColor, '#FFFFFF');
   const itemGap = widgetConfig?.itemGap || 12;
+
+  // 通用样式配置（所有模式共用）
+  const itemBgColor = normalizeColor(widgetConfig?.itemBgColor, '');
+  const itemTextColor = normalizeColor(widgetConfig?.itemTextColor, '');
+  const itemIconColor = normalizeColor(widgetConfig?.itemIconColor, '#FFFFFF');
+  const itemBlur = widgetConfig?.itemBlur || 0;
+  const itemBorderRadius = widgetConfig?.itemBorderRadius ?? 4;
+  const itemSize = widgetConfig?.itemSize || 'middle';
+
+  // text 模式配置
+  const textIcon = widgetConfig?.textIcon || 'SearchOutlined';
+  const textIconSize = widgetConfig?.textIconSize || 16;
+  const textColumns = widgetConfig?.textColumns || 1;
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -186,7 +219,8 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
 
   // 获取图标背景样式（仅动态部分）
   const getIconBgStyle = (item: NavItem, index: number): React.CSSProperties => {
-    const bgValue = item.iconBgColor || getRandomGradient(index);
+    // 优先级：数据中的 iconBgColor > 组件配置的 itemBgColor > 随机渐变
+    const bgValue = item.iconBgColor || itemBgColor || getRandomGradient(index);
     return {
       background: bgValue,
       width: iconSize + 36,
@@ -237,7 +271,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
                 <Typography.Text
                   ellipsis={{ tooltip: item.name }}
                   className="nav-group-widget__flex-label"
-                  style={{ color: item.textColor || undefined }}
+                  style={{ color: item.textColor || itemTextColor || undefined }}
                 >
                   {item.name}
                 </Typography.Text>
@@ -280,7 +314,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
                 <Typography.Text
                   ellipsis={{ tooltip: item.name }}
                   className="nav-group-widget__grid-label"
-                  style={{ color: item.textColor || undefined }}
+                  style={{ color: item.textColor || itemTextColor || undefined }}
                 >
                   {item.name}
                 </Typography.Text>
@@ -292,7 +326,92 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
     );
   }
 
-  // 列表布局
+  // Text 文本列表模式（带图标的纵向列表）
+  if (layout === 'text') {
+    // 计算尺寸对应的 padding
+    const textPadding = itemSize === 'small' ? '6px 12px' : itemSize === 'large' ? '12px 20px' : '8px 16px';
+    const textFontSize = itemSize === 'small' ? 12 : itemSize === 'large' ? 16 : 14;
+
+    return (
+      <div
+        className="nav-group-widget__text"
+        style={{
+          gridTemplateColumns: `repeat(${textColumns}, 1fr)`,
+          gap: itemGap,
+        }}
+      >
+        {navItems.map((item, index) => (
+          <div
+            key={item.id || index}
+            className={clsx('nav-group-widget__text-item', {
+              'nav-group-widget__text-item--clickable': !!item.url,
+            })}
+            style={{
+              padding: textPadding,
+              fontSize: textFontSize,
+              background: item.iconBgColor || itemBgColor || undefined,
+              color: item.textColor || itemTextColor || undefined,
+              borderRadius: itemBorderRadius,
+              backdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
+              WebkitBackdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
+            }}
+            title={item.name}
+            onClick={() => handleItemClick(item)}
+          >
+            <span className="nav-group-widget__text-icon">
+              <IconRenderer
+                value={item.icon || textIcon}
+                size={textIconSize}
+                color={item.iconColor || item.textColor || itemTextColor || itemIconColor}
+              />
+            </span>
+            <span className="nav-group-widget__text-label">
+              {item.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Tag 标签模式（横向流式标签）
+  if (layout === 'tag') {
+    // 计算尺寸对应的固定宽高（大号: 190x72, 中号: 140x52, 小号: 100x38）
+    const tagWidth = itemSize === 'small' ? 100 : itemSize === 'large' ? 190 : 140;
+    const tagHeight = itemSize === 'small' ? 38 : itemSize === 'large' ? 72 : 52;
+    const tagFontSize = itemSize === 'small' ? 12 : itemSize === 'large' ? 16 : 14;
+
+    return (
+      <div className="nav-group-widget__tag" style={{ gap: itemGap }}>
+        {navItems.map((item, index) => (
+          <Tag
+            key={item.id || index}
+            className={clsx('nav-group-widget__tag-item', {
+              'nav-group-widget__tag-item--clickable': !!item.url,
+            })}
+            style={{
+              width: tagWidth,
+              height: tagHeight,
+              fontSize: tagFontSize,
+              background: item.iconBgColor || itemBgColor || undefined,
+              color: item.textColor || itemTextColor || undefined,
+              borderRadius: itemBorderRadius,
+              border: 'none',
+              cursor: item.url ? 'pointer' : 'default',
+              backdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
+              WebkitBackdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
+            }}
+            title={item.name}
+            onClick={() => handleItemClick(item)}
+          >
+            <span className="nav-group-widget__tag-text">{item.name}</span>
+          </Tag>
+        ))}
+      </div>
+    );
+  }
+
+  // 列表布局（默认）
   return (
     <div className="nav-group-widget__list">
       {navItems.map((item, index) => (
@@ -316,7 +435,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
             <Typography.Text
               strong
               ellipsis
-              style={{ color: item.textColor || undefined }}
+              style={{ color: item.textColor || itemTextColor || undefined }}
             >
               {item.name}
             </Typography.Text>
@@ -324,7 +443,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
               <Typography.Text
                 type="secondary"
                 className="nav-group-widget__list-description"
-                style={{ color: item.textColor ? `${item.textColor}99` : undefined }}
+                style={{ color: item.textColor ? `${item.textColor}99` : (itemTextColor ? `${itemTextColor}99` : undefined) }}
                 ellipsis
               >
                 {item.description}

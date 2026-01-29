@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { Layout as AntdLayout, Button, Switch, Dropdown, Space, Tooltip, App as AntdApp, Modal, Form, Input } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Dropdown, Menu } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, RobotOutlined, SettingOutlined, GroupOutlined, FolderOutlined, DeleteOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule } from '@/types';
-import { Outlet, useNavigate, useSearchParams } from 'react-router-dom';
+import { Outlet, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
 import DashboardConfigDialog from '@/components/DashboardConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
+import WidgetDrawer from '@/components/WidgetDrawer';
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
 import { publishDashboard } from '@/services'
@@ -38,6 +39,7 @@ const Layout: React.FC = () => {
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
   const { message, modal } = AntdApp.useApp();
@@ -48,6 +50,7 @@ const Layout: React.FC = () => {
   const [publishModalOpen, setPublishModalOpen] = useState(false)
   const [publishForm] = Form.useForm()
   const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
+  const [widgetDrawerOpen, setWidgetDrawerOpen] = useState(false)
 
   const handleAddWidget = (key: string) => {
     // 处理新建分组
@@ -210,98 +213,7 @@ const Layout: React.FC = () => {
     }
   };
 
-  // 分组的小部件菜单
-  const items: MenuProps['items'] = [
-    {
-      type: 'group',
-      label: '分组组件',
-      children: [
-        { label: '新建分组', key: 'create-group', icon: <GroupOutlined /> },
-        { label: '头部栏', key: 'headerBar', icon: <FolderOutlined /> },
-      ]
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'group',
-      label: '基础小部件',
-      children: [
-        { label: '文本', key: 'typography' },
-        { label: '时钟', key: 'clock' },
-        { label: '统计卡片', key: 'stats' },
-        { label: '图表', key: 'chart' },
-        { label: '快捷链接', key: 'link' },
-        { label: '页面切换', key: 'pageNavigator' },
-        { label: '新闻动态', key: 'news' },
-        { label: '排行榜', key: 'topList' },
-        { label: '搜索', key: 'search' },
-        { label: '数据表格', key: 'dataTable' },
-        // { label: '卡片网格', key: 'cardGrid' },
-        { label: '自定义表单', key: 'customForm' },
-      ]
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'group',
-      label: '导航组件',
-      children: [
-        { label: '图标导航', key: 'iconNav' },
-        { label: '导航组', key: 'navGroup' },
-      ]
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'group',
-      label: '微应用小部件',
-      children: [
-        {
-          label: '微应用',
-          key: 'microApp',
-          icon: <AppstoreOutlined />
-        },
-      ]
-    },
-    {
-      type: 'divider',
-    },
-    {
-      type: 'group',
-      label: '悬浮模块',
-      children: [
-        // {
-        //   label: '在线客服',
-        //   key: 'floating-chat',
-        //   icon: <MessageOutlined />
-        // },
-        // {
-        //   label: '通知中心',
-        //   key: 'floating-notification',
-        //   icon: <BellOutlined />
-        // },
-        {
-          label: '微应用（悬浮）',
-          key: 'floating-microApp',
-          icon: <RobotOutlined />
-        },
-        {
-          label: '助手中心',
-          key: 'floating-assistantHub',
-          icon: <RobotOutlined />
-        },
-        // {
-        //   label: '微应用（无边框）',
-        //   key: 'global-microApp',
-        //   icon: <RobotOutlined style={{ color: '#faad14' }} />
-        // },
-      ]
-    }
-  ];
-
+  
   const handlePublish = () => {
     // 如果是编辑模式且有保存的标题，预填标题
     if (editId && dashboardConfig?.title) {
@@ -313,13 +225,20 @@ const Layout: React.FC = () => {
   const handlePublishSubmit = async () => {
     try {
       const values = await publishForm.validateFields();
+      // 将主题配置合并到 dashboardConfig 中一起发布
+      const publishConfig = {
+        ...dashboardConfig,
+        themeMode: themeSystem.themeMode,
+        styleMode: themeSystem.styleMode,
+        styleTokens: themeSystem.styleTokens,
+      };
       const res = await publishDashboard({
         id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
         title: values.title,
         widgets,
         groups,
         floatingModules,
-        dashboardConfig,
+        dashboardConfig: publishConfig,
       });
       console.log(res)
       message.success(editId ? '仪表盘更新成功' : '仪表盘发布成功');
@@ -418,13 +337,54 @@ const Layout: React.FC = () => {
     // },
   ]
 
+  // 头部导航菜单配置
+  const headerMenuItems: MenuProps['items'] = [
+    {
+      key: '/dashboard-gridstack',
+      icon: <DashboardOutlined />,
+      label: '仪表盘',
+    },
+    {
+      key: '/micro-app-config',
+      icon: <ApiOutlined />,
+      label: '微应用配置',
+    },
+    {
+      key: '/publish-list',
+      icon: <UnorderedListOutlined />,
+      label: '已发布列表',
+    },
+  ];
+
+  // 获取当前路由对应的菜单 key
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.includes('micro-app-config')) return '/micro-app-config';
+    if (path.includes('publish-list')) return '/publish-list';
+    return '/dashboard-gridstack';
+  };
+
+  // 导航菜单点击处理
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    navigate(key);
+  };
+
   return (
     <AntdLayout className="app-layout">
       {!isFullScreen && (
         <Header className="app-header">
-          <div className="app-header__logo" onClick={handleGoHome}>
-            <AppstoreOutlined />
-            Portal Engine
+          <div className="app-header__left">
+            <div className="app-header__logo" onClick={handleGoHome}>
+              <AppstoreOutlined />
+              Portal Engine
+            </div>
+            <Menu
+              mode="horizontal"
+              selectedKeys={[getSelectedKey()]}
+              items={headerMenuItems}
+              onClick={handleMenuClick}
+              className="app-header__menu"
+            />
           </div>
 
           <Space size="middle">
@@ -442,28 +402,19 @@ const Layout: React.FC = () => {
             </Dropdown>
             {/* )} */}
 
-            {/* 微应用配置按钮 */}
-            <Tooltip title="微应用配置">
-              <a href="#/micro-app-config" target='_blank' className="utility-btn">微应用配置</a>
-            </Tooltip>
-
             <Space>
               <span>编辑模式</span>
               <Switch checked={isEditMode} onChange={setEditMode} />
             </Space>
 
-            <Dropdown
-              menu={{
-                items,
-                onClick: ({ key }) => handleAddWidget(key)
-              }}
-              trigger={['click']}
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
               disabled={!isEditMode}
+              onClick={() => setWidgetDrawerOpen(true)}
             >
-              <Button type="primary" icon={<PlusOutlined />} disabled={!isEditMode}>
-                添加组件
-              </Button>
-            </Dropdown>
+              添加组件
+            </Button>
 
             {isEditMode && (
               <>
@@ -493,10 +444,6 @@ const Layout: React.FC = () => {
               发布
             </Button>
 
-            <Tooltip title="已发布列表">
-              <Button icon={<UnorderedListOutlined />} onClick={() => navigate('/publish-list')} />
-            </Tooltip>
-
             <Tooltip title="全屏模式">
               <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />
             </Tooltip>
@@ -510,13 +457,19 @@ const Layout: React.FC = () => {
 
       {isFullScreen && (
         <FloatingControlPanel
-          onAdd={handleAddWidget}
-          addMenuItems={items}
+          onOpenWidgetDrawer={() => setWidgetDrawerOpen(true)}
           onOpenSettings={() => setDashboardConfigOpen(true)}
           onOpenMicroAppConfig={() => window.open('#/micro-app-config', '_blank')}
           onSave={handlePublish}
         />
       )}
+
+      {/* 组件库抽屉 */}
+      <WidgetDrawer
+        open={widgetDrawerOpen}
+        onClose={() => setWidgetDrawerOpen(false)}
+        onSelect={handleAddWidget}
+      />
 
       {/* 自定义主题配置器 */}
       <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />

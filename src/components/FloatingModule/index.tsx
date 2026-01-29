@@ -22,7 +22,7 @@ import { useConfigStore } from '@/store/useConfigStore';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
 import ConfigDialog from '../ConfigDialog';
-import Icon from '../Icon';
+import IconRenderer from '../IconRenderer';
 import type { Widget, FloatingModuleConfig } from '@/types';
 import './index.scss';
 
@@ -116,6 +116,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const config = widget.config as FloatingModuleConfig;
   const collapsedWidth = config.collapsedWidth || 60;
   const collapsedHeight = config.collapsedHeight || 60;
+  const collapsedIcon = config.collapsedIcon || config.icon;
+  const collapsedBgColor = config.collapsedBgColor;
+  const collapsedIconSize = config.collapsedIconSize || 28;
 
   // State
   const [viewport, setViewport] = useState<Viewport>(() => getViewportSize());
@@ -512,28 +515,22 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                             exit={{ opacity: 0, scale: 0.8 }}
                             transition={{ duration: 0.2 }}
                             className={`floating-module collapsed theme-${actualTheme} drag-handle`}
-                            style={{ ...moduleStyle, position: 'relative', width: '100%', height: '100%', cursor: 'pointer' }}
+                            style={{
+                                ...moduleStyle,
+                                position: 'relative',
+                                width: '100%',
+                                height: '100%',
+                                cursor: 'pointer',
+                                ...(collapsedBgColor ? { background: collapsedBgColor } : {}),
+                            }}
                             onClick={toggleExpand}
                         >
-                            {typeof config.icon === 'string' ? (
-                                (config.icon.startsWith('http') || config.icon.startsWith('//') || config.icon.startsWith('data:image')) ? (
-                                    <img 
-                                        src={config.icon} 
-                                        alt={widget.title} 
-                                        style={{ 
-                                            width: '80%', 
-                                            height: '80%', 
-                                            borderRadius: '50%', 
-                                            objectFit: 'cover',
-                                            display: 'block' 
-                                        }} 
-                                    />
-                                ) : (
-                                    <Icon type={config.icon} style={{ fontSize: 24 }} />
-                                )
-                            ) : (
-                                config.icon || <span className="icon-text">{widget.title?.[0] || '模'}</span>
-                            )}
+                            <IconRenderer
+                                value={collapsedIcon as string}
+                                size={collapsedIconSize}
+                                color="#fff"
+                                fallbackText={widget.title}
+                            />
                         </motion.div>
                     )}
                   </AnimatePresence>

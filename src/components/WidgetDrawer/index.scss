@@ -1,0 +1,166 @@
+.widget-drawer {
+  .widget-drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .widget-category {
+    .category-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ant-color-text-secondary);
+      margin-bottom: 12px;
+      padding-left: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+  }
+
+  .widget-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--ant-color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--ant-color-bg-container);
+    user-select: none;
+
+    &:hover {
+      border-color: var(--ant-color-primary);
+      background: var(--ant-color-primary-bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    // 可拖拽的卡片样式
+    &.widget-drag-item {
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
+
+    .widget-card-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--ant-color-primary-bg);
+      color: var(--ant-color-primary);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .widget-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .widget-card-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ant-color-text);
+      line-height: 1.4;
+    }
+
+    .widget-card-desc {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary);
+      margin-top: 2px;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+  }
+}
+
+// 暗色模式适配
+:global(.theme-dark) {
+  .widget-drawer {
+    .widget-card {
+      &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .widget-card-icon {
+        background: rgba(var(--ant-color-primary-rgb), 0.15);
+      }
+    }
+  }
+}
+
+// 拖拽时克隆元素的全局样式（元素被添加到 body，需要独立的样式定义）
+// 参考 two.html 的实现方式
+:global {
+  // 拖拽时的克隆元素
+  body > .widget-card.widget-drag-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--ant-color-border, #d9d9d9);
+    border-radius: 8px;
+    background: var(--ant-color-bg-container, #fff);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    cursor: grabbing;
+
+    .widget-card-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--ant-color-primary-bg, #e6f4ff);
+      color: var(--ant-color-primary, #1677ff);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .widget-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .widget-card-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+      line-height: 1.4;
+    }
+
+    .widget-card-desc {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+  }
+
+  // GridStack 拖拽占位符样式
+  .grid-stack-placeholder > .placeholder-content {
+    background: var(--ant-color-primary-bg, #e6f4ff) !important;
+    border: 2px dashed var(--ant-color-primary, #1677ff) !important;
+    border-radius: 8px;
+  }
+}

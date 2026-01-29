@@ -698,6 +698,34 @@ When adding new widget types, add config fields in ConfigDialog:
 )}
 ```
 
+### Color Fields Default Value - CRITICAL
+
+**All color configuration fields in ConfigDialog MUST have default values** when initializing the form. This ensures:
+- ColorPicker displays a meaningful initial color
+- Users see what the default appearance will be
+- Form validation works correctly
+
+```typescript
+// ✅ CORRECT - Always provide default value for color fields
+form.setFieldsValue({
+  titleColor: normalizeColorValue(widget.config.titleColor, '#222222'),
+  backgroundColor: normalizeColorValue(widget.config.backgroundColor, '#FFFFFF'),
+  collapsedBgColor: normalizeColorValue(widget.config.collapsedBgColor, '#1677ff'),
+});
+
+// ❌ WRONG - Missing default value
+form.setFieldsValue({
+  titleColor: normalizeColorValue(widget.config.titleColor),  // No default!
+});
+```
+
+**Common default colors**:
+- Title/text color: `#222222`
+- Background color: `#FFFFFF`
+- Primary/accent color: `#1677ff` (Ant Design blue)
+- Tag background: `#FFFFFF`
+- Tag text: `#222222`
+
 ## Performance Patterns
 
 ### RAF (RequestAnimationFrame) Optimization

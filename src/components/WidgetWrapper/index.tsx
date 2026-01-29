@@ -87,8 +87,14 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
 
     // 判断是否显示标题，默认为 true
     const showTitle = widget.config.showTitle !== false;
-    // 在编辑模式下，即使隐藏标题也要显示拖拽条
-    const shouldShowHeader = showTitle || isEditMode;
+
+    // 判断是否为小尺寸组件（1x1），小尺寸时不显示标题栏以避免影响拖拽
+    // 用户可通过右键菜单进行设置和删除操作
+    const { w, h } = widget.layout || { w: 2, h: 2 };
+    const isSmallSize = w < 2 || h < 2;
+
+    // 在编辑模式下，即使隐藏标题也要显示拖拽条（但小尺寸组件除外）
+    const shouldShowHeader = !isSmallSize && (showTitle || isEditMode);
 
     const backgroundStyle = useCallback(() => {
       // 计算背景样式
@@ -109,9 +115,18 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         newBackgroundStyle.backgroundColor = backgroundColor;
       }
       // 应用背景模糊效果
-      if (backdropBlur && backdropBlur > 0) {
-        newBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`;
-        newBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`; // Safari 兼容
+      // backdropBlur 为 undefined/null 时使用 CSS 变量默认值（极简模式有默认模糊效果）
+      // backdropBlur > 0 时设置自定义模糊值
+      // backdropBlur === 0 时显式设置 none 覆盖 CSS 变量默认值
+      if (backdropBlur !== undefined && backdropBlur !== null) {
+        if (backdropBlur > 0) {
+          newBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`;
+          newBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`; // Safari 兼容
+        } else {
+          // backdropBlur === 0 时显式清除模糊效果
+          newBackgroundStyle.backdropFilter = 'none';
+          newBackgroundStyle.WebkitBackdropFilter = 'none';
+        }
       }
       // 应用阴影效果
       if (boxShadow) {
@@ -130,6 +145,23 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     // 是否有背景模糊效果
     const hasBackdropBlur = widget.config.backdropBlur && widget.config.backdropBlur > 0;
 
+    // 计算内容区域的 padding
+    // 优先使用用户配置的 contentPadding，否则使用默认值
+    // 默认值：有标题时 12px，无标题时 0px
+    const getContentPadding = (): number | undefined => {
+      const configPadding = widget.config.contentPadding;
+      if (configPadding !== undefined && configPadding !== null) {
+        return configPadding;
+      }
+      // 如果没有配置，返回 undefined 让 CSS 处理默认值
+      return undefined;
+    };
+
+    const contentPadding = getContentPadding();
+    const contentStyle: React.CSSProperties = contentPadding !== undefined
+      ? { padding: contentPadding }
+      : {};
+
     // 渲染主体内容
     const renderContent = () => (
       <div
@@ -137,7 +169,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         style={{ ...style, ...backgroundStyle() }}
         className={clsx('widget-wrapper', className, widget.type, {
           'edit-mode': isEditMode,
-          'no-header': !showTitle && !isEditMode,
+          'no-header': !shouldShowHeader,
           'has-custom-bg': hasCustomBackground,
           'has-backdrop-blur': hasBackdropBlur,
         })}
@@ -162,6 +194,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
             {isEditMode && (
               <div
                 className="widget-actions"
+                style={widget.config.titleColor ? { color: widget.config.titleColor } : undefined}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 {
@@ -192,7 +225,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
             )}
           </div>
         )}
-        <div className="widget-content">{children}</div>
+        <div className="widget-content" style={contentStyle}>{children}</div>
 
         <ConfigDialog
           isOpen={isConfigOpen}

@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import Draggable from 'react-draggable';
-import { Button, Dropdown, Space, Switch, Tooltip } from 'antd';
+import { Button, Space, Switch, Tooltip } from 'antd';
 import {
   PlusOutlined,
   SettingOutlined,
@@ -9,20 +9,17 @@ import {
   AppstoreOutlined,
   SaveOutlined
 } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
 import { useStore } from '@/store/useStore';
 
 interface FloatingControlPanelProps {
-  onAdd: (key: string) => void;
-  addMenuItems: MenuProps['items'];
+  onOpenWidgetDrawer: () => void;
   onOpenSettings: () => void;
   onOpenMicroAppConfig?: () => void;
   onSave: () => void;
 }
 
 const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
-  onAdd,
-  addMenuItems,
+  onOpenWidgetDrawer,
   onOpenSettings,
   onOpenMicroAppConfig,
   onSave,
@@ -79,17 +76,14 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
 
           {isEditMode && (
             <>
-               <Dropdown
-                menu={{
-                  items: addMenuItems,
-                  onClick: ({ key }) => onAdd(key)
-                }}
-                trigger={['click']}
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                size="small"
+                onClick={onOpenWidgetDrawer}
               >
-                <Button type="primary" icon={<PlusOutlined />} size="small">
-                  添加
-                </Button>
-              </Dropdown>
+                添加
+              </Button>
 
               <Tooltip title="页面设置">
                 <Button icon={<SettingOutlined />} size="small" onClick={onOpenSettings} >页面设置</Button>

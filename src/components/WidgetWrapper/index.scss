@@ -29,6 +29,8 @@
     cursor: grab;
     user-select: none;
     transition: all 0.3s ease;
+    // 设置默认颜色，让子元素可以继承（支持极简模式的 --widget-text-color）
+    color: var(--widget-title-color, inherit);
 
     &:active {
       cursor: grabbing;
@@ -49,6 +51,21 @@
       gap: 8px;
       opacity: 0;
       transition: opacity 0.2s;
+
+      // 让按钮图标继承父元素的颜色
+      .ant-btn-text {
+        color: inherit;
+
+        &:hover {
+          color: inherit;
+          opacity: 0.8;
+        }
+
+        // 删除按钮保持红色
+        &.ant-btn-dangerous {
+          color: var(--ant-color-error, #ff4d4f);
+        }
+      }
     }
 
     // 极简模式：无标题但在编辑模式下显示的拖拽条
