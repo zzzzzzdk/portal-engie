@@ -47,7 +47,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const customTokens = useConfigStore((state) => state.customTokens)
   const styleMode = useConfigStore((state) => state.styleMode)
   const styleTokens = useConfigStore((state) => state.styleTokens)
-  console.log(customTokens)
   // 生成调色板（基于基础颜色）
   const palette = useMemo(() => generatePalette(baseColors), [baseColors])
 

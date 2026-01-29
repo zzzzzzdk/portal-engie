@@ -47,6 +47,7 @@ export interface WidgetConfig {
   title?: string;
   showTitle?: boolean; // 是否显示标题
   titleColor?: string; // 标题颜色
+  contentPadding?: number; // 内容区域内边距（像素）
   refreshInterval?: number; // in seconds
   apiEndpoint?: string;
   forceIconOnly?: boolean;
@@ -124,10 +125,14 @@ export interface UserInfo {
 
 export interface DashboardConfig {
   title?: string; // 仪表盘标题（编辑模式下使用）
-  backgroundType: 'color' | 'image' | 'gradient';
+  backgroundType?: 'color' | 'image' | 'gradient';
   backgroundColor?: string;
   backgroundImage?: string;
   backgroundGradient?: string;
+  // 主题配置（发布时保存，预览时使用）
+  themeMode?: 'light' | 'dark';
+  styleMode?: 'normal' | 'minimal';
+  styleTokens?: Record<string, any>;  // 风格样式 Token
 }
 
 export interface AppState {
@@ -493,6 +498,9 @@ export interface FloatingModuleConfig extends WidgetConfig {
   isExpanded?: boolean;     // 是否展开
   collapsedWidth?: number;  // 折叠时宽度
   collapsedHeight?: number; // 折叠时高度
+  collapsedIcon?: string;   // 折叠时图标（图标名或URL）
+  collapsedBgColor?: string; // 折叠时背景色
+  collapsedIconSize?: number; // 折叠时图标大小
 
   // 行为配置
   draggable?: boolean;      // 是否可拖拽(非编辑模式)

@@ -33,6 +33,8 @@ export default defineConfig({
     }
   },
   build: {
+    // 启用 source map，方便线上调试
+    sourcemap: true,
     rollupOptions: {
       output: {
         chunkFileNames: 'static/js/[name]-[hash].js',

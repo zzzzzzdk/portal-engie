@@ -51,15 +51,13 @@ export function GridStackRender(props: { componentMap: ComponentMap }) {
 
         const widgetContainer = getWidgetContainer(id);
 
-        // ✅ 修复：容器不存在时跳过渲染（动态添加 widget 时会出现短暂延迟）
+        // 容器不存在时跳过渲染（动态添加 widget 时会出现短暂延迟）
         if (!widgetContainer) {
-          console.warn(`[GridStackRender] Container not ready for widget: ${id}, skipping render...`);
           return null;
         }
 
         // WidgetComponent 不存在时也跳过渲染
         if (!WidgetComponent) {
-          console.error(`[GridStackRender] Component "${componentData.name}" not found in componentMap`);
           return null;
         }
 

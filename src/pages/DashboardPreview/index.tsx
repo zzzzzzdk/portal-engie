@@ -4,7 +4,7 @@
  * 根据 URL 中的 ID 获取发布的仪表盘数据并只读展示
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spin, Result, Button } from 'antd';
 import { GridStackOptions, GridStackWidget } from 'gridstack';
@@ -22,6 +22,7 @@ import PreviewGroupAdapter from './PreviewGroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
 import { useStore } from '@/store/useStore';
+import { useConfigStore } from '@/store/useConfigStore';
 import 'gridstack/dist/gridstack.min.css';
 import '@/pages/DashboardGridStack/index.scss';
 import './index.scss';
@@ -125,9 +126,17 @@ const DashboardPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setEditMode } = useStore();
+  const { setThemeMode, setStyleMode, setStyleTokens } = useConfigStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<PublishedDashboard | null>(null);
+
+  // 保存原始主题配置，用于退出预览时恢复
+  const originalThemeRef = useRef<{
+    themeMode: 'light' | 'dark';
+    styleMode: 'normal' | 'minimal';
+    styleTokens: any;
+  } | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -136,11 +145,36 @@ const DashboardPreview: React.FC = () => {
       return;
     }
     setEditMode(false)
+
+    // 保存当前主题配置
+    const currentState = useConfigStore.getState();
+    originalThemeRef.current = {
+      themeMode: currentState.themeMode,
+      styleMode: currentState.styleMode,
+      styleTokens: currentState.styleTokens,
+    };
+
     const fetchDashboard = async () => {
       try {
         setLoading(true);
         const res = await getPublishedDashboard({id});
         if (res.data) {
+          // 先应用发布时保存的主题配置，确保子应用初始化时能获取正确的主题状态
+          const { dashboardConfig } = res.data;
+          if (dashboardConfig) {
+            if (dashboardConfig.themeMode) {
+              setThemeMode(dashboardConfig.themeMode);
+            }
+            if (dashboardConfig.styleMode) {
+              setStyleMode(dashboardConfig.styleMode);
+            }
+            if (dashboardConfig.styleTokens) {
+              // 使用类型断言，因为存储的数据结构与 IWidgetStyleTokens 一致
+              setStyleTokens(dashboardConfig.styleTokens as any);
+            }
+          }
+
+          // 再设置仪表盘数据，触发组件渲染
           setDashboardData(res.data);
         } else {
           setError(res.message || '获取仪表盘数据失败');
@@ -153,6 +187,17 @@ const DashboardPreview: React.FC = () => {
     };
 
     fetchDashboard();
+
+    // 组件卸载时恢复原始主题配置
+    return () => {
+      if (originalThemeRef.current) {
+        setThemeMode(originalThemeRef.current.themeMode);
+        setStyleMode(originalThemeRef.current.styleMode);
+        if (originalThemeRef.current.styleTokens) {
+          setStyleTokens(originalThemeRef.current.styleTokens);
+        }
+      }
+    };
   }, [id]);
 
   const buildGridOptions = useCallback((): GridStackOptions | null => {

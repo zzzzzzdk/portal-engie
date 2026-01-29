@@ -124,4 +124,86 @@
     display: block;
     font-size: 12px;
   }
+
+  // Text 文本列表模式
+  &__text {
+    height: 100%;
+    overflow: auto;
+    display: grid;
+    align-content: start;
+    padding: 4px;
+  }
+
+  // Text 文本项
+  &__text-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &--clickable {
+      cursor: pointer;
+
+      &:hover {
+        filter: brightness(1.1);
+        transform: translateX(2px);
+      }
+    }
+  }
+
+  // Text 模式图标
+  &__text-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  // Text 模式标签
+  &__text-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Tag 标签模式
+  &__tag {
+    height: 100%;
+    overflow: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    padding: 4px;
+  }
+
+  // Tag 标签项
+  &__tag-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;  // 覆盖 antd Tag 默认 margin
+    transition: all 0.2s ease;
+    overflow: hidden;
+
+    &--clickable {
+      &:hover {
+        filter: brightness(1.15);
+        transform: scale(1.02);
+      }
+    }
+  }
+
+  // Tag 文字（超出隐藏）
+  &__tag-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 8px;
+  }
 }

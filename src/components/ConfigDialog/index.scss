@@ -1,6 +1,4 @@
 .config-dialog {
-  width: 700px !important;
-  
   .ant-input {
    height: 34px;
   }
@@ -206,29 +204,29 @@
     }
   }
 
-  // Row Layouts
+  // Row Layouts - 适配 480px 抽屉宽度
   .form-row-2 {
      display: flex;
-     gap: 24px; // More horizontal gap
-     margin-bottom: 24px; // Add vertical spacing for the row container
+     gap: 16px;
+     margin-bottom: 20px;
 
-     .ant-form-item { 
-        flex: 1; 
-        margin-bottom: 0; 
+     .ant-form-item {
+        flex: 1;
+        margin-bottom: 0;
      }
   }
-  
+
   .form-row-3 {
      display: flex;
-     gap: 16px;
-     margin-bottom: 24px;
+     gap: 12px;
+     margin-bottom: 20px;
      .ant-form-item { flex: 1; margin-bottom: 0; }
   }
 
   .form-row-4 {
      display: flex;
-     gap: 12px;
-     margin-bottom: 24px;
+     gap: 10px;
+     margin-bottom: 20px;
      align-items: center;
      .ant-form-item { flex: 1; margin-bottom: 0; }
      .ant-form-item:last-child { flex: 0 0 auto; }

@@ -1,8 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Form, Input, Tabs, ColorPicker, Upload, Select, App as AntdApp, Slider, InputNumber } from 'antd';
 import { BgColorsOutlined, PictureOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd/es/form';
 import { uploadImage } from '@/services';
+import { useConfigStore } from '@/store/useConfigStore';
+
+/**
+ * 从 CSS backdrop-filter 值中提取模糊数值
+ * 例如: 'blur(23px)' => 23, 'none' => 0
+ */
+const parseBackdropBlur = (value?: string): number | undefined => {
+  if (!value || value === 'none') return undefined;
+  const match = value.match(/blur\((\d+(?:\.\d+)?)px\)/);
+  return match ? parseFloat(match[1]) : undefined;
+};
 
 export const GRADIENT_PRESETS = [
   'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
@@ -32,12 +43,36 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
   const [fileList, setFileList] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const { message } = AntdApp.useApp();
+  const themeMode = useConfigStore((state) => state.themeMode);
+  const styleMode = useConfigStore((state) => state.styleMode);
+  const styleTokens = useConfigStore((state) => state.styleTokens);
+
+  // 根据主题模式和风格模式获取默认背景色
+  // 优先使用风格 Token 中的 widget.background（如极简模式的半透明背景）
+  const defaultBackgroundColor = useMemo(() => {
+    // 如果风格 Token 中有 widget 背景色，优先使用
+    if (styleTokens?.widget?.background) {
+      return styleTokens.widget.background;
+    }
+    // 否则使用主题模式的默认背景色
+    return themeMode === 'dark' ? '#141414' : '#ffffff';
+  }, [themeMode, styleTokens]);
+
+  // 获取当前风格的默认模糊值（极简模式有默认模糊效果）
+  const themeDefaultBlur = useMemo(() => {
+    return parseBackdropBlur(styleTokens?.widget?.backdropFilter);
+  }, [styleTokens]);
 
   useEffect(() => {
     if (initialValues) {
       const type = initialValues.backgroundType || 'color';
       setActiveTab(type);
       form.setFieldValue('backgroundType', type);
+
+      // 如果是纯色模式且没有设置背景色，则使用默认背景色
+      if (type === 'color' && !initialValues.backgroundColor) {
+        form.setFieldValue('backgroundColor', defaultBackgroundColor);
+      }
 
       // Initialize file list if image exists
       if (initialValues.backgroundImage) {
@@ -50,12 +85,31 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
           },
         ]);
       }
+
+      // 如果未设置背景模糊且极简模式有默认值，显示主题默认值
+      // 注意：这只是显示用，实际保存时如果用户没有修改，应该保持 undefined 以使用主题默认值
+      if (initialValues.backdropBlur === undefined && themeDefaultBlur !== undefined) {
+        form.setFieldValue('backdropBlur', themeDefaultBlur);
+      }
+    } else {
+      // 没有初始值时，设置默认值
+      setActiveTab('color');
+      form.setFieldValue('backgroundType', 'color');
+      form.setFieldValue('backgroundColor', defaultBackgroundColor);
+      if (themeDefaultBlur !== undefined) {
+        form.setFieldValue('backdropBlur', themeDefaultBlur);
+      }
     }
-  }, [initialValues, form]);
+  }, [initialValues, form, defaultBackgroundColor, themeDefaultBlur]);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
     form.setFieldValue('backgroundType', key);
+
+    // 切换到纯色模式时，如果背景色未设置，使用默认背景色
+    if (key === 'color' && !form.getFieldValue('backgroundColor')) {
+      form.setFieldValue('backgroundColor', defaultBackgroundColor);
+    }
   };
 
   const items = [
@@ -256,14 +310,18 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       />
       <Form.Item
         label="背景模糊"
-        tooltip="设置毛玻璃效果，值越大越模糊 (0-20px)"
+        tooltip={
+          styleMode === 'minimal' && themeDefaultBlur
+            ? `极简模式默认模糊 ${themeDefaultBlur}px，设置为 0 可禁用模糊效果`
+            : '设置毛玻璃效果，值越大越模糊 (0-30px)，设置为 0 可禁用'
+        }
         style={{ marginTop: 16 }}
       >
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <Form.Item name="backdropBlur" noStyle>
             <Slider
               min={0}
-              max={20}
+              max={30}
               step={1}
               style={{ flex: 1 }}
             />
@@ -271,7 +329,7 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
           <Form.Item name="backdropBlur" noStyle>
             <InputNumber
               min={0}
-              max={20}
+              max={30}
               step={1}
               style={{ width: 70 }}
               suffix="px"

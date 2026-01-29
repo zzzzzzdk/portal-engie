@@ -30,8 +30,8 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
       style.background = config.backgroundGradient;
     }
 
-    // 边框设置 - 默认显示实线边框
-    const borderStyle = config.borderStyle ?? 'solid';
+    // 边框设置 - 默认不显示边框，需要用户手动配置
+    const borderStyle = config.borderStyle ?? 'none';
     if (borderStyle !== 'none') {
       style.borderStyle = borderStyle;
       style.borderWidth = config.borderWidth ?? 2;
@@ -59,10 +59,14 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
     if (config.titleColor) {
       style.color = config.titleColor;
     }
-    if (config.titleFontSize) {
-      style.fontSize = config.titleFontSize;
+    // 处理字符串和数字类型的 fontSize
+    if (config.titleFontSize !== undefined && config.titleFontSize !== null) {
+      const fontSize = Number(config.titleFontSize);
+      if (!isNaN(fontSize)) {
+        style.fontSize = fontSize;
+      }
     }
-    if (config.titleFontWeight) {
+    if (config.titleFontWeight !== undefined && config.titleFontWeight !== null) {
       style.fontWeight = config.titleFontWeight;
     }
 

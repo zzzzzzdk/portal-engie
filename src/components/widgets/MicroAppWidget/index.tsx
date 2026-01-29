@@ -19,7 +19,7 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
-  const { themeMode, styleMode } = useTheme();
+  const { themeMode, styleMode, styleTokens } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
@@ -85,6 +85,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
       bus.$emit('state:change', {
         theme: themeMode,
         styleMode,  // 极简/标准风格
+        styleTokens,  // 风格样式 Token（极简模式的具体样式配置）
         __sizeInfo: sizeInfo,
         backgroundConfig
       });
@@ -104,13 +105,15 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
 
   // 监听上下文变化并通知子应用（主题、风格、尺寸、背景）
   useEffect(() => {
+    console.log(styleMode)
     bus.$emit('state:change', {
       theme: themeMode,
       styleMode,  // 极简/标准风格
+      styleTokens,  // 风格样式 Token（极简模式的具体样式配置）
       __sizeInfo: sizeInfo,
       backgroundConfig
     });
-  }, [themeMode, styleMode, sizeInfo, backgroundConfig]);
+  }, [themeMode, styleMode, styleTokens, sizeInfo, backgroundConfig]);
 
   const handleRetry = () => {
     initMicroApp();
@@ -122,12 +125,32 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
     setTimeout(() => {
       setLoading(false);
     }, 1000);
+
+    // 子应用挂载完成后，再次发送状态确保子应用能正确接收
+    bus.$emit('state:change', {
+      theme: themeMode,
+      styleMode,
+      styleTokens,
+      __sizeInfo: sizeInfo,
+      backgroundConfig
+    });
+
     lifecycles.afterMount?.(appWindow);
   };
 
   const handleActivated = (appWindow: Window) => {
     console.log(`[Wujie] ${appName} 激活，确保 Loading 关闭`);
     setLoading(false);
+
+    // 子应用激活后，再次发送状态确保子应用能正确接收（alive 模式下重要）
+    bus.$emit('state:change', {
+      theme: themeMode,
+      styleMode,
+      styleTokens,
+      __sizeInfo: sizeInfo,
+      backgroundConfig
+    });
+
     lifecycles.activated?.(appWindow);
   };
 
@@ -190,6 +213,8 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
             token: getToken(),
             appId: appName,
             theme: themeMode,
+            styleMode,  // 极简/标准风格
+            styleTokens,  // 风格样式 Token（极简模式的具体样式配置）
             __sizeInfo: sizeInfo,
             backgroundConfig,
           }}

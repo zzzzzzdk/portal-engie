@@ -327,7 +327,7 @@ const DashboardInner: React.FC = () => {
     widgetIdsRef.current = currentWidgetIds;
   }, [availableWidgets, gridStack, addGridWidget, removeGridWidget, syncLayoutFromGrid]);
 
-  // 🔧 新增：监听所有 widgets 的删除（包括分组内的 widgets）
+  // 🔧 监听所有 widgets 的删除（包括分组内的 widgets）
   useEffect(() => {
     if (!gridStack) {
       return;
@@ -337,6 +337,9 @@ const DashboardInner: React.FC = () => {
     const previousAllWidgetIds = allWidgetIdsRef.current;
 
     const removedIds = Array.from(previousAllWidgetIds).filter((id) => !currentAllWidgetIds.has(id));
+
+    // 🔧 修复：无论是否有删除，都要更新 ref，否则下次比较会出错
+    allWidgetIdsRef.current = currentAllWidgetIds;
 
     if (removedIds.length === 0) {
       return;
@@ -354,8 +357,6 @@ const DashboardInner: React.FC = () => {
     } finally {
       isApplyingStoreLayout.current = false;
     }
-
-    allWidgetIdsRef.current = currentAllWidgetIds;
   }, [widgets, gridStack, removeGridWidget, syncLayoutFromGrid]);
 
   useEffect(() => {

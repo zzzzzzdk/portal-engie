@@ -16,6 +16,59 @@ body {
   height: 100vh;
 }
 
+// ============================================
+// 全局表单控件行高统一设置
+// ============================================
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-picker {
+  min-height: 36px !important;
+  height: 36px;
+}
+
+// 带前缀/后缀的输入框内部 input
+.ant-input-affix-wrapper .ant-input {
+  height: auto;
+  min-height: auto !important;
+}
+
+// Select 选择器
+.ant-select {
+  height: 36px !important;
+
+  .ant-select-selection-search-input {
+    height: 34px !important;
+  }
+
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder {
+    line-height: 34px !important;
+  }
+}
+
+// 多选 Select
+.ant-select-multiple .ant-select-selector {
+  min-height: 36px !important;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+// InputNumber
+.ant-input-number {
+  .ant-input-number-input {
+    height: 34px;
+  }
+}
+
+// DatePicker / TimePicker
+.ant-picker {
+  .ant-picker-input > input {
+    height: 34px;
+  }
+}
+
 .react-grid-item.react-grid-placeholder {
   background: var(--ant-color-primary-bg, rgba(24, 144, 255, 0.2)) !important;
   border-radius: 4px;
@@ -66,7 +119,9 @@ body {
 :root[data-style="minimal"] {
   .widget-header {
     .widget-actions>button {
-      color: var(--widget-text-color, inherit);
+      // 使用 inherit 让按钮继承父元素颜色（支持 titleColor 内联样式覆盖）
+      // 如果没有内联样式，则通过 CSS 继承链获取 --widget-text-color
+      color: inherit;
       &.ant-btn-dangerous {
         color: var(--ant-color-error);
       }

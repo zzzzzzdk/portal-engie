@@ -77,8 +77,13 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
   const { w, h } = resolvedWidget.layout;
   const forceIconOnly = resolvedWidget.config.forceIconOnly;
 
-  // iconNav 类型本身就是图标导航组件，不需要切换到 icon-only 视图
-  const skipIconOnlyMode = type === 'iconNav';
+  // 不需要 icon-only 模式的组件类型列表
+  // - iconNav: 本身就是图标导航组件
+  // - typography: 文本组件，缩小时仍需显示内容
+  // - navGroup: 导航组组件，缩小时仍需显示导航项
+  // - headerBar: 头部栏组件，通常不会缩小到 icon 尺寸
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'navGroup', 'headerBar'];
+  const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
   if (!skipIconOnlyMode && (forceIconOnly || isIconOnlyMode(w, h))) {

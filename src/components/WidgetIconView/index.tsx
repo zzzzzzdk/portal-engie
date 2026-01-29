@@ -33,6 +33,11 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   const { removeWidget, refreshWidget } = useStore();
 
+  // 判断是否为小尺寸组件（w < 2 或 h < 2），小尺寸时不显示操作按钮以避免影响拖拽
+  // 用户可通过右键菜单进行设置和删除操作
+  const { w = 2, h = 2 } = widget.layout || {};
+  const isSmallSize = w < 2 || h < 2;
+
   // 加载 icon 配置
   useEffect(() => {
     const loadIcon = async () => {
@@ -213,8 +218,8 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
   };
 
   const tooltipTitle = isEditMode
-    ? '右键打开菜单'
-    : '';
+    ? `${widget.title} (右键打开菜单)`
+    : widget.title;
 
   const content = (
     <div
@@ -238,9 +243,13 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
         </div>
       )} */}
 
-      {/* 编辑模式下显示操作按钮 */}
-      {isEditMode && (
-        <div className="widget-icon-actions" onClick={e => e.stopPropagation()}>
+      {/* 编辑模式下显示操作按钮（小尺寸组件除外，用户可通过右键菜单操作） */}
+      {isEditMode && !isSmallSize && (
+        <div
+          className="widget-icon-actions"
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+        >
           <Button
             type="text"
             size="small"
@@ -267,13 +276,11 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
     </div>
   );
 
-  // 编辑模式下使用右键菜单包裹
+  // 编辑模式下使用右键菜单包裹，不显示 Tooltip 以避免干扰拖拽
   if (isEditMode) {
     return (
       <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-        <Tooltip title={tooltipTitle} placement="top">
-          {content}
-        </Tooltip>
+        {content}
       </Dropdown>
     );
   }
