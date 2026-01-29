@@ -103,14 +103,44 @@ const PublishList: React.FC = () => {
     window.open(`${window.location.origin + window.location.pathname}#/preview/${record.id}`, '_blank');
   };
 
-  // 复制访问地址
+  // 复制访问地址（兼容非 HTTPS 环境）
   const handleCopyUrl = (record: PublishListItem) => {
     const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      message.success('访问地址已复制到剪贴板');
-    }).catch(() => {
-      message.error('复制失败');
-    });
+
+    // 优先使用 navigator.clipboard（需要 HTTPS）
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(() => {
+        message.success('访问地址已复制到剪贴板');
+      }).catch(() => {
+        fallbackCopy(url);
+      });
+    } else {
+      // 降级方案：使用 execCommand
+      fallbackCopy(url);
+    }
+  };
+
+  // 降级复制方法
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        message.success('访问地址已复制到剪贴板');
+      } else {
+        message.error('复制失败，请手动复制');
+      }
+    } catch {
+      message.error('复制失败，请手动复制');
+    }
+    document.body.removeChild(textarea);
   };
 
   // 新增 - 跳转到空白编辑页

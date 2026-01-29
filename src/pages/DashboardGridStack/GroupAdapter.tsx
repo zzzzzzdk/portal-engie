@@ -48,6 +48,17 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
       style.padding = config.padding;
     }
 
+    // 背景模糊度
+    if (config.backdropBlur !== undefined && config.backdropBlur !== null) {
+      if (config.backdropBlur > 0) {
+        style.backdropFilter = `blur(${config.backdropBlur}px)`;
+        style.WebkitBackdropFilter = `blur(${config.backdropBlur}px)`;
+      } else {
+        style.backdropFilter = 'none';
+        style.WebkitBackdropFilter = 'none';
+      }
+    }
+
     return style;
   }, [group?.config]);
 

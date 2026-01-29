@@ -89,6 +89,7 @@ export interface WidgetGroupConfig {
   backgroundSize?: string;
   backgroundRepeat?: string;
   backgroundPosition?: string;
+  backdropBlur?: number;        // 背景模糊度
 
   // 边框设置
   borderStyle?: 'none' | 'solid' | 'dashed';  // 默认 'solid'
@@ -131,8 +132,11 @@ export interface DashboardConfig {
   backgroundGradient?: string;
   // 主题配置（发布时保存，预览时使用）
   themeMode?: 'light' | 'dark';
+  themePreset?: string;               // 主题预设名称
   styleMode?: 'normal' | 'minimal';
   styleTokens?: Record<string, any>;  // 风格样式 Token
+  baseColors?: Record<string, any>;   // 基础颜色配置
+  customTokens?: Record<string, any>; // 自定义语义 Token
 }
 
 export interface AppState {

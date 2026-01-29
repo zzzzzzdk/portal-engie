@@ -44,7 +44,7 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
   backgroundColor: 'rgba(0, 0, 0, 0.02)',
 };
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 6, minH: 1 };
+const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 2, minH: 1 };
 const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAV_GROUP_LAYOUT = { w: 10, h: 10, x: 0, y: 0, minW: 4, minH: 4 };
 

@@ -10,6 +10,7 @@ import {
   useGridStackContext,
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
+import { useConfigStore } from '@/store/useConfigStore';
 import { getPublishedDashboard } from '@/services/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
@@ -101,6 +102,24 @@ const DashboardInner: React.FC = () => {
     pendingSyncFrameRef.current = requestAnimationFrame(() => {
       const currentLayout = saveOptions();
 
+      // 🔧 从 engine.nodes 构建 ID -> node 映射，用于获取准确的 w/h
+      // GridStack 的 save() 方法有时不返回 w 属性，需要从 engine.nodes 获取
+      const engineNodeMap = new Map<string, any>();
+      if (gridStack?.engine?.nodes) {
+        const collectNodes = (nodes: any[]) => {
+          nodes.forEach((node: any) => {
+            if (node.id) {
+              engineNodeMap.set(node.id, node);
+            }
+            // 递归收集 SubGrid 中的节点
+            if (node.subGrid?.engine?.nodes) {
+              collectNodes(node.subGrid.engine.nodes);
+            }
+          });
+        };
+        collectNodes(gridStack.engine.nodes);
+      }
+
       if (!currentLayout) {
         pendingSyncFrameRef.current = null;
         return;
@@ -127,12 +146,33 @@ const DashboardInner: React.FC = () => {
           if (!item || !item.id) return;
 
           const id = String(item.id);
+
+          // 🔧 修复：优先从 engine.nodes 获取准确的 w/h
+          const engineNode = engineNodeMap.get(id);
+          let itemW = item.w ?? engineNode?.w;
+          let itemH = item.h ?? engineNode?.h;
+
+          // 如果还是没有，尝试从 DOM 读取
+          if (itemW === undefined || itemH === undefined) {
+            const el = document.querySelector(`[gs-id="${id}"]`);
+            if (el) {
+              const gsW = el.getAttribute('gs-w');
+              const gsH = el.getAttribute('gs-h');
+              if (itemW === undefined && gsW) {
+                itemW = parseInt(gsW, 10);
+              }
+              if (itemH === undefined && gsH) {
+                itemH = parseInt(gsH, 10);
+              }
+            }
+          }
+
           const absoluteLayout: Layout = {
             i: id,
             x: (item.x ?? 0) + offsetX,
             y: (item.y ?? 0) + offsetY,
-            w: item.w ?? 4,
-            h: item.h ?? 2,
+            w: itemW ?? 4,
+            h: itemH ?? 2,
           };
 
           const hasSubGrid = !!item.subGridOpts;
@@ -173,6 +213,9 @@ const DashboardInner: React.FC = () => {
 
       traverse(rootItems as GridStackWidget[]);
 
+      // 🔧 调试日志：查看解析后的布局数据
+      // console.log('[syncLayoutFromGrid] Parsed widgetLayouts:', JSON.stringify(widgetLayouts, null, 2));
+
       // 🔧 更新元数据 Map（确保 Portal 能正确渲染）
       _rawWidgetMetaMap.set(updatedMetaMap);
 
@@ -191,7 +234,7 @@ const DashboardInner: React.FC = () => {
 
       pendingSyncFrameRef.current = null;
     });
-  }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap]);
+  }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap, gridStack]);
 
   // 只监听用户拖拽和缩放事件，不监听 change（避免 addWidget 触发循环）
   useEffect(() => {
@@ -525,6 +568,25 @@ const DashboardGridStack: React.FC = () => {
       try {
         const res = await getPublishedDashboard({ id: editId });
         if (res.code === 20000 && res.data) {
+          const config = res.data.dashboardConfig || {};
+
+          // 🔧 应用主题配置到主题系统
+          // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
+          const themeUpdate: Record<string, unknown> = {};
+          if (config.themeMode) {
+            themeUpdate.themeMode = config.themeMode;
+          }
+          if (config.styleMode) {
+            themeUpdate.styleMode = config.styleMode;
+          }
+          // styleTokens 需要验证结构完整性
+          if (config.styleTokens?.widget && config.styleTokens?.card) {
+            themeUpdate.styleTokens = config.styleTokens;
+          }
+          if (Object.keys(themeUpdate).length > 0) {
+            useConfigStore.setState(themeUpdate);
+          }
+
           // 加载数据到 store，将 title 合并到 dashboardConfig 中
           loadDashboardFromData({
             widgets: res.data.widgets,
@@ -532,7 +594,7 @@ const DashboardGridStack: React.FC = () => {
             floatingModules: res.data.floatingModules,
             dashboardConfig: {
               backgroundType: 'color', // 默认值
-              ...res.data.dashboardConfig,
+              ...config,
               title: res.data.title, // 保存标题用于编辑后发布
             },
           });
@@ -670,6 +732,7 @@ function createGroupGridWidget(
       column: 'auto',
       cellHeight: preset.cellHeight,
       margin: preset.margin,
+      minRow: 1,  // 确保空分组至少有一行高度，可作为拖拽目标
       alwaysShowResizeHandle: false,
       animate: true,
       float: true,

@@ -229,6 +229,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundGradient: widget.config.backgroundGradient,
           // backdropBlur 由 BackgroundSettings 组件根据主题自动设置默认值
         });
+
+        // navGroup 特有配置：数据来源和静态导航项
+        if (widget.type === 'navGroup') {
+          const hasStaticItems = widget.config.staticItems && widget.config.staticItems.length > 0;
+          form.setFieldsValue({
+            dataSource: hasStaticItems ? 'static' : 'api',
+            staticItems: widget.config.staticItems || [],
+          });
+        }
       }
 
       // 如果是悬浮模块，添加悬浮模块特有的配置
@@ -288,6 +297,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundSize,
           backgroundRepeat,
           backgroundPosition,
+          backdropBlur,
           borderStyle,
           borderColor,
           borderWidth,
@@ -325,6 +335,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundSize,
           backgroundRepeat,
           backgroundPosition,
+          backdropBlur,
           borderStyle,
           borderColor: normalizedBorderColor,
           borderWidth,
@@ -568,6 +579,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
           // 规范化 restConfig 中的所有颜色值
           const normalizedRestConfig = { ...restConfig };
+          // typography 组件字体颜色
+          if (normalizedRestConfig.color) {
+            normalizedRestConfig.color = normalizeColor(normalizedRestConfig.color);
+          }
+          // headerBar 组件文字颜色
+          if (normalizedRestConfig.textColor) {
+            normalizedRestConfig.textColor = normalizeColor(normalizedRestConfig.textColor);
+          }
           if (normalizedRestConfig.iconColor) {
             normalizedRestConfig.iconColor = normalizeColor(normalizedRestConfig.iconColor);
           }
@@ -579,6 +598,31 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           }
           if (normalizedRestConfig.itemTextColor) {
             normalizedRestConfig.itemTextColor = normalizeColor(normalizedRestConfig.itemTextColor);
+          }
+          // pageNavigator 的颜色字段
+          if (normalizedRestConfig.itemColor) {
+            normalizedRestConfig.itemColor = normalizeColor(normalizedRestConfig.itemColor);
+          }
+
+          // navGroup 特殊处理：数据来源和静态导航项
+          if (widget.type === 'navGroup') {
+            const dataSource = normalizedRestConfig.dataSource;
+            if (dataSource === 'static') {
+              // 手动配置模式：规范化 staticItems 中的颜色值，清除 apiEndpoint
+              if (normalizedRestConfig.staticItems && Array.isArray(normalizedRestConfig.staticItems)) {
+                normalizedRestConfig.staticItems = normalizedRestConfig.staticItems.map((item: any) => ({
+                  ...item,
+                  iconBgColor: normalizeColor(item.iconBgColor),
+                  iconColor: normalizeColor(item.iconColor),
+                  textColor: normalizeColor(item.textColor),
+                }));
+              }
+              // 清除 apiEndpoint
+              normalizedRestConfig.apiEndpoint = undefined;
+            } else {
+              // 接口模式：清除 staticItems
+              normalizedRestConfig.staticItems = undefined;
+            }
           }
 
           updateWidget(widget.id, {
@@ -697,10 +741,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             </Form.Item>
             <div className="form-row-2">
               <Form.Item name="color" label="字体颜色">
-                <div style={{ display: 'flex', gap: 8 }}>
-                   <Input type="color" style={{ width: 40, padding: 0, border: 'none', background: 'transparent' }} />
-                   <Input placeholder="#000000" />
-                </div>
+                <ColorPicker showText allowClear />
               </Form.Item>
               <Form.Item name="textAlign" label="对齐方式">
                 <Select allowClear>
@@ -755,7 +796,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             </div>
             <div className="form-row-2">
                <Form.Item name="textColor" label="文字颜色">
-                 <Input type="color" style={{ width: 60, padding: 4 }} />
+                 <ColorPicker showText allowClear />
                </Form.Item>
                <Form.Item name="headerFontSize" label="字体大小">
                  <InputNumber min={12} max={48} placeholder="24" addonAfter="px" />
@@ -851,31 +892,49 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 <div className="config-list-container">
                   {fields.map(({ key, name, ...restField }) => (
                     <div key={key} className="config-item-card">
-                       <div className="card-header" style={{cursor: 'default'}}>
-                          <div className="header-content">
-                             <div className="form-row-4" style={{width: '100%', marginBottom: 0}}>
-                                <Form.Item {...restField} name={[name, 'name']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                                  <Input placeholder="名称" />
-                                </Form.Item>
-                                <Form.Item {...restField} name={[name, 'path']} rules={[
-                                  { required: true, message: '请输入路径' },
-                                  { pattern: /^(\/|https?:\/\/|\/\/)/, message: '路径需以 / 或 http(s):// 开头' }
-                                ]} style={{ marginBottom: 0 }}>
-                                  <Input placeholder="路径" />
-                                </Form.Item>
-                                <Form.Item {...restField} name={[name, 'icon']} style={{ marginBottom: 0 }}>
-                                  <IconPicker mode="simple" />
-                                </Form.Item>
-                                <Form.Item {...restField} name={[name, 'openInNew']} initialValue={false} style={{ marginBottom: 0 }}>
-                                  <Select size="small" style={{ width: 90 }} options={[
-                                    { label: '当前页', value: false },
-                                    { label: '新窗口', value: true },
-                                  ]} />
-                                </Form.Item>
-                             </div>
-                          </div>
-                          <div className="header-actions">
-                             <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} />
+                       <div className="card-content" style={{ padding: '12px', position: 'relative' }}>
+                          {/* 删除按钮 */}
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => remove(name)}
+                            style={{ position: 'absolute', top: 8, right: 8 }}
+                          />
+                          {/* 第一行：名称 */}
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'name']}
+                            label="名称"
+                            rules={[{ required: true, message: '请输入名称' }]}
+                            style={{ marginBottom: 12 }}
+                          >
+                            <Input placeholder="请输入导航名称" />
+                          </Form.Item>
+                          {/* 第二行：路径 */}
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'path']}
+                            label="路径"
+                            rules={[
+                              { required: true, message: '请输入路径' },
+                              { pattern: /^(\/|https?:\/\/|\/\/)/, message: '路径需以 / 或 http(s):// 开头' }
+                            ]}
+                            style={{ marginBottom: 12 }}
+                          >
+                            <Input placeholder="如: /dashboard 或 https://example.com" />
+                          </Form.Item>
+                          {/* 第三行：图标和打开方式 */}
+                          <div className="form-row-2" style={{ marginBottom: 0 }}>
+                            <Form.Item {...restField} name={[name, 'icon']} label="图标" style={{ marginBottom: 0 }}>
+                              <IconPicker mode="simple" />
+                            </Form.Item>
+                            <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false} style={{ marginBottom: 0 }}>
+                              <Select options={[
+                                { label: '当前页', value: false },
+                                { label: '新窗口', value: true },
+                              ]} />
+                            </Form.Item>
                           </div>
                        </div>
                     </div>
@@ -1044,18 +1103,29 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               }}
             </Form.Item>
 
-            <div className="form-row-2">
-              <Form.Item name="itemSize" label="尺寸">
-                <Select placeholder="中">
-                  <Select.Option value="small">小</Select.Option>
-                  <Select.Option value="middle">中</Select.Option>
-                  <Select.Option value="large">大</Select.Option>
-                </Select>
-              </Form.Item>
-              <Form.Item name="itemBorderRadius" label="圆角" rules={[{ type: 'number', min: 0 }]}>
-                <InputNumber style={{ width: '100%' }} suffix="px" placeholder="4" />
-              </Form.Item>
-            </div>
+            {/* 尺寸配置仅在 text/tag 模式下显示 */}
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.layout !== cur.layout}>
+              {({ getFieldValue }) => {
+                const layout = getFieldValue('layout');
+                const showSizeConfig = ['text', 'tag'].includes(layout);
+                return (
+                  <div className="form-row-2">
+                    {showSizeConfig && (
+                      <Form.Item name="itemSize" label="尺寸">
+                        <Select placeholder="中">
+                          <Select.Option value="small">小</Select.Option>
+                          <Select.Option value="middle">中</Select.Option>
+                          <Select.Option value="large">大</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    )}
+                    <Form.Item name="itemBorderRadius" label="圆角" rules={[{ type: 'number', min: 0 }]}>
+                      <InputNumber style={{ width: '100%' }} suffix="px" placeholder="4" />
+                    </Form.Item>
+                  </div>
+                );
+              }}
+            </Form.Item>
             <div className="form-row-2">
               <Form.Item name="itemBgColor" label="背景色">
                 <ColorPicker showText allowClear />
@@ -1103,16 +1173,135 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
     return (
       <>
-         {['chart', 'stats', 'customForm', 'dataTable', 'navGroup'].includes(widget.type) && (
+         {['chart', 'stats', 'customForm', 'dataTable'].includes(widget.type) && (
             <Form.Item name="apiEndpoint" label="数据接口">
               <Input placeholder="/api/data" />
             </Form.Item>
          )}
 
          {widget.type === 'navGroup' && (
-            <div className="empty-hint" style={{ marginTop: 8 }}>
-              接口应返回格式：{`{ code: 0, data: [{ url, icon, name, description?, iconBgColor?, iconColor?, textColor? }] }`}
-            </div>
+            <>
+              <Form.Item name="dataSource" label="数据来源" initialValue="api">
+                <Radio.Group>
+                  <Radio value="api">接口获取</Radio>
+                  <Radio value="static">手动配置</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              <Form.Item noStyle shouldUpdate={(prev, cur) => prev.dataSource !== cur.dataSource}>
+                {({ getFieldValue }) => {
+                  const dataSource = getFieldValue('dataSource');
+                  if (dataSource === 'api') {
+                    return (
+                      <>
+                        <Form.Item name="apiEndpoint" label="数据接口">
+                          <Input placeholder="/api/nav-items" />
+                        </Form.Item>
+                        <div className="empty-hint" style={{ marginTop: 8 }}>
+                          接口应返回格式：{`{ code: 0, data: [{ url, icon, name, description?, iconBgColor?, iconColor?, textColor? }] }`}
+                        </div>
+                      </>
+                    );
+                  }
+                  // 手动配置模式
+                  return (
+                    <>
+                      <Divider style={{ margin: '12px 0' }}>导航项配置</Divider>
+                      <Form.List name="staticItems">
+                        {(fields, { add, remove }) => (
+                          <div className="config-list-container">
+                            {fields.map(({ key, name, ...restField }) => (
+                              <div key={key} className="config-item-card">
+                                <div className="card-content" style={{ padding: '12px', position: 'relative' }}>
+                                  <Button
+                                    type="text"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => remove(name)}
+                                    style={{ position: 'absolute', top: 8, right: 8 }}
+                                  />
+                                  <div className="form-row-2" style={{ marginBottom: 8 }}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'name']}
+                                      label="名称"
+                                      rules={[{ required: true, message: '请输入名称' }]}
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Input placeholder="导航名称" />
+                                    </Form.Item>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'icon']}
+                                      label="图标"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <IconPicker mode="simple" />
+                                    </Form.Item>
+                                  </div>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'url']}
+                                    label="链接地址"
+                                    rules={[{ required: true, message: '请输入链接地址' }]}
+                                    style={{ marginBottom: 8 }}
+                                  >
+                                    <Input placeholder="如: /dashboard 或 https://example.com" />
+                                  </Form.Item>
+                                  <div className="form-row-2" style={{ marginBottom: 8 }}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'iconBgColor']}
+                                      label="图标背景色"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <ColorPicker showText allowClear />
+                                    </Form.Item>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'iconColor']}
+                                      label="图标颜色"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <ColorPicker showText allowClear />
+                                    </Form.Item>
+                                  </div>
+                                  <div className="form-row-2" style={{ marginBottom: 0 }}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'textColor']}
+                                      label="文字颜色"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <ColorPicker showText allowClear />
+                                    </Form.Item>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'openInNew']}
+                                      label="打开方式"
+                                      initialValue={true}
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Select options={[
+                                        { label: '新窗口', value: true },
+                                        { label: '当前页', value: false },
+                                      ]} />
+                                    </Form.Item>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                              添加导航项
+                            </Button>
+                          </div>
+                        )}
+                      </Form.List>
+                    </>
+                  );
+                }}
+              </Form.Item>
+            </>
          )}
 
          {widget.type === 'microApp' && (

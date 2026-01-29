@@ -229,8 +229,11 @@ const Layout: React.FC = () => {
       const publishConfig = {
         ...dashboardConfig,
         themeMode: themeSystem.themeMode,
+        themePreset: themeSystem.themePreset,
         styleMode: themeSystem.styleMode,
         styleTokens: themeSystem.styleTokens,
+        baseColors: themeSystem.baseColors,
+        customTokens: themeSystem.customTokens,
       };
       const res = await publishDashboard({
         id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建

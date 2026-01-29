@@ -101,7 +101,8 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       const newBackgroundStyle: React.CSSProperties = {};
       const {
         backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow
+        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow,
+        borderRadius
       } = widget.config;
       // console.log(widget.config)
       if (backgroundType === 'image' && backgroundImage) {
@@ -131,6 +132,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       // 应用阴影效果
       if (boxShadow) {
         newBackgroundStyle.boxShadow = boxShadow;
+      }
+      // 应用圆角
+      if (borderRadius !== undefined && borderRadius !== null) {
+        newBackgroundStyle.borderRadius = borderRadius;
       }
       return newBackgroundStyle
     }, [widget.config])
