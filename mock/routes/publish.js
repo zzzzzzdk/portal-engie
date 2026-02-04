@@ -1,6 +1,26 @@
 const express = require('express');
 const router = express.Router();
 
+const formatDashboardRecord = (dashboard, fallbackId) => {
+  if (!dashboard) {
+    return null;
+  }
+  const snapshot = {
+    widgets: dashboard.widgets || [],
+    groups: dashboard.groups || [],
+    floatingModules: dashboard.floatingModules || [],
+    dashboardConfig: dashboard.dashboardConfig || {},
+  };
+  return {
+    id: dashboard.id || fallbackId,
+    title: dashboard.title || '未命名仪表盘',
+    publishTime: dashboard.publishedAt || new Date().toISOString(),
+    dashboardConfig: JSON.stringify(snapshot),
+  };
+};
+
+const mockDashboards = {};
+
 /**
  * @api {post} /v1/dashboard/publish 发布仪表盘
  * @apiName publishDashboard
@@ -22,20 +42,42 @@ router.post('/v1/dashboard/publish', async (req, res) => {
   await req.sleep(0.5);
 
   try {
-    const dashboardData = req.body;
+    const { id: bodyId, title, dashboardConfig } = req.body || {};
+    if (!dashboardConfig || typeof dashboardConfig !== 'string') {
+      throw new Error('缺少 dashboardConfig 字符串');
+    }
+    let parsedSnapshot;
+    try {
+      parsedSnapshot = JSON.parse(dashboardConfig);
+    } catch (err) {
+      throw new Error('dashboardConfig 格式错误');
+    }
 
-    // 模拟保存发布数据
-    const id = 'pub_' + Date.now();
+    const id =
+      typeof bodyId === 'string' && bodyId.trim()
+        ? bodyId.trim()
+        : 'pub_' + Date.now();
     const publishTime = new Date().toISOString();
 
-    // 这里可以将数据保存到文件或数据库
+    // 保存到内存，便于 mock 接口读取
+    mockDashboards[id] = {
+      id,
+      title: title || parsedSnapshot?.dashboardConfig?.title || '未命名仪表盘',
+      widgets: parsedSnapshot?.widgets || [],
+      groups: parsedSnapshot?.groups || [],
+      floatingModules: parsedSnapshot?.floatingModules || [],
+      dashboardConfig: parsedSnapshot?.dashboardConfig || {},
+      publishedAt: publishTime,
+    };
+
     console.log('[Mock] Dashboard published:', {
       id,
-      widgetCount: dashboardData.widgets?.length || 0,
-      groupCount: dashboardData.groups?.length || 0,
+      title,
+      widgetCount: parsedSnapshot?.widgets?.length || 0,
+      groupCount: parsedSnapshot?.groups?.length || 0,
     });
 
-    req.json.code = 0;
+    req.json.code = 20000;
     req.json.message = '发布成功';
     req.json.data = {
       id,
@@ -134,7 +176,7 @@ router.get('/v1/dashboard/publish', async (req, res) => {
   const { id } = req.query;
 
   // 模拟数据 - 实际应从数据库获取
-  const mockDashboards = {
+  const seededDashboards = {
     canglan: {
       "id": "f15a8606-3b1d-4a54-bc5b-4e60076338fe",
       "title": "苍蓝测试",
@@ -674,12 +716,19 @@ router.get('/v1/dashboard/publish', async (req, res) => {
     },
   };
 
+  Object.entries(seededDashboards).forEach(([key, value]) => {
+    if (!mockDashboards[key]) {
+      mockDashboards[key] = value;
+    }
+  });
+
   const dashboard = mockDashboards[id];
 
   if (dashboard) {
-    req.json.code = 0;
+    const record = formatDashboardRecord(dashboard, id);
+    req.json.code = 20000;
     req.json.message = '获取成功';
-    req.json.data = dashboard;
+    req.json.data = record;
   } else {
     req.json.code = 404;
     req.json.message = '仪表盘不存在';

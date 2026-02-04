@@ -11,7 +11,7 @@ import {
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
-import { getPublishedDashboard } from '@/services/dashboard';
+import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
@@ -568,7 +568,13 @@ const DashboardGridStack: React.FC = () => {
       try {
         const res = await getPublishedDashboard({ id: editId });
         if (res.code === 20000 && res.data) {
-          const config = res.data.dashboardConfig || {};
+          const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
+          if (!snapshot) {
+            message.error('解析仪表盘配置失败');
+            setEditDataLoaded(true);
+            return;
+          }
+          const config = snapshot.dashboardConfig || {};
 
           // 🔧 应用主题配置到主题系统
           // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
@@ -589,9 +595,9 @@ const DashboardGridStack: React.FC = () => {
 
           // 加载数据到 store，将 title 合并到 dashboardConfig 中
           loadDashboardFromData({
-            widgets: res.data.widgets,
-            groups: res.data.groups,
-            floatingModules: res.data.floatingModules,
+            widgets: snapshot.widgets,
+            groups: snapshot.groups,
+            floatingModules: snapshot.floatingModules,
             dashboardConfig: {
               backgroundType: 'color', // 默认值
               ...config,

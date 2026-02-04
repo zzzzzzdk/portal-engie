@@ -1,4 +1,5 @@
 import type { ISemanticTokens } from '../semantic'
+import headerBgUrl from '@/assets/images/header-dark.jpg'
 
 /**
  * 深色主题预设
@@ -14,7 +15,7 @@ export const darkPreset: ISemanticTokens = {
   },
   layout: {
     header: {
-      gradientBg: 'linear-gradient(135deg, #434343 0%, #000000 100%)',
+      gradientBg: `url("${headerBgUrl}") no-repeat left`,
       text: 'rgba(255, 255, 255, 0.85)',
       height: 64,
     },

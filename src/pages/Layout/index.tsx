@@ -14,7 +14,7 @@ import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WidgetDrawer from '@/components/WidgetDrawer';
 import { useTheme } from '@/theme'
 import { isDevelopment } from '@/config/env'
-import { publishDashboard } from '@/services'
+import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import './index.scss';
 
 const { Header, Content } = AntdLayout;
@@ -234,14 +234,18 @@ const Layout: React.FC = () => {
         styleTokens: themeSystem.styleTokens,
         baseColors: themeSystem.baseColors,
         customTokens: themeSystem.customTokens,
-      };
-      const res = await publishDashboard({
-        id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
         title: values.title,
+      };
+      const snapshot = {
         widgets,
         groups,
         floatingModules,
         dashboardConfig: publishConfig,
+      };
+      const res = await publishDashboard({
+        id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
+        title: values.title,
+        dashboardConfig: serializeDashboardSnapshot(snapshot),
       });
       console.log(res)
       message.success(editId ? '仪表盘更新成功' : '仪表盘发布成功');

@@ -14,7 +14,7 @@ import {
   GridStackRender,
   useGridStackContext,
 } from '@/lib/gridstack';
-import { getPublishedDashboard, PublishedDashboard } from '@/services';
+import { getPublishedDashboard, parseDashboardSnapshot, PublishedDashboard } from '@/services';
 import { Widget, WidgetGroup, GRID_DENSITY_PRESETS } from '@/types';
 import { PreviewDataProvider } from './PreviewDataContext';
 import PreviewWidgetAdapter from './PreviewWidgetAdapter';
@@ -165,37 +165,49 @@ const DashboardPreview: React.FC = () => {
         setLoading(true);
         const res = await getPublishedDashboard({id});
         if (res.data) {
+          const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
+          if (!snapshot) {
+            setError('解析仪表盘配置失败');
+            return;
+          }
+          const dashboardConfig = snapshot.dashboardConfig || {};
+
           // 先应用发布时保存的主题配置，确保子应用初始化时能获取正确的主题状态
           // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
-          const { dashboardConfig } = res.data;
-          if (dashboardConfig) {
-            const themeUpdate: Record<string, unknown> = {};
-            if (dashboardConfig.themeMode) {
-              themeUpdate.themeMode = dashboardConfig.themeMode;
-            }
-            if (dashboardConfig.themePreset) {
-              themeUpdate.themePreset = dashboardConfig.themePreset;
-            }
-            if (dashboardConfig.styleMode) {
-              themeUpdate.styleMode = dashboardConfig.styleMode;
-            }
-            // styleTokens 需要验证结构完整性
-            if (dashboardConfig.styleTokens?.widget && dashboardConfig.styleTokens?.card) {
-              themeUpdate.styleTokens = dashboardConfig.styleTokens;
-            }
-            if (dashboardConfig.baseColors) {
-              themeUpdate.baseColors = dashboardConfig.baseColors;
-            }
-            if (dashboardConfig.customTokens) {
-              themeUpdate.customTokens = dashboardConfig.customTokens;
-            }
-            if (Object.keys(themeUpdate).length > 0) {
-              useConfigStore.setState(themeUpdate);
-            }
+          const themeUpdate: Record<string, unknown> = {};
+          if (dashboardConfig.themeMode) {
+            themeUpdate.themeMode = dashboardConfig.themeMode;
+          }
+          if (dashboardConfig.themePreset) {
+            themeUpdate.themePreset = dashboardConfig.themePreset;
+          }
+          if (dashboardConfig.styleMode) {
+            themeUpdate.styleMode = dashboardConfig.styleMode;
+          }
+          // styleTokens 需要验证结构完整性
+          if (dashboardConfig.styleTokens?.widget && dashboardConfig.styleTokens?.card) {
+            themeUpdate.styleTokens = dashboardConfig.styleTokens;
+          }
+          if (dashboardConfig.baseColors) {
+            themeUpdate.baseColors = dashboardConfig.baseColors;
+          }
+          if (dashboardConfig.customTokens) {
+            themeUpdate.customTokens = dashboardConfig.customTokens;
+          }
+          if (Object.keys(themeUpdate).length > 0) {
+            useConfigStore.setState(themeUpdate);
           }
 
           // 再设置仪表盘数据，触发组件渲染
-          setDashboardData(res.data);
+          setDashboardData({
+            id: res.data.id,
+            title: res.data.title,
+            publishTime: res.data.publishTime,
+            widgets: snapshot.widgets,
+            groups: snapshot.groups,
+            floatingModules: snapshot.floatingModules,
+            dashboardConfig,
+          });
         } else {
           setError(res.message || '获取仪表盘数据失败');
         }

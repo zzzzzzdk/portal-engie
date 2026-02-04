@@ -2,14 +2,19 @@
 import ajax from '../utils/axios.config';
 import type { Widget, WidgetGroup, DashboardConfig } from '@/types';
 
-// 发布请求参数
-export interface PublishDashboardParams {
-  id?: string;
-  title?: string; // 仪表盘标题
+// 仪表盘快照：统一打包 widgets/groups/floatingModules/page config
+export interface DashboardSnapshot {
   widgets: Widget[];
   groups: WidgetGroup[];
   floatingModules: Widget[];
   dashboardConfig?: DashboardConfig;
+}
+
+// 发布接口采用的新结构
+export interface PublishDashboardParams {
+  id?: string;
+  title: string;
+  dashboardConfig: string; // JSON 字符串
 }
 
 // 发布响应
@@ -41,21 +46,49 @@ export interface PublishListResponse {
   page_size: number;
 }
 
-// 发布的仪表盘详情
-export interface PublishedDashboard {
+// 后端原始返回数据
+export interface PublishedDashboardRecord {
   id: string;
-  title: string; // 仪表盘标题
-  publishTime: string;
-  widgets: Widget[];
-  groups: WidgetGroup[];
-  floatingModules: Widget[];
-  dashboardConfig?: DashboardConfig;
+  title: string;
+  dashboardConfig: string;
+  publishTime?: string;
 }
+
+// 解析后的仪表盘结构（供前端使用）
+export interface PublishedDashboard extends DashboardSnapshot {
+  id: string;
+  title: string;
+  publishTime?: string;
+}
+
+// 序列化仪表盘快照
+export const serializeDashboardSnapshot = (snapshot: DashboardSnapshot): string => {
+  return JSON.stringify(snapshot);
+};
+
+// 反序列化仪表盘快照
+export const parseDashboardSnapshot = (
+  snapshotString?: string | null
+): DashboardSnapshot | null => {
+  if (!snapshotString || typeof snapshotString !== 'string') {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(snapshotString);
+    return {
+      widgets: Array.isArray(parsed.widgets) ? parsed.widgets : [],
+      groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+      floatingModules: Array.isArray(parsed.floatingModules) ? parsed.floatingModules : [],
+      dashboardConfig: parsed.dashboardConfig || {},
+    };
+  } catch (error) {
+    console.error('无法解析 dashboardConfig 字符串: ', error);
+    return null;
+  }
+};
 
 /**
  * 发布仪表盘
- * @param data 仪表盘数据
- * @returns 发布结果
  */
 export const publishDashboard = (data: PublishDashboardParams) => {
   return ajax<PublishDashboardResponse>({
@@ -67,8 +100,6 @@ export const publishDashboard = (data: PublishDashboardParams) => {
 
 /**
  * 获取发布列表
- * @param params 分页参数
- * @returns 发布列表
  */
 export const getPublishList = (params: PublishListParams) => {
   return ajax<PublishListResponse>({
@@ -79,27 +110,23 @@ export const getPublishList = (params: PublishListParams) => {
 };
 
 /**
- * 获取发布的仪表盘详情
- * @param id 发布ID
- * @returns 仪表盘详情数据
+ * 获取已发布仪表盘详情（原始结构）
  */
-export const getPublishedDashboard = (data: {id: string}) => {
-  return ajax<PublishedDashboard>({
+export const getPublishedDashboard = (data: { id: string }) => {
+  return ajax<PublishedDashboardRecord>({
     method: 'get',
     url: `/v1/dashboard/publish`,
-    data: data
+    data,
   });
 };
 
 /**
- * 删除已发布的仪表盘
- * @param id 发布ID
- * @returns 删除结果
+ * 删除已发布仪表盘
  */
-export const deletePublishedDashboard = (data: {id: string}) => {
+export const deletePublishedDashboard = (data: { id: string }) => {
   return ajax<{ success: boolean }>({
     method: 'post',
     url: `/v1/dashboard/publish/delete`,
-    data: data
+    data,
   });
 };

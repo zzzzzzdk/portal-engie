@@ -1,5 +1,5 @@
 import type { ISemanticTokens } from '../semantic'
-import headerBgUrl from '@/assets/images/header-bg.png'
+import headerBgUrl from '@/assets/images/header-light.jpg'
 
 
 /**
