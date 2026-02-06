@@ -12,6 +12,7 @@ import {
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
@@ -608,7 +609,7 @@ const DashboardGridStack: React.FC = () => {
           if (!snapshot) {
             message.error('解析仪表盘配置失败');
           } else {
-            const config = snapshot.dashboardConfig || {};
+            const config = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
             applyThemeFromConfig(config);
             loadDashboardFromData({
               widgets: snapshot.widgets,

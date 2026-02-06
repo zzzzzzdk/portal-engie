@@ -16,6 +16,7 @@ import {
 } from '@/lib/gridstack';
 import { getPublishedDashboard, parseDashboardSnapshot, PublishedDashboard } from '@/services';
 import { Widget, WidgetGroup, GRID_DENSITY_PRESETS } from '@/types';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { PreviewDataProvider } from './PreviewDataContext';
 import PreviewWidgetAdapter from './PreviewWidgetAdapter';
 import PreviewGroupAdapter from './PreviewGroupAdapter';
@@ -170,7 +171,7 @@ const DashboardPreview: React.FC = () => {
             setError('解析仪表盘配置失败');
             return;
           }
-          const dashboardConfig = snapshot.dashboardConfig || {};
+          const dashboardConfig = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
 
           // 先应用发布时保存的主题配置，确保子应用初始化时能获取正确的主题状态
           // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
@@ -190,9 +191,6 @@ const DashboardPreview: React.FC = () => {
           }
           if (dashboardConfig.baseColors) {
             themeUpdate.baseColors = dashboardConfig.baseColors;
-          }
-          if (dashboardConfig.customTokens) {
-            themeUpdate.customTokens = dashboardConfig.customTokens;
           }
           if (Object.keys(themeUpdate).length > 0) {
             useConfigStore.setState(themeUpdate);

@@ -16,6 +16,7 @@ export interface PublishDashboardParams {
   title: string;
   dashboardConfig: string; // JSON 字符串
   status?: number;
+  cover_url?: string;
 }
 
 // 发布响应
@@ -24,6 +25,7 @@ export interface PublishDashboardResponse {
   publishTime?: string | null;
   success: boolean;
   status?: number;
+  cover_url?: string;
 }
 
 // 发布列表项
@@ -33,7 +35,7 @@ export interface PublishListItem {
   publishTime: string;
   status?: number;
   componentCount?: number;
-  coverUrl?: string;
+  cover_url?: string;
 }
 
 // 分页请求参数
@@ -57,6 +59,7 @@ export interface PublishedDashboardRecord {
   title: string;
   dashboardConfig: string;
   publishTime?: string;
+  coverUrl?: string;
 }
 
 // 解析后的仪表盘结构（供前端使用）

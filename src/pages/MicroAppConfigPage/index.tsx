@@ -32,6 +32,9 @@ import {
   saveModule,
   saveEvent,
   deleteMicroAppItem,
+  importMicroAppConfig,
+  exportMicroAppConfig,
+  downloadMicroAppConfig,
 } from '@/services/microApp';
 import { microAppConfigLoader, MICRO_APP_CONFIG_CHANGED_EVENT, MicroAppConfigChangeDetail } from '@/utils/microAppConfig';
 import type { EmittableEvent, MicroAppModule, MicroAppSystem, MicroAppMetadata } from '@/types';
@@ -129,33 +132,67 @@ const MicroAppConfigPage: React.FC = () => {
   }, []);
 
   // 导出配置
-  const handleExport = () => {
-    const dataStr = JSON.stringify(config, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'micro-apps.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    message.success('配置已导出');
+  const handleExport = async () => {
+    const hide = message.loading('正在导出配置...', 0);
+    try {
+      const res = await exportMicroAppConfig();
+      if (res.code !== 20000 || !res.data?.download_url) {
+        throw new Error(res.message || '导出链接获取失败');
+      }
+      const downloadRes = await downloadMicroAppConfig(res.data.download_url);
+      const blob = downloadRes.data;
+      if (!(blob instanceof Blob)) {
+        throw new Error('导出数据异常');
+      }
+      let filename = 'micro-apps-config.json';
+      const headerAccessor = downloadRes.headers as (Record<string, string | undefined> & {
+        get?: (name: string) => string | null;
+      });
+      const disposition = headerAccessor?.get
+        ? headerAccessor.get('content-disposition') || headerAccessor.get('Content-Disposition') || undefined
+        : headerAccessor?.['content-disposition'] || headerAccessor?.['Content-Disposition'];
+      if (disposition) {
+        const matched = disposition.match(/filename="?([^"]+)"?/i);
+        if (matched?.[1]) {
+          filename = decodeURIComponent(matched[1]);
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success('配置已导出');
+    } catch (error) {
+      console.error(error);
+      message.error(error instanceof Error ? error.message : '导出配置失败');
+    } finally {
+      hide();
+    }
   };
 
-  // 导入配置 - 导入后需要逐个调用保存接口
-  const handleImport = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const importedConfig = JSON.parse(e.target?.result as string) as MicroAppConfig;
-        // 先更新本地状态
-        updateConfigState(importedConfig);
-        message.success('配置已导入到本地，请手动保存各项配置');
-      } catch (error) {
-        message.error('配置文件格式错误');
+  // 导入配置 - 调用导入接口并刷新配置
+  const handleImport = async (file: File) => {
+    const hide = message.loading('正在导入配置...', 0);
+    try {
+      const res = await importMicroAppConfig(file);
+      if (res.code === 20000) {
+        const stats = res.data;
+        message.success(`导入成功：${stats?.appCount ?? 0} 个系统，${stats?.moduleCount ?? 0} 个模块`);
+        await loadConfig();
+      } else {
+        message.error(res.message || '导入配置失败');
       }
-    };
-    reader.readAsText(file);
-    return false; // 阻止自动上传
+    } catch (error) {
+      console.error(error);
+      message.error('导入配置失败');
+    } finally {
+      hide();
+    }
+    return false; // 阻止 Upload 自动上传
   };
 
   // 添加/编辑系统 - 使用saveApp API

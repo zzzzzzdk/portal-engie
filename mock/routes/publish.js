@@ -558,6 +558,7 @@ const ensureSeededDashboards = () => {
       createdAt: value.createdAt || value.publishedAt || now,
       updatedAt: value.updatedAt || value.publishedAt || now,
       publishedAt: value.publishedAt || null,
+      coverUrl: value.coverUrl || '',
     };
   });
   seedsInitialized = true;
@@ -579,6 +580,7 @@ const formatDashboardRecord = (dashboard, fallbackId) => {
     publishTime: dashboard.publishedAt || '',
     status: dashboard.status ?? 1,
     dashboardConfig: JSON.stringify(snapshot),
+    coverUrl: dashboard.coverUrl || '',
   };
 };
 
@@ -603,7 +605,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
   await req.sleep(0.5);
 
   try {
-    const { id: bodyId, title, dashboardConfig, status } = req.body || {};
+    const { id: bodyId, title, dashboardConfig, status, cover_url } = req.body || {};
     if (!dashboardConfig || typeof dashboardConfig !== 'string') {
       throw new Error('缺少 dashboardConfig 字符串');
     }
@@ -632,6 +634,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       floatingModules: parsedSnapshot?.floatingModules || [],
       dashboardConfig: parsedSnapshot?.dashboardConfig || {},
       status: normalizedStatus,
+      coverUrl: cover_url || existingRecord?.coverUrl || '',
       createdAt,
       updatedAt: now,
       publishedAt,
@@ -652,6 +655,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       publishTime: publishedAt,
       status: normalizedStatus,
       success: true,
+      cover_url: cover_url || existingRecord?.coverUrl || '',
     };
   } catch (error) {
     req.json.code = 1;
@@ -696,7 +700,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
       publishTime,
       status: record.status ?? 0,
       componentCount: Array.isArray(record.widgets) ? record.widgets.length : 0,
-      coverUrl: record.dashboardConfig?.coverUrl || '',
+      coverUrl: record.coverUrl || '',
       updatedAt,
     };
   });

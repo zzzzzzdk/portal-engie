@@ -16,6 +16,8 @@ import WidgetDrawer from '@/components/WidgetDrawer';
 import Icon from '@/components/Icon';
 import { useTheme } from '@/theme'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
+import captureDashboardCover from '@/utils/captureDashboardCover'
+import sanitizeDashboardConfig from '@/utils/dashboardConfig'
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard'
 import Logo from '@/assets/images/logo.svg'
 import './index.scss';
@@ -282,15 +284,15 @@ const Layout: React.FC = () => {
     let currentAction: 'publish' | 'draft' = publishAction;
     try {
       const values = await publishForm.validateFields();
-      // 将主题配置合并到 dashboardConfig 中一起发布
+      const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
+      // 将主题配置合并到 dashboardConfig 中一起发布（排除 customTokens）
       const publishConfig = {
-        ...dashboardConfig,
+        ...baseDashboardConfig,
         themeMode: themeSystem.themeMode,
         themePreset: themeSystem.themePreset,
         styleMode: themeSystem.styleMode,
         styleTokens: themeSystem.styleTokens,
         baseColors: themeSystem.baseColors,
-        customTokens: themeSystem.customTokens,
         title: values.title,
       };
       const snapshot = {
@@ -299,6 +301,10 @@ const Layout: React.FC = () => {
         floatingModules,
         dashboardConfig: publishConfig,
       };
+      const coverImageBase64 = await captureDashboardCover();
+      if (!coverImageBase64) {
+        message.warning('封面生成失败，将继续提交');
+      }
       setPublishLoading(true);
       currentAction = publishAction;
       const res = await publishDashboard({
@@ -306,6 +312,7 @@ const Layout: React.FC = () => {
         title: values.title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
         status: currentAction === 'publish' ? 1 : 0,
+        cover_url: coverImageBase64 || undefined,
       });
       if (res.code !== 20000 || !res.data) {
         throw new Error(res.message || '请求失败');
@@ -554,27 +561,31 @@ const Layout: React.FC = () => {
 
       <Content className="app-content">
         <div className="app-content__workspace">
-          <div className={`app-content__sidebar ${widgetDrawerOpen ? 'is-open' : ''}`}>
-            <WidgetDrawer
-              open={widgetDrawerOpen}
-              onClose={() => setWidgetDrawerOpen(false)}
-              onSelect={handleAddWidget}
-            />
-          </div>
+          {isDashboardRoute && (
+            <div className={`app-content__sidebar ${widgetDrawerOpen ? 'is-open' : ''}`}>
+              <WidgetDrawer
+                open={widgetDrawerOpen}
+                onClose={() => setWidgetDrawerOpen(false)}
+                onSelect={handleAddWidget}
+              />
+            </div>
+          )}
           <div className="app-content__main">
             <Outlet />
             {/* 全局无边框微应用挂载点 */}
             <GlobalMicroAppContainer />
           </div>
-          <div className={`app-content__inspector ${configPanelWidget ? 'is-open' : ''}`}>
-            {configPanelWidget && (
-              <ConfigDialog
-                isOpen={!!configPanelWidget}
-                onClose={closeConfigPanel}
-                widget={configPanelWidget}
-              />
-            )}
-          </div>
+          {isDashboardRoute && (
+            <div className={`app-content__inspector ${configPanelWidget ? 'is-open' : ''}`}>
+              {configPanelWidget && (
+                <ConfigDialog
+                  isOpen={!!configPanelWidget}
+                  onClose={closeConfigPanel}
+                  widget={configPanelWidget}
+                />
+              )}
+            </div>
+          )}
         </div>
       </Content>
 

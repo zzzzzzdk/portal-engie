@@ -38,7 +38,7 @@ const routeConfig: RouteConfig[] = [
     children: [
       {
         index: true,
-        redirect: '/dashboard-gridstack',
+        redirect: '/publish-list',
       },
       {
         path: 'dashboard',

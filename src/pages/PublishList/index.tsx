@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Modal, message, Tooltip, Radio } from 'antd';
+import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Empty, Spin } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -293,64 +293,84 @@ const PublishList: React.FC = () => {
     setActiveShareId(null);
   }, [viewMode, dataSource]);
 
-  const renderCards = () => (
-    <div className="publish-card-grid">
-      {dataSource.map((item) => {
-        const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`;
-        const statusValue = Number(item.status) === 1 ? 1 : 0;
-        const statusLabel = statusValue === 1 ? '已发布' : '暂存';
-        return (
-          <div className="publish-card" key={item.id}>
-            <div className="publish-card__cover">
-              <div className="publish-card__thumbnail">
-                {item.coverUrl ? (
-                  <img src={item.coverUrl} alt={item.title} />
-                ) : (
-                  <div className="publish-card__placeholder">暂无封面</div>
-                )}
-              </div>
-              <div className="publish-card__status-wrapper">
-                <span className={`publish-card__status ${statusValue === 1 ? 'is-success' : ''}`}>
-                  {statusLabel}
-                </span>
-              </div>
-            </div>
-            <div className="publish-card__body">
-              <div className="publish-card__title">{item.title || '未命名'}
-                <div className="publish-card__actions">
-                  <div className="publish-card__action-row">
-                    <Tooltip title={
-                      <>
-                        <span>{url}</span>
-                        <Button className='copy' type="text" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(item)} />
-                      </>}
-                    >
-                      <Button type="text" icon={<ShareAltOutlined />} />
-                    </Tooltip>
-                    <Tooltip title="预览">
-                      <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
-                    </Tooltip>
-                    <Tooltip title="编辑">
-                      <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />
-                    </Tooltip>
-                    <Tooltip title="删除">
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />
-                    </Tooltip>
+  const getCoverSrc = (coverUrl?: string) => {
+    if (!coverUrl) {
+      return '';
+    }
+    return coverUrl.startsWith('data:') ? coverUrl : `data:image/png;base64,${coverUrl}`;
+  };
 
+  const renderCards = () => {
+    if (!loading && !dataSource.length) {
+      return (
+        <div className="publish-card-empty">
+          <Empty description="暂无应用" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      );
+    }
 
+    return (
+      <Spin spinning={loading}>
+        <div className="publish-card-grid">
+          {dataSource.map((item) => {
+            const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`;
+            const statusValue = Number(item.status) === 1 ? 1 : 0;
+            const statusLabel = statusValue === 1 ? '已发布' : '暂存';
+            const coverSrc = getCoverSrc(item.cover_url);
+            return (
+              <div className="publish-card" key={item.id}>
+                <div className="publish-card__cover">
+                  <div className="publish-card__thumbnail">
+                    {coverSrc ? (
+                      <img src={coverSrc} alt={item.title} />
+                    ) : (
+                      <div className="publish-card__placeholder">暂无封面</div>
+                    )}
+                  </div>
+                  <div className="publish-card__status-wrapper">
+                    <span className={`publish-card__status ${statusValue === 1 ? 'is-success' : ''}`}>
+                      {statusLabel}
+                    </span>
                   </div>
                 </div>
-              </div>
-              <div className="publish-card__info">
-                <span>{item.publishTime ? new Date(item.publishTime).toLocaleString('zh-CN') : '未发布'}</span>
-              </div>
+                <div className="publish-card__body">
+                  <div className="publish-card__title">{item.title || '未命名'}
+                    <div className="publish-card__actions">
+                      <div className="publish-card__action-row">
+                        <Tooltip title={
+                          <>
+                            <span>{url}</span>
+                            <Button className='copy' type="text" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(item)} />
+                          </>}
+                        >
+                          <Button type="text" icon={<ShareAltOutlined />} />
+                        </Tooltip>
+                        <Tooltip title="预览">
+                          <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
+                        </Tooltip>
+                        <Tooltip title="编辑">
+                          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />
+                        </Tooltip>
+                        <Tooltip title="删除">
+                          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />
+                        </Tooltip>
 
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+
+                      </div>
+                    </div>
+                  </div>
+                  <div className="publish-card__info">
+                    <span>{item.publishTime ? new Date(item.publishTime).toLocaleString('zh-CN') : '未发布'}</span>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Spin>
+    );
+  };
 
   return (
     <div className="publish-list-page">
@@ -364,7 +384,7 @@ const PublishList: React.FC = () => {
             onKeyDown={handleSearchKeyDown}
             allowClear
           />
-          <Button onClick={handleSearch}>搜索</Button>
+          <Button onClick={handleSearch} loading={loading}>搜索</Button>
         </div>
         <Space size="small">
           <Radio.Group

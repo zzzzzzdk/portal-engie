@@ -16,6 +16,7 @@ import {
 } from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 
 // cellHeight=30 时的默认布局尺寸
 // 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
@@ -572,6 +573,7 @@ export const useStore = create<AppState>()(
         floatingModules?: Widget[];
         dashboardConfig?: any;
       }) => {
+        const sanitizedConfig = sanitizeDashboardConfig(data.dashboardConfig);
         set({
           widgets: data.widgets?.map(w => ({
             ...w,
@@ -582,7 +584,7 @@ export const useStore = create<AppState>()(
             layout: sanitizeLayout(g.layout)
           })) || [],
           floatingModules: data.floatingModules || [],
-          dashboardConfig: data.dashboardConfig || {
+          dashboardConfig: Object.keys(sanitizedConfig).length > 0 ? sanitizedConfig : {
             backgroundType: 'color',
             backgroundColor: '',
           },
