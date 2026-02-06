@@ -12,11 +12,12 @@ import {
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
+import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
-import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS } from '@/types';
+import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS, DashboardConfig } from '@/types';
 
 import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
@@ -84,10 +85,10 @@ const DashboardInner: React.FC = () => {
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-layout)';
+        style.backgroundColor = 'var(--ant-color-bg-container)';
       }
     } else {
-      style.backgroundColor = 'var(--ant-color-bg-layout)';
+      style.backgroundColor = 'var(--ant-color-bg-container)';
     }
 
     return style;
@@ -502,8 +503,8 @@ const DashboardGridStack: React.FC = () => {
   const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId');
-  const [isLoadingEditData, setIsLoadingEditData] = useState(!!editId); // 有 editId 时初始为 loading
-  const [editDataLoaded, setEditDataLoaded] = useState(!editId); // 无 editId 时直接标记为已完成
+  const [isLoadingRemoteData, setIsLoadingRemoteData] = useState(true);
+  const [remoteDataLoaded, setRemoteDataLoaded] = useState(false);
 
   const buildGridOptions = useCallback((): GridStackOptions => {
     const preset = GRID_DENSITY_PRESETS[gridDensity] ?? GRID_DENSITY_PRESETS.standard;
@@ -529,12 +530,7 @@ const DashboardGridStack: React.FC = () => {
 
   // 如果没有 editId，直接使用 localStorage 数据初始化
   // 如果有 editId，等待 API 数据加载完成后再初始化
-  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(() => {
-    if (!editId && persistApi?.hasHydrated?.()) {
-      return buildGridOptions();
-    }
-    return null;
-  });
+  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(null);
 
   const [isHydrated, setIsHydrated] = useState<boolean>(() => {
     if (!persistApi?.hasHydrated) {
@@ -542,6 +538,31 @@ const DashboardGridStack: React.FC = () => {
     }
     return persistApi.hasHydrated();
   });
+
+  const applyThemeFromConfig = useCallback((config?: DashboardConfig | null) => {
+    if (!config) {
+      return;
+    }
+    const themeUpdate: Record<string, unknown> = {};
+    if (config.themeMode) {
+      themeUpdate.themeMode = config.themeMode;
+    }
+    if (config.styleMode) {
+      themeUpdate.styleMode = config.styleMode;
+    }
+    if (config.styleTokens?.widget && config.styleTokens?.card) {
+      themeUpdate.styleTokens = config.styleTokens;
+    }
+    if (config.baseColors) {
+      themeUpdate.baseColors = config.baseColors;
+    }
+    if (config.customTokens) {
+      themeUpdate.customTokens = config.customTokens;
+    }
+    if (Object.keys(themeUpdate).length > 0) {
+      useConfigStore.setState(themeUpdate);
+    }
+  }, []);
 
   useEffect(() => {
     if (!persistApi?.hasHydrated) {
@@ -557,81 +578,93 @@ const DashboardGridStack: React.FC = () => {
     return () => unsubscribe?.();
   }, [persistApi]);
 
-  // 处理编辑已发布的仪表盘 - 在设置 initialOptions 之前加载数据
   useEffect(() => {
-    if (!editId || !isHydrated) {
+    if (!isHydrated) {
       return;
     }
+    let cancelled = false;
 
-    const loadEditData = async () => {
-      setIsLoadingEditData(true);
+    const loadData = async () => {
+      setIsLoadingRemoteData(true);
+      const storedEditId =
+        !editId && typeof window !== 'undefined'
+          ? localStorage.getItem(DASHBOARD_LAST_EDIT_ID_KEY)
+          : null;
+      const isResumeFromStorage = Boolean(!editId && storedEditId);
+      const targetId = editId || storedEditId;
+
+      if (!targetId) {
+        if (!cancelled) {
+          setRemoteDataLoaded(true);
+          setIsLoadingRemoteData(false);
+        }
+        return;
+      }
+
       try {
-        const res = await getPublishedDashboard({ id: editId });
+        const res = await getPublishedDashboard({ id: targetId });
         if (res.code === 20000 && res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
           if (!snapshot) {
             message.error('解析仪表盘配置失败');
-            setEditDataLoaded(true);
-            return;
+          } else {
+            const config = snapshot.dashboardConfig || {};
+            applyThemeFromConfig(config);
+            loadDashboardFromData({
+              widgets: snapshot.widgets,
+              groups: snapshot.groups,
+              floatingModules: snapshot.floatingModules,
+              dashboardConfig: {
+                backgroundType: 'color',
+                ...config,
+                title: res.data.title,
+              },
+            });
+            setEditMode(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, targetId);
+            }
+            if (editId) {
+              message.success('已加载仪表盘数据');
+            } else {
+              message.success('已恢复上次编辑内容');
+            }
           }
-          const config = snapshot.dashboardConfig || {};
-
-          // 🔧 应用主题配置到主题系统
-          // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
-          const themeUpdate: Record<string, unknown> = {};
-          if (config.themeMode) {
-            themeUpdate.themeMode = config.themeMode;
-          }
-          if (config.styleMode) {
-            themeUpdate.styleMode = config.styleMode;
-          }
-          // styleTokens 需要验证结构完整性
-          if (config.styleTokens?.widget && config.styleTokens?.card) {
-            themeUpdate.styleTokens = config.styleTokens;
-          }
-          if (Object.keys(themeUpdate).length > 0) {
-            useConfigStore.setState(themeUpdate);
-          }
-
-          // 加载数据到 store，将 title 合并到 dashboardConfig 中
-          loadDashboardFromData({
-            widgets: snapshot.widgets,
-            groups: snapshot.groups,
-            floatingModules: snapshot.floatingModules,
-            dashboardConfig: {
-              backgroundType: 'color', // 默认值
-              ...config,
-              title: res.data.title, // 保存标题用于编辑后发布
-            },
-          });
-          setEditMode(true);
-          setEditDataLoaded(true); // 标记编辑数据已加载
-          message.success('已加载仪表盘数据');
         } else {
+          if (isResumeFromStorage && typeof window !== 'undefined') {
+            localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+          }
           message.error(res.message || '加载仪表盘数据失败');
-          setEditDataLoaded(true); // 即使失败也标记完成，避免卡住
         }
       } catch (error) {
         console.error('加载仪表盘数据失败:', error);
+        if (isResumeFromStorage && typeof window !== 'undefined') {
+          localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+        }
         message.error('加载仪表盘数据失败');
-        setEditDataLoaded(true);
-      } finally {
-        setIsLoadingEditData(false);
+      }
+
+      if (!cancelled) {
+        setRemoteDataLoaded(true);
+        setIsLoadingRemoteData(false);
       }
     };
 
-    loadEditData();
-  }, [editId, isHydrated, loadDashboardFromData, setEditMode]);
+    loadData();
 
-  // 设置 initialOptions：等待水合完成 + 编辑数据加载完成（如果有 editId）
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyThemeFromConfig]);
+
   useEffect(() => {
-    if (!isHydrated || !editDataLoaded || initialOptions) {
+    if (!isHydrated || !remoteDataLoaded || initialOptions) {
       return;
     }
     setInitialOptions(buildGridOptions());
-  }, [isHydrated, editDataLoaded, initialOptions, buildGridOptions]);
+  }, [isHydrated, remoteDataLoaded, initialOptions, buildGridOptions]);
 
-  if (isLoadingEditData) {
+  if (isLoadingRemoteData) {
     return (
       <div className="dashboard-container dashboard-loading">
         正在加载仪表盘数据...

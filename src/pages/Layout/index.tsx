@@ -1,20 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Dropdown, Menu } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, DownOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
-import { WidgetType, MicroAppModule } from '@/types';
+import { WidgetType, MicroAppModule, Widget } from '@/types';
 import { Outlet, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
 import DashboardConfigDialog from '@/components/DashboardConfigDialog';
+import ConfigDialog from '@/components/ConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WidgetDrawer from '@/components/WidgetDrawer';
+import Icon from '@/components/Icon';
 import { useTheme } from '@/theme'
-import { isDevelopment } from '@/config/env'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
+import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard'
+import Logo from '@/assets/images/logo.svg'
 import './index.scss';
 
 const { Header, Content } = AntdLayout;
@@ -34,8 +37,11 @@ const Layout: React.FC = () => {
     widgets,
     groups,
     floatingModules,
+    configPanelTarget,
     dashboardConfig,
     resetDashboard,
+    closeConfigPanel,
+    updateDashboardConfig,
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
@@ -51,6 +57,50 @@ const Layout: React.FC = () => {
   const [publishForm] = Form.useForm()
   const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
   const [widgetDrawerOpen, setWidgetDrawerOpen] = useState(false)
+  const [publishAction, setPublishAction] = useState<'publish' | 'draft'>('publish')
+  const [publishLoading, setPublishLoading] = useState(false)
+  const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
+  const draftLoading = publishLoading && publishAction === 'draft'
+  const publishButtonLoading = publishLoading && publishAction === 'publish'
+  const configPanelWidget = useMemo(() => {
+    if (!configPanelTarget) {
+      return null;
+    }
+    if (configPanelTarget.type === 'widget') {
+      return widgets.find((widget) => widget.id === configPanelTarget.id) || null;
+    }
+    if (configPanelTarget.type === 'floating') {
+      return floatingModules.find((module) => module.id === configPanelTarget.id) || null;
+    }
+    if (configPanelTarget.type === 'group') {
+      const group = groups.find((item) => item.id === configPanelTarget.id);
+      if (!group) {
+        return null;
+      }
+      const groupWidget = {
+        id: group.id,
+        type: 'group',
+        title: group.title,
+        layout: group.layout,
+        config: group.config || {},
+      };
+      return groupWidget as unknown as Widget;
+    }
+    return null;
+  }, [configPanelTarget, widgets, floatingModules, groups])
+
+  useEffect(() => {
+    if (configPanelTarget && !configPanelWidget) {
+      closeConfigPanel();
+    }
+  }, [configPanelTarget, configPanelWidget, closeConfigPanel])
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setWidgetDrawerOpen(false);
+      closeConfigPanel();
+    }
+  }, [isEditMode, closeConfigPanel])
 
   const handleAddWidget = (key: string) => {
     // 处理新建分组
@@ -213,16 +263,23 @@ const Layout: React.FC = () => {
     }
   };
 
-  
-  const handlePublish = () => {
-    // 如果是编辑模式且有保存的标题，预填标题
-    if (editId && dashboardConfig?.title) {
+
+  const openPublishModal = (action: 'publish' | 'draft') => {
+    setPublishAction(action);
+    if (dashboardConfig?.title) {
       publishForm.setFieldsValue({ title: dashboardConfig.title });
+    } else {
+      publishForm.resetFields();
     }
     setPublishModalOpen(true);
   };
 
+  const handlePublish = () => {
+    openPublishModal('publish');
+  };
+
   const handlePublishSubmit = async () => {
+    let currentAction: 'publish' | 'draft' = publishAction;
     try {
       const values = await publishForm.validateFields();
       // 将主题配置合并到 dashboardConfig 中一起发布
@@ -242,18 +299,40 @@ const Layout: React.FC = () => {
         floatingModules,
         dashboardConfig: publishConfig,
       };
+      setPublishLoading(true);
+      currentAction = publishAction;
       const res = await publishDashboard({
-        id: editId || '', // 编辑模式下携带已发布的ID，实现更新而非新建
+        id: editId || undefined,
         title: values.title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
+        status: currentAction === 'publish' ? 1 : 0,
       });
-      console.log(res)
-      message.success(editId ? '仪表盘更新成功' : '仪表盘发布成功');
+      if (res.code !== 20000 || !res.data) {
+        throw new Error(res.message || '请求失败');
+      }
+      const responseId = res.data.id || editId || '';
+      if (responseId) {
+        const params = new URLSearchParams(searchParams);
+        params.set('editId', responseId);
+        navigate({
+          pathname: location.pathname,
+          search: params.toString(),
+        }, { replace: true });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, responseId);
+        }
+      }
+      updateDashboardConfig({
+        title: values.title,
+      });
+      message.success(currentAction === 'publish' ? '仪表盘发布成功' : '暂存成功');
       setPublishModalOpen(false);
       publishForm.resetFields();
     } catch (error) {
-      console.log(error)
-      message.error(editId ? '更新失败' : '发布失败');
+      console.error(error);
+      message.error(currentAction === 'publish' ? '发布失败' : '暂存失败');
+    } finally {
+      setPublishLoading(false);
     }
   };
 
@@ -359,7 +438,7 @@ const Layout: React.FC = () => {
     {
       key: '/publish-list',
       icon: <UnorderedListOutlined />,
-      label: '已发布列表',
+      label: '应用列表',
     },
   ];
 
@@ -370,6 +449,7 @@ const Layout: React.FC = () => {
     if (path.includes('publish-list')) return '/publish-list';
     return '/dashboard-gridstack';
   };
+  const isDashboardRoute = location.pathname === '/' || location.pathname.includes('dashboard-gridstack');
 
   // 导航菜单点击处理
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -379,104 +459,124 @@ const Layout: React.FC = () => {
   return (
     <AntdLayout className="app-layout">
       {!isFullScreen && (
-        <Header className="app-header">
-          <div className="app-header__left">
-            <div className="app-header__logo" onClick={handleGoHome}>
-              <AppstoreOutlined />
-              Portal Engine
+        <>
+          <Header className="app-header">
+            <div className="app-header__left">
+              <div className="app-header__logo" onClick={handleGoHome}>
+                <img src={Logo} alt="描述文字" width="52" height="24" />
+                Portal Engine
+              </div>
+              <Menu
+                mode="horizontal"
+                selectedKeys={[getSelectedKey()]}
+                items={headerMenuItems}
+                onClick={handleMenuClick}
+                className="app-header__menu"
+              />
             </div>
-            <Menu
-              mode="horizontal"
-              selectedKeys={[getSelectedKey()]}
-              items={headerMenuItems}
-              onClick={handleMenuClick}
-              className="app-header__menu"
-            />
-          </div>
 
-          <Space size="middle">
-            {/* 主题切换按钮 - 仅在开发环境显示 */}
-            {/* {isDevelopment() && ( */}
-            <Dropdown
-              menu={{
-                items: themeMenuItems,
-                onClick: handleThemeChange,
-                selectedKeys: [themeSystem.themePreset],
-              }}
-              placement="bottomRight"
-            >
-              <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
-            </Dropdown>
-            {/* )} */}
+            <Space size="middle">
+              <Dropdown
+                menu={{
+                  items: themeMenuItems,
+                  onClick: handleThemeChange,
+                  selectedKeys: [themeSystem.themePreset],
+                }}
+                placement="bottomRight"
+              >
+                <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
+              </Dropdown>
 
-            <Space>
-              <span>编辑模式</span>
-              <Switch checked={isEditMode} onChange={setEditMode} />
+              <Tooltip title="退出登录">
+                <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout}  />
+              </Tooltip>
             </Space>
+          </Header>
 
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              disabled={!isEditMode}
-              onClick={() => setWidgetDrawerOpen(true)}
-            >
-              添加组件
-            </Button>
+          {isDashboardRoute && (
+            <div className="app-sub-header">
+              <div className="app-sub-header__title">
+                <span className="app-sub-header__name">{currentAppName}</span>
+              </div>
 
-            {isEditMode && (
-              <>
-                <Tooltip title="页面设置">
-                  <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} >页面设置</Button>
-                </Tooltip>
+              <div className="app-sub-header__actions">
+                <div className="app-sub-header__mode">
+                  <span className="app-sub-header__mode-label">编辑模式</span>
+                  <Switch checked={isEditMode} onChange={setEditMode} />
+                </div>
+                <Space size={12} wrap>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    disabled={!isEditMode}
+                    onClick={() => setWidgetDrawerOpen(true)}
+                    className='add'
+                  >
+                    添加组件
+                  </Button>
 
-                <Tooltip title="清空页面">
-                  <Button icon={<DeleteOutlined />} onClick={handleResetDashboard} danger>清空页面</Button>
-                </Tooltip>
+                  {isEditMode && (
+                    <>
+                      <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} className='set'>页面设置</Button>
 
-                {/* <Select
-                  value={gridDensity}
-                  onChange={(value) => setGridDensity(value as GridDensityKey)}
-                  style={{ width: 100 }}
-                >
-                  {Object.entries(GRID_DENSITY_PRESETS).map(([key, preset]) => (
-                    <Select.Option key={key} value={key}>
-                      {preset.label}
-                    </Select.Option>
-                  ))}
-                </Select> */}
-              </>
-            )}
+                      <Button icon={<DeleteOutlined />} onClick={handleResetDashboard} danger className='clear'>清空页面</Button>
+                    </>
+                  )}
 
-            <Button icon={<CloudUploadOutlined />} onClick={handlePublish}>
-              发布
-            </Button>
+                  <Button icon={<SaveOutlined />} onClick={() => openPublishModal('draft')} disabled={!isEditMode} loading={draftLoading} className='save'>
+                    保存
+                  </Button>
 
-            <Tooltip title="全屏模式">
-              <Button icon={<FullscreenOutlined />} onClick={toggleFullScreen} />
-            </Tooltip>
+                  <Button className="app-sub-header__publish-btn" icon={<CloudUploadOutlined />} loading={publishButtonLoading} onClick={handlePublish}>
+                    发布
+                  </Button>
 
-            <Tooltip title="退出登录">
-              <Button icon={<LogoutOutlined />} onClick={handleLogout} danger />
-            </Tooltip>
-          </Space>
-        </Header>
+                  <Button onClick={toggleFullScreen} className='full' icon={<FullscreenOutlined />} />
+                </Space>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {isFullScreen && (
+      {isFullScreen && isDashboardRoute && (
         <FloatingControlPanel
-          onOpenWidgetDrawer={() => setWidgetDrawerOpen(true)}
+          onAddWidget={() => setWidgetDrawerOpen(true)}
           onOpenSettings={() => setDashboardConfigOpen(true)}
-          onOpenMicroAppConfig={() => window.open('#/micro-app-config', '_blank')}
-          onSave={handlePublish}
+          onResetPage={handleResetDashboard}
+          onSaveDraft={() => openPublishModal('draft')}
+          onPublish={handlePublish}
+          onExitFullScreen={toggleFullScreen}
+          isSavingDraft={draftLoading}
+          isPublishing={publishButtonLoading}
         />
       )}
 
-      {/* 组件库抽屉 */}
-      <WidgetDrawer
-        open={widgetDrawerOpen}
-        onClose={() => setWidgetDrawerOpen(false)}
-        onSelect={handleAddWidget}
-      />
+      <Content className="app-content">
+        <div className="app-content__workspace">
+          <div className={`app-content__sidebar ${widgetDrawerOpen ? 'is-open' : ''}`}>
+            <WidgetDrawer
+              open={widgetDrawerOpen}
+              onClose={() => setWidgetDrawerOpen(false)}
+              onSelect={handleAddWidget}
+            />
+          </div>
+          <div className="app-content__main">
+            <Outlet />
+            {/* 全局无边框微应用挂载点 */}
+            <GlobalMicroAppContainer />
+          </div>
+          <div className={`app-content__inspector ${configPanelWidget ? 'is-open' : ''}`}>
+            {configPanelWidget && (
+              <ConfigDialog
+                isOpen={!!configPanelWidget}
+                onClose={closeConfigPanel}
+                widget={configPanelWidget}
+              />
+            )}
+          </div>
+        </div>
+      </Content>
 
       {/* 自定义主题配置器 */}
       <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />
@@ -495,10 +595,11 @@ const Layout: React.FC = () => {
       />
 
       <Modal
-        title="发布仪表盘"
+        title={publishAction === 'draft' ? "保存": "发布"}
         open={publishModalOpen}
         onOk={handlePublishSubmit}
         onCancel={() => setPublishModalOpen(false)}
+        confirmLoading={publishLoading}
       >
         <Form form={publishForm} layout="vertical">
           <Form.Item
@@ -511,11 +612,6 @@ const Layout: React.FC = () => {
         </Form>
       </Modal>
 
-      <Content className="app-content">
-        <Outlet />
-        {/* 全局无边框微应用挂载点 */}
-        <GlobalMicroAppContainer />
-      </Content>
     </AntdLayout>
   );
 };

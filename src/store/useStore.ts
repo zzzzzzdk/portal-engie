@@ -172,6 +172,7 @@ export const useStore = create<AppState>()(
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
+      configPanelTarget: null,
       floatingModules: [] as Widget[], // 悬浮模块列表
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
       dashboardConfig: {
@@ -532,6 +533,8 @@ export const useStore = create<AppState>()(
       setEditMode: (isEditMode: boolean) => set({ isEditMode }),
 
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
+      openConfigPanel: (target) => set({ configPanelTarget: target }),
+      closeConfigPanel: () => set({ configPanelTarget: null }),
 
       resetDashboard: () => set({
         widgets: [],
@@ -809,11 +812,6 @@ export const useStore = create<AppState>()(
       name: 'portal-engine-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        widgets: state.widgets,
-        groups: state.groups,
-        floatingModules: state.floatingModules, // 持久化悬浮模块
-        globalMicroApps: state.globalMicroApps,  // 持久化全局微应用
-        dashboardConfig: state.dashboardConfig,
         floatingPanelPosition: state.floatingPanelPosition,
       }),
       // 从 localStorage 恢复时验证和清理数据

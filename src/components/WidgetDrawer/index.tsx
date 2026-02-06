@@ -1,5 +1,5 @@
-import React from 'react';
-import { Drawer } from 'antd';
+import React, { useState } from 'react';
+import { Button } from 'antd';
 import {
   GroupOutlined,
   FolderOutlined,
@@ -18,6 +18,8 @@ import {
   CompassOutlined,
   BlockOutlined,
   RobotOutlined,
+  CloseOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import './index.scss';
 
@@ -51,8 +53,8 @@ const widgetCategories: WidgetCategory[] = [
   {
     title: '分组组件',
     items: [
-      { key: 'create-group', label: '新建分组', icon: <GroupOutlined />, description: '创建可容纳多个组件的分组', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
-      { key: 'headerBar', label: '头部栏', icon: <FolderOutlined />, description: '页面顶部导航栏', gsW: 4, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
+      { key: 'create-group', label: '新建分组', icon: <GroupOutlined />, description: '创建新分组', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
+      { key: 'headerBar', label: '头部栏', icon: <FolderOutlined />, description: '页面顶部栏', gsW: 4, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
     ]
   },
   {
@@ -82,71 +84,98 @@ const widgetCategories: WidgetCategory[] = [
     title: '微应用小部件',
     items: [
       // 微应用支持拖拽，落下后打开选择器
-      { key: 'microApp', label: '微应用', icon: <AppstoreOutlined />, description: '嵌入微前端应用', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
+      { key: 'microApp', label: '微应用', icon: <AppstoreOutlined />, description: '嵌入微应用', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
     ]
   },
   {
     title: '悬浮模块',
     items: [
       // 悬浮模块支持拖拽，落下后打开选择器或直接添加
-      { key: 'floating-microApp', label: '微应用（悬浮）', icon: <RobotOutlined />, description: '悬浮窗口微应用', draggable: true },
+      { key: 'floating-microApp', label: '微应用（悬浮）', icon: <RobotOutlined />, description: '悬浮微应用', draggable: true },
       { key: 'floating-assistantHub', label: '助手中心', icon: <RobotOutlined />, description: '智能助手入口', draggable: true },
     ]
   },
 ];
 
 const WidgetDrawer: React.FC<WidgetDrawerProps> = ({ open, onClose, onSelect }) => {
+  const [collapsedMap, setCollapsedMap] = useState(() =>
+    Object.fromEntries(widgetCategories.map((category) => [category.title, false]))
+  );
+
   const handleSelect = (key: string) => {
     onSelect(key);
-    onClose();
   };
 
+  const handleToggleCategory = (title: string) => {
+    setCollapsedMap((prev) => ({
+      ...prev,
+      [title]: !prev?.[title],
+    }));
+  };
+
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Drawer
-      title="组件库"
-      open={open}
-      onClose={onClose}
-      placement="left"
-      styles={{ wrapper: { width: 400 } }}
-      className="widget-drawer"
-      forceRender
-      mask={false}
-      keyboard={false}
-    >
+    <div className="widget-drawer">
+      <div className="widget-drawer__header">
+        <div className="widget-drawer__title">
+          <AppstoreOutlined />
+          <span>组件库</span>
+        </div>
+        <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
+      </div>
       <div className="widget-drawer-content">
         {widgetCategories.map((category) => (
           <div key={category.title} className="widget-category">
-            <div className="category-title">{category.title}</div>
-            <div className="widget-grid">
-              {category.items.map((item) => (
-                <div
-                  key={item.key}
-                  className={`widget-card ${item.draggable ? 'widget-drag-item' : ''}`}
-                  onClick={() => handleSelect(item.key)}
-                  // GridStack 拖拽属性 - 使用 data-gs-widget 传递完整配置
-                  data-widget-type={item.key}
-                  data-gs-widget={item.draggable ? JSON.stringify({
-                    w: item.gsW || 4,
-                    h: item.gsH || 4,
-                    minW: item.gsMinW || 1,
-                    minH: item.gsMinH || 1,
-                    content: item.label, // 拖拽预览时显示的内容
-                  }) : undefined}
-                >
-                  <div className="widget-card-icon">{item.icon}</div>
-                  <div className="widget-card-info">
-                    <div className="widget-card-label">{item.label}</div>
-                    {item.description && (
-                      <div className="widget-card-desc">{item.description}</div>
-                    )}
+            <button
+              type="button"
+              className="widget-category__header"
+              onClick={() => handleToggleCategory(category.title)}
+            >
+              <div className="widget-category__left">
+
+                <span className="widget-category__title">{category.title}（{category.items.length}）</span>
+              </div>
+              <span className="widget-category__count">
+                <DownOutlined
+                  className={`widget-category__arrow ${collapsedMap[category.title] ? 'is-collapsed' : ''}`}
+                /></span>
+            </button>
+            {!collapsedMap[category.title] && (
+              <div className="widget-grid">
+                {category.items.map((item) => (
+                  <div
+                    key={item.key}
+                    className={`widget-card ${item.draggable ? 'widget-drag-item' : ''}`}
+                    onClick={() => handleSelect(item.key)}
+                    data-widget-type={item.key}
+                    data-gs-widget={
+                      item.draggable
+                        ? JSON.stringify({
+                          w: item.gsW || 4,
+                          h: item.gsH || 4,
+                          minW: item.gsMinW || 1,
+                          minH: item.gsMinH || 1,
+                          content: item.label,
+                        })
+                        : undefined
+                    }
+                  >
+                    <div className="widget-card-icon">{item.icon}</div>
+                    <div className="widget-card-info">
+                      <div className="widget-card-label">{item.label}</div>
+                      {item.description && <div className="widget-card-desc">{item.description}</div>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
-    </Drawer>
+    </div>
   );
 };
 

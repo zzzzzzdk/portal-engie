@@ -139,6 +139,11 @@ export interface DashboardConfig {
   customTokens?: Record<string, any>; // 自定义语义 Token
 }
 
+export type ConfigPanelTarget = {
+  type: 'widget' | 'group' | 'floating';
+  id: string;
+};
+
 export interface AppState {
   gridDensity: GridDensityKey;
   setGridDensity: (density: GridDensityKey) => void;
@@ -151,6 +156,7 @@ export interface AppState {
   isFullScreen: boolean;
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
+  configPanelTarget: ConfigPanelTarget | null;
   floatingModules: Widget[];  // 悬浮模块列表
   globalMicroApps: Widget[];  // 全局无边框微应用列表
   login: (userInfo?: UserInfo) => void;
@@ -168,6 +174,8 @@ export interface AppState {
   updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => void;
   setEditMode: (isEditMode: boolean) => void;
   toggleFullScreen: () => void;
+  openConfigPanel: (target: ConfigPanelTarget) => void;
+  closeConfigPanel: () => void;
   resetDashboard: () => void;
   saveDashboard: () => void;
   loadDashboard: () => void;

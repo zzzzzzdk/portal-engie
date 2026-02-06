@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Drawer, Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider } from 'antd';
-import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider } from 'antd';
+import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
@@ -343,7 +343,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           padding,
         });
 
-        onClose();
         return;
       }
 
@@ -644,7 +643,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
       }
 
-      onClose();
     } catch (error) {
       console.error('Failed to save widget config:', error);
     }
@@ -1481,29 +1479,29 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const dialogTitle = isGroup
     ? `配置分组: ${group?.title || widget.title}`
     : isFloatingModule
-      ? `配置悬浮模块: ${widget.title}`
-      : `配置小部件: ${widget.title}`;
+      ? `${widget.title}`
+      : `${widget.title}`;
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
-    <Drawer
-      title={dialogTitle}
-      open={isOpen}
-      onClose={onClose}
-      destroyOnHidden
-      placement="right"
-      className="config-dialog"
-      styles={{ wrapper: { width: 480 } }}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" onClick={handleOk}>保存</Button>
-        </div>
-      }
-    >
-      <Form form={form} layout="vertical" size="small">
-         <Tabs defaultActiveKey={isGroup ? "group" : "component"} items={items} className="config-tabs" />
-      </Form>
-    </Drawer>
+    <div className="config-panel config-dialog">
+      <div className="config-panel__header">
+        <div className="config-panel__title"><SettingOutlined />{dialogTitle}</div>
+        <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
+      </div>
+      <div className="config-panel__body">
+        <Form form={form} layout="vertical" size="small">
+          <Tabs defaultActiveKey={isGroup ? 'group' : 'component'} items={items} className="config-tabs" />
+        </Form>
+      </div>
+      <div className="config-panel__footer">
+        <Button onClick={onClose}>取消</Button>
+        <Button type="primary" onClick={handleOk}>保存</Button>
+      </div>
+    </div>
   );
 };
 

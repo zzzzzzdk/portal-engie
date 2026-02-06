@@ -15,7 +15,7 @@ export const darkPreset: ISemanticTokens = {
   },
   layout: {
     header: {
-      gradientBg: `url("${headerBgUrl}") no-repeat left`,
+      gradientBg: `url("${headerBgUrl}") no-repeat`,
       text: 'rgba(255, 255, 255, 0.85)',
       height: 64,
     },

@@ -1,37 +1,46 @@
 import React, { useRef } from 'react';
 import Draggable from 'react-draggable';
-import { Button, Space, Switch, Tooltip } from 'antd';
+import { Button, Switch, Tooltip } from 'antd';
 import {
   PlusOutlined,
   SettingOutlined,
   FullscreenExitOutlined,
   DragOutlined,
-  AppstoreOutlined,
-  SaveOutlined
+  DeleteOutlined,
+  SaveOutlined,
+  CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
+import './index.scss';
 
 interface FloatingControlPanelProps {
-  onOpenWidgetDrawer: () => void;
+  onAddWidget: () => void;
   onOpenSettings: () => void;
-  onOpenMicroAppConfig?: () => void;
-  onSave: () => void;
+  onResetPage: () => void;
+  onSaveDraft: () => void;
+  onPublish: () => void;
+  onExitFullScreen: () => void;
+  isSavingDraft: boolean;
+  isPublishing?: boolean;
 }
 
 const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
-  onOpenWidgetDrawer,
+  onAddWidget,
   onOpenSettings,
-  onOpenMicroAppConfig,
-  onSave,
+  onResetPage,
+  onSaveDraft,
+  onPublish,
+  onExitFullScreen,
+  isSavingDraft,
+  isPublishing = false,
 }) => {
   const {
     isEditMode,
     setEditMode,
-    toggleFullScreen,
     floatingPanelPosition,
     setFloatingPanelPosition,
   } = useStore();
-  
+
   const nodeRef = useRef(null);
 
   const handleDragStop = (_e: any, data: { x: number; y: number }) => {
@@ -46,81 +55,61 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
       nodeRef={nodeRef}
       bounds="parent"
     >
-      <div 
-        ref={nodeRef}
-        style={{
-          position: 'fixed',
-          zIndex: 9999,
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}
-      >
-        <div 
-          className="drag-handle" 
-          style={{ cursor: 'move', color: '#999', display: 'flex', alignItems: 'center' }}
-        >
+      <div ref={nodeRef} className="floating-control-panel drag-handle">
+        <div className="floating-control-panel__drag ">
           <DragOutlined />
         </div>
 
-        <Space>
-          <Space>
-            <span style={{ fontSize: '12px', color: '#666' }}>编辑</span>
-            <Switch size="small" checked={isEditMode} onChange={setEditMode} />
-          </Space>
+        <div className="floating-control-panel__content">
+          <div className="floating-control-panel__mode app-sub-header__mode">
+            <span className="app-sub-header__mode-label">编辑模式</span>
+            <Switch checked={isEditMode} onChange={setEditMode} />
+          </div>
 
-          {isEditMode && (
-            <>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                size="small"
-                onClick={onOpenWidgetDrawer}
-              >
-                添加
-              </Button>
+          <div className="floating-control-panel__actions">
+            <Button
+              type="primary"
+              size='small'
+              icon={<PlusOutlined />}
+              disabled={!isEditMode}
+              onClick={onAddWidget}
+              className="add"
+            >
+              添加组件
+            </Button>
 
-              <Tooltip title="页面设置">
-                <Button icon={<SettingOutlined />} size="small" onClick={onOpenSettings} >页面设置</Button>
-              </Tooltip>
+            {isEditMode && (
+              <>
+                <Button icon={<SettingOutlined />} onClick={onOpenSettings} className="set" size='small'>
+                  页面设置
+                </Button>
 
-              {/* <Select
-                value={gridDensity}
-                onChange={(value) => setGridDensity(value as GridDensityKey)}
-                style={{ width: 100 }}
-                size="small"
-              >
-                {Object.entries(GRID_DENSITY_PRESETS).map(([key, preset]) => (
-                  <Select.Option key={key} value={key}>
-                    {preset.label}
-                  </Select.Option>
-                ))}
-              </Select> */}
+                <Button icon={<DeleteOutlined />} onClick={onResetPage} danger className="clear" size='small'>
+                  清空页面
+                </Button>
+              </>
+            )}
 
-              {onOpenMicroAppConfig && (
-                <Tooltip title="微应用配置">
-                  <Button icon={<AppstoreOutlined />} size="small" onClick={onOpenMicroAppConfig} >微应用配置</Button>
-                </Tooltip>
-              )}
+            <Button
+              icon={<SaveOutlined />}
+              onClick={onSaveDraft}
+              disabled={!isEditMode}
+              loading={isSavingDraft}
+              className="save"
+              size='small'
+            >
+              保存
+            </Button>
 
-              <Button icon={<SaveOutlined />} size="small" onClick={onSave}>保存</Button>
-            </>
-          )}
+            <Button className="app-sub-header__publish-btn" icon={<CloudUploadOutlined />} onClick={onPublish} size='small' loading={isPublishing}>
+              发布
+            </Button>
 
-          <Tooltip title="退出全屏">
-            <Button 
-              type="text" 
-              icon={<FullscreenExitOutlined />} 
-              onClick={toggleFullScreen} 
-              danger
-            />
-          </Tooltip>
-        </Space>
+            <Tooltip title="退出全屏">
+              <Button type="text" icon={<FullscreenExitOutlined />} onClick={onExitFullScreen} className="full" size='small' />
+            </Tooltip>
+          </div>
+        </div>
       </div>
     </Draggable>
   );

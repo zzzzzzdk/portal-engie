@@ -15,13 +15,15 @@ export interface PublishDashboardParams {
   id?: string;
   title: string;
   dashboardConfig: string; // JSON 字符串
+  status?: number;
 }
 
 // 发布响应
 export interface PublishDashboardResponse {
   id: string;
-  publishTime: string;
+  publishTime?: string | null;
   success: boolean;
+  status?: number;
 }
 
 // 发布列表项
@@ -29,6 +31,9 @@ export interface PublishListItem {
   id: string;
   title: string;
   publishTime: string;
+  status?: number;
+  componentCount?: number;
+  coverUrl?: string;
 }
 
 // 分页请求参数

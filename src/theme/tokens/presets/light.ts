@@ -17,7 +17,7 @@ export const lightPreset: ISemanticTokens = {
   layout: {
     header: {
       // gradientBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      gradientBg: `url("${headerBgUrl}") no-repeat left`,
+      gradientBg: `url("${headerBgUrl}") no-repeat`,
       text: '#ffffff',
       height: 64,
     },

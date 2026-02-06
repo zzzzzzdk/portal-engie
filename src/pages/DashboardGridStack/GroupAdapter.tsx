@@ -1,16 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { Button, Popconfirm } from 'antd';
 import { DeleteOutlined, SettingOutlined } from '@ant-design/icons';
-import ConfigDialog from '@/components/ConfigDialog';
 
 interface GroupAdapterProps {
   groupId: string;
 }
 
 const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
-  const { groups, removeGroup, isEditMode } = useStore();
-  const [configOpen, setConfigOpen] = useState(false);
+  const { groups, removeGroup, isEditMode, openConfigPanel } = useStore();
   const group = groups.find((g) => g.id === groupId);
 
   // 计算容器样式（背景和边框）
@@ -95,14 +93,6 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
     removeGroup(groupId);
   };
 
-  // 将 group 转换为 ConfigDialog 需要的 widget 格式
-  const groupAsWidget = {
-    id: group.id,
-    type: 'group' as const,
-    title: group.title,
-    layout: group.layout,
-    config: group.config || {},
-  };
 
   // 将背景层和头部层分开，使它们可以有独立的 z-index
   // 背景层: z-index: 0 (在 widgets 下面)
@@ -128,7 +118,7 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
                 icon={<SettingOutlined />}
                 size="small"
                 className="group-config-btn"
-                onClick={() => setConfigOpen(true)}
+                onClick={() => openConfigPanel({ type: 'group', id: group.id })}
               />
               <Popconfirm
                 title="删除分组"
@@ -149,12 +139,6 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
           )}
         </div>
       </div>
-
-      <ConfigDialog
-        isOpen={configOpen}
-        onClose={() => setConfigOpen(false)}
-        widget={groupAsWidget as any}
-      />
     </>
   );
 };

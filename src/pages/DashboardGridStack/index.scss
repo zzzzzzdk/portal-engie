@@ -30,6 +30,7 @@
   }
 
   &.grid-background {
+    border-right: 1px solid var(--grid-line-color);
     &::before {
       content: '';
       position: absolute;

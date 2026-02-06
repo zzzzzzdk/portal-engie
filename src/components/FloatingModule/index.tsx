@@ -21,7 +21,6 @@ import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
-import ConfigDialog from '../ConfigDialog';
 import IconRenderer from '../IconRenderer';
 import type { Widget, FloatingModuleConfig } from '@/types';
 import './index.scss';
@@ -110,6 +109,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     updateFloatingModuleSize,
     toggleFloatingModuleExpanded,
     removeFloatingModule,
+    openConfigPanel,
   } = useStore();
   const { themeMode } = useConfigStore();
 
@@ -122,7 +122,6 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
   // State
   const [viewport, setViewport] = useState<Viewport>(() => getViewportSize());
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
   
   // 核心状态：位置、尺寸、展开状态
   // Position 始终是当前可见元素的左上角
@@ -467,7 +466,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                               <span className="title">{widget.title}</span>
                               <div className="actions">
                                 {isEditMode && (
-                                  <button onClick={(e) => { e.stopPropagation(); setIsConfigOpen(true); }} className="action-btn config-btn">
+                                  <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn config-btn">
                                     <SettingOutlined />
                                   </button>
                                 )}
@@ -492,7 +491,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                                 <div className="floating-module-header-transparent drag-handle">
                                     {isDraggable && <DragOutlined className="drag-icon-transparent" />}
                                     <div className="actions-transparent">
-                                        <button onClick={(e) => { e.stopPropagation(); setIsConfigOpen(true); }} className="action-btn-transparent"><SettingOutlined /></button>
+                                       <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn-transparent"><SettingOutlined /></button>
                                         {config.collapsible !== false && (
                                             <button onClick={toggleExpand} className="action-btn-transparent"><MinusOutlined /></button>
                                         )}
@@ -539,9 +538,6 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
         </div>
       </Draggable>
 
-      {isConfigOpen && (
-        <ConfigDialog isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} widget={widget} />
-      )}
     </>
   );
 });

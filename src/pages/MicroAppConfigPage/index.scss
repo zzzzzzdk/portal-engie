@@ -1,68 +1,175 @@
 .micro-app-config-page {
-  padding: 24px;
   height: 100%;
-  overflow: auto;
+
+  .page-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .ant-btn {
+      border-radius: 8px;
+    }
+  }
+
+  .system-card {
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(15, 18, 44, 0.08);
+
+    .ant-card-body {
+      border-radius: 16px;
+    }
+  }
+
+  .system-table {
+    .ant-table-thead > tr > th {
+      background: #f5f7fb;
+      border-bottom: none;
+      font-weight: 600;
+    }
+
+    .ant-table-tbody > tr > td {
+      border-bottom: 1px solid rgba(5, 5, 5, 0.04);
+    }
+  }
+
+  .system-id-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &__name {
+      font-weight: 600;
+      color: var(--ant-color-text, #1f1f1f);
+    }
+
+    &__id {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary, #8c8c8c);
+    }
+  }
 
   .modules-section {
-    padding: 16px 0;
+    margin: 0 0 16px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #e9f5ff;
 
     .modules-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 16px;
 
       h3 {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
+        color: #0f1b2c;
+      }
+
+      &__desc {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--ant-color-text-tertiary, #8c8c8c);
+      }
+
+      &__add {
+        // border-radius: 999px;
       }
     }
 
     .modules-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
       gap: 16px;
+    }
+  }
 
-      .module-card {
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        transition: all 0.3s;
+  .module-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(15, 18, 44, 0.12);
+    overflow: hidden;
 
-        &:hover {
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+    .ant-card-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
 
-        p {
-          margin: 8px 0;
-          font-size: 13px;
-          color: var(--color-text-secondary);
+    &__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-          strong {
-            color: var(--color-text);
-            margin-right: 8px;
-          }
-        }
+    &__title {
+      font-size: 16px;
+      font-weight: 600;
+    }
 
-        .events-list {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-top: 8px;
+    &__meta {
+      font-size: 12px;
+      color: var(--ant-color-text-tertiary, #8c8c8c);
+    }
 
-          .ant-tag {
-            margin: 0;
-          }
-        }
+    &__body {
+      font-size: 13px;
+      color: var(--ant-color-text-secondary, #666);
+
+      .ant-typography {
+        margin-bottom: 4px;
+      }
+    }
+
+    &__link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      a {
+        color: var(--ant-color-primary);
+      }
+    }
+
+    &__tabs {
+      margin-top: 12px;
+
+      .events-list {
+        margin-top: 8px;
       }
     }
   }
 
-  // 暗色主题适配
-  .dark & {
-    .module-card {
-      background-color: var(--color-bg-container);
-      border-color: var(--color-border);
+  .events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .ant-btn {
+      border-radius: 8px;
     }
+  }
+
+  .event-tag {
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+
+    &--emittable {
+      background: rgba(24, 144, 255, 0.12);
+      color: #1677ff;
+    }
+
+    &--listenable {
+      background: rgba(19, 194, 118, 0.12);
+      color: #13c26b;
+    }
+  }
+
+  .ant-table-body {
+    overflow-x: hidden;
   }
 }

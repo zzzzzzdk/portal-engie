@@ -8,7 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <ErrorBoundary>
       <ConfigProvider locale={zhCN}>
         <AntdApp>
@@ -16,5 +16,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </AntdApp>
       </ConfigProvider>
     </ErrorBoundary>
-  </React.StrictMode>,
+  // </React.StrictMode>,
 )
