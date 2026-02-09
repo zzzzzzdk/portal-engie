@@ -5,43 +5,81 @@
   position: relative;
   overflow: hidden;
 
-  // 默认内容区域样式
   .header-bar-content {
     width: 100%;
     height: 100%;
     display: flex;
-    align-items: flex-start;
-    position: relative;
+    align-items: center;
+    gap: 24px;
 
-    // 标题区域
     .title-section {
       height: 100%;
       display: flex;
       align-items: center;
       gap: 8px;
       z-index: 1;
-      // 确保文字不换行并显示省略号
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex-shrink: 0;
 
       .ant-typography {
         font-size: 38px;
         font-weight: 400;
-        color: #fff;
-        // font-family 由 inline style 控制，支持用户自定义
+        // color: #fff;
       }
     }
 
-    // 右侧区域（包含换肤按钮和个人中心）
+    .nav-section {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      color: var(--header-nav-color, #222);
+
+      .ant-typography {
+        color: currentColor;
+      }
+
+      .header-nav-menu {
+        flex: 1;
+        min-width: 0;
+        border-bottom: none;
+        background: transparent;
+        color: var(--header-nav-color, #222);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        .ant-menu-overflow-item,
+        .ant-menu-item,
+        .ant-menu-submenu-title {
+          color: var(--header-nav-color, #222);
+          font-size: 14px;
+          padding: 0 16px;
+        }
+
+        .ant-menu-item-selected,
+        .ant-menu-item-active,
+        .ant-menu-submenu-selected {
+          color: var(--header-nav-color, #222);
+
+          &::after {
+            border-bottom-color: var(--header-nav-color, #222);
+          }
+        }
+      }
+    }
+
     .right-section {
       margin-left: auto;
       display: flex;
       align-items: center;
       gap: 16px;
       z-index: 2;
+      flex-shrink: 0;
 
-      // 换肤按钮区域
       .theme-switcher-section {
         display: flex;
         align-items: center;
@@ -68,7 +106,6 @@
         }
       }
 
-      // 用户个人中心区域
       .user-profile-section {
         line-height: 60px;
         display: flex;
@@ -78,24 +115,10 @@
     }
   }
 
-  // 居中对齐修饰符
-  &.align-center {
-    .header-bar-content {
+  &.alignment-center {
+    .title-section {
       justify-content: center;
-
-      .title-section {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        // 确保不会覆盖到右侧的用户信息（简单处理：设置最大宽度）
-        max-width: calc(100% - 300px);
-      }
-
-      // 右侧区域绝对定位到右侧
-      .right-section {
-        position: absolute;
-        right: 0;
-      }
+      flex: 0 0 auto;
     }
   }
 }

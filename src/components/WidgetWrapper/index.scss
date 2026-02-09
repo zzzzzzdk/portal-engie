@@ -182,11 +182,6 @@
 }
 
 // No header style - widget without title bar
-.widget-wrapper.no-header {
-  .widget-content {
-    padding: 0; // Remove padding when no header
-  }
-}
 
 // 刷新按钮旋转动画
 @keyframes rotate {

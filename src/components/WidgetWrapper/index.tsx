@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import { Widget } from '@/types';
-import ConfigDialog from '../ConfigDialog';
 import { useStore } from '@/store/useStore';
 import { Settings, Trash2, RefreshCw } from 'lucide-react';
 import { Button, Dropdown, Modal } from 'antd';
@@ -23,10 +22,9 @@ interface WidgetWrapperProps {
 
 const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
   ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, isPreviewMode = false, ...props }, ref) => {
-    const { removeWidget, refreshWidget, isEditMode: storeEditMode } = useStore();
+    const { removeWidget, refreshWidget, isEditMode: storeEditMode, openConfigPanel } = useStore();
     // 预览模式下强制禁用编辑
     const isEditMode = isPreviewMode ? false : storeEditMode;
-    const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     // const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({})
 
@@ -42,7 +40,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
     };
 
     const handleConfig = () => {
-      setIsConfigOpen(true);
+      openConfigPanel({ type: 'widget', id: widget.id });
     };
 
     const handleRefresh = () => {
@@ -101,7 +99,8 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       const newBackgroundStyle: React.CSSProperties = {};
       const {
         backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow
+        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow,
+        borderRadius
       } = widget.config;
       // console.log(widget.config)
       if (backgroundType === 'image' && backgroundImage) {
@@ -131,6 +130,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       // 应用阴影效果
       if (boxShadow) {
         newBackgroundStyle.boxShadow = boxShadow;
+      }
+      // 应用圆角
+      if (borderRadius !== undefined && borderRadius !== null) {
+        newBackgroundStyle.borderRadius = borderRadius;
       }
       return newBackgroundStyle
     }, [widget.config])
@@ -227,11 +230,6 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         )}
         <div className="widget-content" style={contentStyle}>{children}</div>
 
-        <ConfigDialog
-          isOpen={isConfigOpen}
-          onClose={() => setIsConfigOpen(false)}
-          widget={widget}
-        />
       </div>
     );
 

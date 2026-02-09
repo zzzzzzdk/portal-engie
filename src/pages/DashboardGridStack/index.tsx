@@ -10,12 +10,15 @@ import {
   useGridStackContext,
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
-import { getPublishedDashboard } from '@/services/dashboard';
+import { useConfigStore } from '@/store/useConfigStore';
+import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
-import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS } from '@/types';
+import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS, DashboardConfig } from '@/types';
 
 import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
@@ -83,10 +86,10 @@ const DashboardInner: React.FC = () => {
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-layout)';
+        style.backgroundColor = 'var(--ant-color-bg-container)';
       }
     } else {
-      style.backgroundColor = 'var(--ant-color-bg-layout)';
+      style.backgroundColor = 'var(--ant-color-bg-container)';
     }
 
     return style;
@@ -100,6 +103,24 @@ const DashboardInner: React.FC = () => {
     // 🔧 延迟到下一帧，确保 GridStack 的 DOM 更新完成（特别是 SubGrid）
     pendingSyncFrameRef.current = requestAnimationFrame(() => {
       const currentLayout = saveOptions();
+
+      // 🔧 从 engine.nodes 构建 ID -> node 映射，用于获取准确的 w/h
+      // GridStack 的 save() 方法有时不返回 w 属性，需要从 engine.nodes 获取
+      const engineNodeMap = new Map<string, any>();
+      if (gridStack?.engine?.nodes) {
+        const collectNodes = (nodes: any[]) => {
+          nodes.forEach((node: any) => {
+            if (node.id) {
+              engineNodeMap.set(node.id, node);
+            }
+            // 递归收集 SubGrid 中的节点
+            if (node.subGrid?.engine?.nodes) {
+              collectNodes(node.subGrid.engine.nodes);
+            }
+          });
+        };
+        collectNodes(gridStack.engine.nodes);
+      }
 
       if (!currentLayout) {
         pendingSyncFrameRef.current = null;
@@ -127,12 +148,33 @@ const DashboardInner: React.FC = () => {
           if (!item || !item.id) return;
 
           const id = String(item.id);
+
+          // 🔧 修复：优先从 engine.nodes 获取准确的 w/h
+          const engineNode = engineNodeMap.get(id);
+          let itemW = item.w ?? engineNode?.w;
+          let itemH = item.h ?? engineNode?.h;
+
+          // 如果还是没有，尝试从 DOM 读取
+          if (itemW === undefined || itemH === undefined) {
+            const el = document.querySelector(`[gs-id="${id}"]`);
+            if (el) {
+              const gsW = el.getAttribute('gs-w');
+              const gsH = el.getAttribute('gs-h');
+              if (itemW === undefined && gsW) {
+                itemW = parseInt(gsW, 10);
+              }
+              if (itemH === undefined && gsH) {
+                itemH = parseInt(gsH, 10);
+              }
+            }
+          }
+
           const absoluteLayout: Layout = {
             i: id,
             x: (item.x ?? 0) + offsetX,
             y: (item.y ?? 0) + offsetY,
-            w: item.w ?? 4,
-            h: item.h ?? 2,
+            w: itemW ?? 4,
+            h: itemH ?? 2,
           };
 
           const hasSubGrid = !!item.subGridOpts;
@@ -173,6 +215,9 @@ const DashboardInner: React.FC = () => {
 
       traverse(rootItems as GridStackWidget[]);
 
+      // 🔧 调试日志：查看解析后的布局数据
+      // console.log('[syncLayoutFromGrid] Parsed widgetLayouts:', JSON.stringify(widgetLayouts, null, 2));
+
       // 🔧 更新元数据 Map（确保 Portal 能正确渲染）
       _rawWidgetMetaMap.set(updatedMetaMap);
 
@@ -191,7 +236,7 @@ const DashboardInner: React.FC = () => {
 
       pendingSyncFrameRef.current = null;
     });
-  }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap]);
+  }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap, gridStack]);
 
   // 只监听用户拖拽和缩放事件，不监听 change（避免 addWidget 触发循环）
   useEffect(() => {
@@ -459,8 +504,8 @@ const DashboardGridStack: React.FC = () => {
   const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId');
-  const [isLoadingEditData, setIsLoadingEditData] = useState(!!editId); // 有 editId 时初始为 loading
-  const [editDataLoaded, setEditDataLoaded] = useState(!editId); // 无 editId 时直接标记为已完成
+  const [isLoadingRemoteData, setIsLoadingRemoteData] = useState(true);
+  const [remoteDataLoaded, setRemoteDataLoaded] = useState(false);
 
   const buildGridOptions = useCallback((): GridStackOptions => {
     const preset = GRID_DENSITY_PRESETS[gridDensity] ?? GRID_DENSITY_PRESETS.standard;
@@ -486,12 +531,7 @@ const DashboardGridStack: React.FC = () => {
 
   // 如果没有 editId，直接使用 localStorage 数据初始化
   // 如果有 editId，等待 API 数据加载完成后再初始化
-  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(() => {
-    if (!editId && persistApi?.hasHydrated?.()) {
-      return buildGridOptions();
-    }
-    return null;
-  });
+  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(null);
 
   const [isHydrated, setIsHydrated] = useState<boolean>(() => {
     if (!persistApi?.hasHydrated) {
@@ -499,6 +539,31 @@ const DashboardGridStack: React.FC = () => {
     }
     return persistApi.hasHydrated();
   });
+
+  const applyThemeFromConfig = useCallback((config?: DashboardConfig | null) => {
+    if (!config) {
+      return;
+    }
+    const themeUpdate: Record<string, unknown> = {};
+    if (config.themeMode) {
+      themeUpdate.themeMode = config.themeMode;
+    }
+    if (config.styleMode) {
+      themeUpdate.styleMode = config.styleMode;
+    }
+    if (config.styleTokens?.widget && config.styleTokens?.card) {
+      themeUpdate.styleTokens = config.styleTokens;
+    }
+    if (config.baseColors) {
+      themeUpdate.baseColors = config.baseColors;
+    }
+    if (config.customTokens) {
+      themeUpdate.customTokens = config.customTokens;
+    }
+    if (Object.keys(themeUpdate).length > 0) {
+      useConfigStore.setState(themeUpdate);
+    }
+  }, []);
 
   useEffect(() => {
     if (!persistApi?.hasHydrated) {
@@ -514,56 +579,93 @@ const DashboardGridStack: React.FC = () => {
     return () => unsubscribe?.();
   }, [persistApi]);
 
-  // 处理编辑已发布的仪表盘 - 在设置 initialOptions 之前加载数据
   useEffect(() => {
-    if (!editId || !isHydrated) {
+    if (!isHydrated) {
       return;
     }
+    let cancelled = false;
 
-    const loadEditData = async () => {
-      setIsLoadingEditData(true);
+    const loadData = async () => {
+      setIsLoadingRemoteData(true);
+      const storedEditId =
+        !editId && typeof window !== 'undefined'
+          ? localStorage.getItem(DASHBOARD_LAST_EDIT_ID_KEY)
+          : null;
+      const isResumeFromStorage = Boolean(!editId && storedEditId);
+      const targetId = editId || storedEditId;
+
+      if (!targetId) {
+        if (!cancelled) {
+          setRemoteDataLoaded(true);
+          setIsLoadingRemoteData(false);
+        }
+        return;
+      }
+
       try {
-        const res = await getPublishedDashboard({ id: editId });
+        const res = await getPublishedDashboard({ id: targetId });
         if (res.code === 20000 && res.data) {
-          // 加载数据到 store，将 title 合并到 dashboardConfig 中
-          loadDashboardFromData({
-            widgets: res.data.widgets,
-            groups: res.data.groups,
-            floatingModules: res.data.floatingModules,
-            dashboardConfig: {
-              backgroundType: 'color', // 默认值
-              ...res.data.dashboardConfig,
-              title: res.data.title, // 保存标题用于编辑后发布
-            },
-          });
-          setEditMode(true);
-          setEditDataLoaded(true); // 标记编辑数据已加载
-          message.success('已加载仪表盘数据');
+          const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
+          if (!snapshot) {
+            message.error('解析仪表盘配置失败');
+          } else {
+            const config = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
+            applyThemeFromConfig(config);
+            loadDashboardFromData({
+              widgets: snapshot.widgets,
+              groups: snapshot.groups,
+              floatingModules: snapshot.floatingModules,
+              dashboardConfig: {
+                backgroundType: 'color',
+                ...config,
+                title: res.data.title,
+              },
+            });
+            setEditMode(true);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, targetId);
+            }
+            if (editId) {
+              message.success('已加载仪表盘数据');
+            } else {
+              message.success('已恢复上次编辑内容');
+            }
+          }
         } else {
+          if (isResumeFromStorage && typeof window !== 'undefined') {
+            localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+          }
           message.error(res.message || '加载仪表盘数据失败');
-          setEditDataLoaded(true); // 即使失败也标记完成，避免卡住
         }
       } catch (error) {
         console.error('加载仪表盘数据失败:', error);
+        if (isResumeFromStorage && typeof window !== 'undefined') {
+          localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+        }
         message.error('加载仪表盘数据失败');
-        setEditDataLoaded(true);
-      } finally {
-        setIsLoadingEditData(false);
+      }
+
+      if (!cancelled) {
+        setRemoteDataLoaded(true);
+        setIsLoadingRemoteData(false);
       }
     };
 
-    loadEditData();
-  }, [editId, isHydrated, loadDashboardFromData, setEditMode]);
+    loadData();
 
-  // 设置 initialOptions：等待水合完成 + 编辑数据加载完成（如果有 editId）
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyThemeFromConfig]);
+
   useEffect(() => {
-    if (!isHydrated || !editDataLoaded || initialOptions) {
+    if (!isHydrated || !remoteDataLoaded || initialOptions) {
       return;
     }
     setInitialOptions(buildGridOptions());
-  }, [isHydrated, editDataLoaded, initialOptions, buildGridOptions]);
+  }, [isHydrated, remoteDataLoaded, initialOptions, buildGridOptions]);
 
-  if (isLoadingEditData) {
+  if (isLoadingRemoteData) {
     return (
       <div className="dashboard-container dashboard-loading">
         正在加载仪表盘数据...
@@ -670,6 +772,7 @@ function createGroupGridWidget(
       column: 'auto',
       cellHeight: preset.cellHeight,
       margin: preset.margin,
+      minRow: 1,  // 确保空分组至少有一行高度，可作为拖拽目标
       alwaysShowResizeHandle: false,
       animate: true,
       float: true,

@@ -1,16 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Modal, message, Typography, Tooltip } from 'antd';
-import { PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
+import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Empty, Spin } from 'antd';
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  CopyOutlined,
+  AppstoreOutlined,
+  BarsOutlined,
+  ShareAltOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import { getPublishList, deletePublishedDashboard, PublishListItem } from '@/services/dashboard';
 import { useStore } from '@/store/useStore';
+import { useTableScroll } from '@/hooks/useTableScroll';
+import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import './index.scss';
 
-const { Title } = Typography;
+const VIEW_MODE_KEY = 'publish_list_view_mode';
 
 const PublishList: React.FC = () => {
   const navigate = useNavigate();
+  const { scrollY } = useTableScroll({ headerHeight: 195, footerHeight: 68 })
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<PublishListItem[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -19,6 +32,11 @@ const PublishList: React.FC = () => {
     pageSize: 10,
     total: 0,
   });
+  const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
+    if (typeof window === 'undefined') return 'table';
+    return (localStorage.getItem(VIEW_MODE_KEY) as 'table' | 'card') || 'table';
+  });
+  const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const { resetDashboard, setEditMode } = useStore();
 
   // 获取发布列表
@@ -103,25 +121,64 @@ const PublishList: React.FC = () => {
     window.open(`${window.location.origin + window.location.pathname}#/preview/${record.id}`, '_blank');
   };
 
-  // 复制访问地址
+  // 复制访问地址（兼容非 HTTPS 环境）
   const handleCopyUrl = (record: PublishListItem) => {
     const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      message.success('访问地址已复制到剪贴板');
-    }).catch(() => {
-      message.error('复制失败');
-    });
+
+    // 优先使用 navigator.clipboard（需要 HTTPS）
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(() => {
+        message.success('访问地址已复制到剪贴板');
+      }).catch(() => {
+        fallbackCopy(url);
+      });
+    } else {
+      // 降级方案：使用 execCommand
+      fallbackCopy(url);
+    }
+  };
+
+  // 降级复制方法
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        message.success('访问地址已复制到剪贴板');
+      } else {
+        message.error('复制失败，请手动复制');
+      }
+    } catch {
+      message.error('复制失败，请手动复制');
+    }
+    document.body.removeChild(textarea);
   };
 
   // 新增 - 跳转到空白编辑页
   const handleCreate = () => {
-    // 清空 localStorage 中的数据，从空白页创建
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+    }
     resetDashboard();
     setEditMode(true);
     navigate('/dashboard-gridstack');
   };
 
   const columns: ColumnsType<PublishListItem> = [
+    {
+      title: '序号',
+      key: 'index',
+      width: 80,
+      render: (_: any, __: PublishListItem, index: number) =>
+        (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     {
       title: '标题',
       dataIndex: 'title',
@@ -161,6 +218,22 @@ const PublishList: React.FC = () => {
               />
             </Tooltip>
           </Space>
+        );
+      },
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 120,
+      render: (_: any, record: PublishListItem) => {
+        const normalizedStatus = Number(record.status) === 1 ? 1 : 0;
+        const statusLabel = normalizedStatus === 1 ? '已发布' : '暂存';
+        const color = normalizedStatus === 1 ? '#13c26b' : '#999';
+        return (
+          <div className="status-dot">
+            <span className="status-dot__point" style={{ background: color }} />
+            {statusLabel}
+          </div>
         );
       },
     },
@@ -211,11 +284,98 @@ const PublishList: React.FC = () => {
     },
   ];
 
+  const handleViewModeChange = (mode: 'table' | 'card') => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  };
+
+  useEffect(() => {
+    setActiveShareId(null);
+  }, [viewMode, dataSource]);
+
+  const getCoverSrc = (coverUrl?: string) => {
+    if (!coverUrl) {
+      return '';
+    }
+    return coverUrl.startsWith('data:') ? coverUrl : `data:image/png;base64,${coverUrl}`;
+  };
+
+  const renderCards = () => {
+    if (!loading && !dataSource.length) {
+      return (
+        <div className="publish-card-empty">
+          <Empty description="暂无应用" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      );
+    }
+
+    return (
+      <Spin spinning={loading}>
+        <div className="publish-card-grid">
+          {dataSource.map((item) => {
+            const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`;
+            const statusValue = Number(item.status) === 1 ? 1 : 0;
+            const statusLabel = statusValue === 1 ? '已发布' : '暂存';
+            const coverSrc = getCoverSrc(item.cover_url);
+            return (
+              <div className="publish-card" key={item.id}>
+                <div className="publish-card__cover">
+                  <div className="publish-card__thumbnail">
+                    {coverSrc ? (
+                      <img src={coverSrc} alt={item.title} />
+                    ) : (
+                      <div className="publish-card__placeholder">暂无封面</div>
+                    )}
+                  </div>
+                  <div className="publish-card__status-wrapper">
+                    <span className={`publish-card__status ${statusValue === 1 ? 'is-success' : ''}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                </div>
+                <div className="publish-card__body">
+                  <div className="publish-card__title">{item.title || '未命名'}
+                    <div className="publish-card__actions">
+                      <div className="publish-card__action-row">
+                        <Tooltip title={
+                          <>
+                            <span>{url}</span>
+                            <Button className='copy' type="text" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(item)} />
+                          </>}
+                        >
+                          <Button type="text" icon={<ShareAltOutlined />} />
+                        </Tooltip>
+                        <Tooltip title="预览">
+                          <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
+                        </Tooltip>
+                        <Tooltip title="编辑">
+                          <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />
+                        </Tooltip>
+                        <Tooltip title="删除">
+                          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />
+                        </Tooltip>
+
+
+                      </div>
+                    </div>
+                  </div>
+                  <div className="publish-card__info">
+                    <span>{item.publishTime ? new Date(item.publishTime).toLocaleString('zh-CN') : '未发布'}</span>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Spin>
+    );
+  };
+
   return (
     <div className="publish-list-page">
-      <div className="publish-list-header">
-        <Title level={4}>已发布列表</Title>
-        <Space size="middle">
+      <div className="publish-list-toolbar">
+        <div className="publish-list-toolbar__left">
           <Input
             placeholder="搜索标题或ID"
             prefix={<SearchOutlined />}
@@ -223,30 +383,48 @@ const PublishList: React.FC = () => {
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             allowClear
-            style={{ width: 250 }}
           />
-          <Button onClick={handleSearch}>搜索</Button>
+          <Button onClick={handleSearch} loading={loading}>搜索</Button>
+        </div>
+        <Space size="small">
+          <Radio.Group
+            value={viewMode}
+            onChange={(e) => handleViewModeChange(e.target.value as 'table' | 'card')}
+            buttonStyle="solid"
+            className="view-switch"
+          >
+            <Radio.Button value="card">
+              <AppstoreOutlined />
+            </Radio.Button>
+            <Radio.Button value="table">
+              <BarsOutlined />
+            </Radio.Button>
+          </Radio.Group>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             新增
           </Button>
         </Space>
       </div>
       <div className="publish-list-content">
-        <Table
-          columns={columns}
-          dataSource={dataSource}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            ...pagination,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
-            pageSizeOptions: ['10', '20', '50', '100'],
-          }}
-          onChange={handleTableChange}
-          scroll={{ x: 1000 }}
-        />
+        {viewMode === 'table' ? (
+          <Table
+            columns={columns}
+            dataSource={dataSource}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `共 ${total} 条`,
+              pageSizeOptions: ['10', '20', '50', '100'],
+            }}
+            onChange={handleTableChange}
+            scroll={{ x: 1100, y: scrollY }}
+          />
+        ) : (
+          renderCards()
+        )}
       </div>
     </div>
   );

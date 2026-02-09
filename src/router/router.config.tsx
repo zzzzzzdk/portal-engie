@@ -38,7 +38,7 @@ const routeConfig: RouteConfig[] = [
     children: [
       {
         index: true,
-        redirect: '/dashboard-gridstack',
+        redirect: '/publish-list',
       },
       {
         path: 'dashboard',
@@ -69,7 +69,7 @@ const routeConfig: RouteConfig[] = [
         element: () => import('@/pages/PublishList'),
         meta: {
           requiresAuth: false,
-          title: '已发布列表 - Portal Engine',
+          title: '应用列表 - Portal Engine',
         },
       },
     ],

@@ -48,6 +48,7 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
   clock: Icons.Clock,
   stats: Icons.BarChart3,
   chart: Icons.LineChart,
+  carousel: Icons.Image,
   link: Icons.Link,
   news: Icons.Newspaper,
   topList: Icons.ListOrdered,
@@ -152,9 +153,10 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
   // 其他类型：预定义默认尺寸
   const defaultSizes: Record<WidgetType, GridSize> = {
     clock: { columns: 2, rows: 2 },
-    stats: { columns: 3, rows: 2 },
-    chart: { columns: 6, rows: 4 },
-    link: { columns: 2, rows: 1 },
+  stats: { columns: 3, rows: 2 },
+  chart: { columns: 6, rows: 4 },
+  carousel: { columns: 6, rows: 3 },
+  link: { columns: 2, rows: 1 },
     news: { columns: 4, rows: 3 },
     topList: { columns: 3, rows: 4 },
     search: { columns: 4, rows: 1 },

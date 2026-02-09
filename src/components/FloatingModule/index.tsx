@@ -21,19 +21,39 @@ import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
-import ConfigDialog from '../ConfigDialog';
 import IconRenderer from '../IconRenderer';
 import type { Widget, FloatingModuleConfig } from '@/types';
 import './index.scss';
 
 const { confirm } = Modal;
 const VIEWPORT_PADDING = 20;
+const DASHBOARD_CONTAINER_SELECTOR = '.dashboard-container';
+const PREVIEW_CONTAINER_SELECTOR = '.dashboard-preview-container';
 
 type Position = { x: number; y: number };
 type Size = { width: number; height: number };
 type Viewport = { width: number; height: number };
+type ContainerElement = HTMLElement | null;
+type ContainerOffset = { left: number; top: number };
 
-const getViewportSize = (): Viewport => {
+const findFloatingContainer = (): ContainerElement => {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return (
+    (document.querySelector(DASHBOARD_CONTAINER_SELECTOR) as HTMLElement) ||
+    (document.querySelector(PREVIEW_CONTAINER_SELECTOR) as HTMLElement) ||
+    null
+  );
+};
+
+const getViewportSize = (container?: ContainerElement): Viewport => {
+  if (container) {
+    return {
+      width: container.clientWidth,
+      height: container.clientHeight,
+    };
+  }
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { width: 0, height: 0 };
   }
@@ -47,6 +67,17 @@ const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max);
 };
 
+const getContainerOffset = (container?: ContainerElement): ContainerOffset => {
+  if (!container) {
+    return { left: 0, top: 0 };
+  }
+  const rect = container.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+  };
+};
+
 // 确保整个矩形在视口内
 const clampPosition = (
   position: Position,
@@ -56,8 +87,8 @@ const clampPosition = (
 ): Position => {
   if (!viewport.width || !viewport.height) return position;
 
-  const maxX = Math.max(0, viewport.width - size.width - padding);
-  const maxY = Math.max(0, viewport.height - size.height - padding);
+  const maxX = Math.max(padding, viewport.width - size.width - padding);
+  const maxY = Math.max(padding, viewport.height - size.height - padding);
 
   return {
     x: clamp(position.x, padding, maxX),
@@ -103,15 +134,21 @@ interface FloatingModuleProps {
 }
 
 const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
-
+const initialContainer = typeof document !== 'undefined' ? findFloatingContainer() : null;
+const initialViewport = getViewportSize(initialContainer);
+const initialOffset = initialContainer ? getContainerOffset(initialContainer) : { left: 0, top: 0 };
   const {
     isEditMode,
     updateFloatingModulePosition,
     updateFloatingModuleSize,
     toggleFloatingModuleExpanded,
     removeFloatingModule,
+    openConfigPanel,
   } = useStore();
   const { themeMode } = useConfigStore();
+  const [containerEl, setContainerEl] = useState<ContainerElement>(initialContainer);
+  const [viewport, setViewport] = useState<Viewport>(initialViewport);
+  const [containerOffset, setContainerOffset] = useState<ContainerOffset>(initialOffset);
 
   const config = widget.config as FloatingModuleConfig;
   const collapsedWidth = config.collapsedWidth || 60;
@@ -119,50 +156,38 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const collapsedIcon = config.collapsedIcon || config.icon;
   const collapsedBgColor = config.collapsedBgColor;
   const collapsedIconSize = config.collapsedIconSize || 28;
+  const initialSizeState: Size =
+    config.isExpanded === false
+      ? { width: collapsedWidth, height: collapsedHeight }
+      : { width: config.width || 380, height: config.height || 400 };
 
-  // State
-  const [viewport, setViewport] = useState<Viewport>(() => getViewportSize());
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  
   // 核心状态：位置、尺寸、展开状态
   // Position 始终是当前可见元素的左上角
   const [isExpanded, setIsExpanded] = useState(
     typeof config.isExpanded === 'boolean' ? config.isExpanded : true
   );
 
-  const [size, setSize] = useState<Size>(() => {
-    if (config.isExpanded === false) {
-        return { width: collapsedWidth, height: collapsedHeight };
-    }
-    return {
-      width: config.width || 380,
-      height: config.height || 400,
-    };
-  });
+  const [size, setSize] = useState<Size>(initialSizeState);
+  const sizeRef = useRef<Size>(initialSizeState);
 
   const [position, setPosition] = useState<Position>(() => {
-    // 初始位置逻辑
-    const initialSize = config.isExpanded === false 
-        ? { width: collapsedWidth, height: collapsedHeight }
-        : { width: config.width || 380, height: config.height || 400 };
-    
     // 如果有保存的位置，直接使用并限制在视口内
     if (config.position) {
-        return clampPosition(config.position, initialSize, getViewportSize());
+        return clampPosition(config.position, initialSizeState, initialViewport);
     }
 
     // 默认位置逻辑
-    const vp = getViewportSize();
+    const vp = initialViewport;
     const padding = VIEWPORT_PADDING;
-    const maxX = Math.max(padding, vp.width - initialSize.width - padding);
-    const maxY = Math.max(padding, vp.height - initialSize.height - padding);
+    const maxX = Math.max(padding, vp.width - initialSizeState.width - padding);
+    const maxY = Math.max(padding, vp.height - initialSizeState.height - padding);
 
     // 根据 defaultPosition 计算
     switch (config.defaultPosition) {
         case 'bottom-left': return { x: padding, y: maxY };
         case 'top-left': return { x: padding, y: padding };
         case 'top-right': return { x: maxX, y: padding };
-        case 'center': return { x: (vp.width - initialSize.width) / 2, y: (vp.height - initialSize.height) / 2 };
+        case 'center': return { x: (vp.width - initialSizeState.width) / 2, y: (vp.height - initialSizeState.height) / 2 };
         case 'bottom-right':
         default: return { x: maxX, y: maxY };
     }
@@ -172,18 +197,139 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const savePositionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveSizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<Viewport>(initialViewport);
 
-  // 监听窗口大小变化
   useEffect(() => {
-    const handleResize = () => {
-        const newVp = getViewportSize();
-        setViewport(newVp);
-        // 窗口变化时，强制检查边界
-        setPosition(prev => clampPosition(prev, size, newVp));
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    sizeRef.current = size;
   }, [size]);
+
+  useEffect(() => {
+    if (containerEl && containerEl.isConnected) {
+      return;
+    }
+    const next = findFloatingContainer();
+    if (next && next !== containerEl) {
+      setContainerEl(next);
+      setViewport(getViewportSize(next));
+      setContainerOffset(getContainerOffset(next));
+    }
+  }, [containerEl]);
+
+  useEffect(() => {
+    const el = containerEl;
+    if (!el) {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      const handleWindowResize = () => {
+        setViewport(getViewportSize());
+        setContainerOffset({ left: 0, top: 0 });
+      };
+      window.addEventListener('resize', handleWindowResize);
+      return () => {
+        window.removeEventListener('resize', handleWindowResize);
+      };
+    }
+
+    const updateViewportOnly = () => {
+      setViewport(getViewportSize(el));
+    };
+
+    const updateMetrics = () => {
+      updateViewportOnly();
+      setContainerOffset(getContainerOffset(el));
+    };
+
+    updateMetrics();
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => updateMetrics()) : null;
+    resizeObserver?.observe(el);
+
+    const handleScroll = () => updateViewportOnly();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateMetrics);
+    }
+
+    return () => {
+      resizeObserver?.disconnect();
+      el.removeEventListener('scroll', handleScroll);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateMetrics);
+      }
+    };
+  }, [containerEl]);
+
+  useEffect(() => {
+    setPosition((prev) => {
+      const previousViewport = viewportRef.current;
+      const sizeSnapshot = sizeRef.current;
+      viewportRef.current = viewport;
+
+      if (
+        previousViewport.width === viewport.width &&
+        previousViewport.height === viewport.height
+      ) {
+        return prev;
+      }
+
+      const adjustAxis = (
+        prevCoord: number,
+        prevViewSize: number,
+        nextViewSize: number,
+        blockSize: number
+      ) => {
+        if (!prevViewSize || !nextViewSize) {
+          return prevCoord;
+        }
+        if (prevViewSize === nextViewSize) {
+          return prevCoord;
+        }
+        const prevMax = Math.max(
+          VIEWPORT_PADDING,
+          prevViewSize - blockSize - VIEWPORT_PADDING
+        );
+        const prevRange = prevMax - VIEWPORT_PADDING;
+        if (prevRange <= 0) {
+          const nextMax = Math.max(
+            VIEWPORT_PADDING,
+            nextViewSize - blockSize - VIEWPORT_PADDING
+          );
+          return clamp(prevCoord, VIEWPORT_PADDING, nextMax);
+        }
+        const ratio = clamp(
+          (prevCoord - VIEWPORT_PADDING) / prevRange,
+          0,
+          1
+        );
+        const nextMax = Math.max(
+          VIEWPORT_PADDING,
+          nextViewSize - blockSize - VIEWPORT_PADDING
+        );
+        const nextRange = Math.max(0, nextMax - VIEWPORT_PADDING);
+        const raw = VIEWPORT_PADDING + ratio * nextRange;
+        return clamp(raw, VIEWPORT_PADDING, nextMax);
+      };
+
+      const recalculated = {
+        x: adjustAxis(
+          prev.x,
+          previousViewport.width,
+          viewport.width,
+          sizeSnapshot.width
+        ),
+        y: adjustAxis(
+          prev.y,
+          previousViewport.height,
+          viewport.height,
+          sizeSnapshot.height
+        ),
+      };
+
+      return clampPosition(recalculated, sizeSnapshot, viewport);
+    });
+  }, [viewport.width, viewport.height]);
 
   // 当外部 config 改变时同步状态 (主要是为了响应其他用户的修改或重置)
   // 注意：这可能会与本地交互冲突，所以这里只在必要属性变化时更新，且加防抖或判断
@@ -427,8 +573,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
             ref={nodeRef}
             style={{ 
                 position: 'fixed', 
-                left: 0,
-                top: 0,
+                left: containerEl ? containerOffset.left : 0,
+                top: containerEl ? containerOffset.top : 0,
                 zIndex: config.zIndex || 9999,
                 // Ensure the wrapper takes the size, crucial for Draggable to calculate bounds correctly
                 width: size.width,
@@ -467,7 +613,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                               <span className="title">{widget.title}</span>
                               <div className="actions">
                                 {isEditMode && (
-                                  <button onClick={(e) => { e.stopPropagation(); setIsConfigOpen(true); }} className="action-btn config-btn">
+                                  <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn config-btn">
                                     <SettingOutlined />
                                   </button>
                                 )}
@@ -492,7 +638,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                                 <div className="floating-module-header-transparent drag-handle">
                                     {isDraggable && <DragOutlined className="drag-icon-transparent" />}
                                     <div className="actions-transparent">
-                                        <button onClick={(e) => { e.stopPropagation(); setIsConfigOpen(true); }} className="action-btn-transparent"><SettingOutlined /></button>
+                                       <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn-transparent"><SettingOutlined /></button>
                                         {config.collapsible !== false && (
                                             <button onClick={toggleExpand} className="action-btn-transparent"><MinusOutlined /></button>
                                         )}
@@ -539,9 +685,6 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
         </div>
       </Draggable>
 
-      {isConfigOpen && (
-        <ConfigDialog isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} widget={widget} />
-      )}
     </>
   );
 });

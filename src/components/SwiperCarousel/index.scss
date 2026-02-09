@@ -1,0 +1,42 @@
+.swiper-carousel {
+  width: 100%;
+  height: 100%;
+  position: relative;
+
+  .swiper {
+    width: 100%;
+    height: 100%;
+  }
+
+  .swiper-slide {
+    height: auto;
+    display: flex;
+  }
+
+  .swiper-button-prev,
+  .swiper-button-next {
+    color: var(--carousel-accent-color, #fff);
+    transition: opacity 0.2s ease;
+
+    &:after {
+      font-size: 18px;
+    }
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  .swiper-pagination-bullet {
+    background: var(--carousel-accent-color, rgba(255, 255, 255, 0.5));
+    opacity: 0.4;
+
+    &-active {
+      opacity: 1;
+    }
+  }
+
+  .swiper-scrollbar-drag {
+    background: var(--carousel-accent-color, rgba(255, 255, 255, 0.45));
+  }
+}

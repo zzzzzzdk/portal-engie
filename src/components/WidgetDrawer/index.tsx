@@ -1,5 +1,5 @@
-import React from 'react';
-import { Drawer } from 'antd';
+import React, { useState } from 'react';
+import { Button } from 'antd';
 import {
   GroupOutlined,
   FolderOutlined,
@@ -18,6 +18,9 @@ import {
   CompassOutlined,
   BlockOutlined,
   RobotOutlined,
+  CloseOutlined,
+  DownOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import './index.scss';
 
@@ -51,8 +54,8 @@ const widgetCategories: WidgetCategory[] = [
   {
     title: '分组组件',
     items: [
-      { key: 'create-group', label: '新建分组', icon: <GroupOutlined />, description: '创建可容纳多个组件的分组', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
-      { key: 'headerBar', label: '头部栏', icon: <FolderOutlined />, description: '页面顶部导航栏', gsW: 4, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
+      { key: 'create-group', label: '新建分组', icon: <GroupOutlined />, description: '创建新分组', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
+      { key: 'headerBar', label: '导航栏', icon: <FolderOutlined />, description: '页面顶部栏', gsW: 4, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
     ]
   },
   {
@@ -62,8 +65,9 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'clock', label: '时钟', icon: <ClockCircleOutlined />, description: '实时时钟显示', gsW: 4, gsH: 6, gsMinW: 2, gsMinH: 3, draggable: true },
       { key: 'stats', label: '统计卡片', icon: <BarChartOutlined />, description: '数据统计展示', gsW: 10, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'chart', label: '图表', icon: <PieChartOutlined />, description: '可视化图表', gsW: 8, gsH: 9, gsMinW: 4, gsMinH: 4, draggable: true },
+      { key: 'carousel', label: '轮播图', icon: <PictureOutlined />, description: '图片轮播展示', gsW: 8, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'link', label: '快捷链接', icon: <LinkOutlined />, description: '快速访问链接', gsW: 5, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
-      { key: 'pageNavigator', label: '页面切换', icon: <SwapOutlined />, description: '页面导航切换', gsW: 12, gsH: 3, gsMinW: 6, gsMinH: 1, draggable: true },
+      { key: 'pageNavigator', label: '页面切换组', icon: <SwapOutlined />, description: '控制跳转页面', gsW: 12, gsH: 3, gsMinW: 6, gsMinH: 1, draggable: true },
       { key: 'news', label: '新闻动态', icon: <FileTextOutlined />, description: '新闻资讯列表', gsW: 6, gsH: 10, gsMinW: 4, gsMinH: 4, draggable: true },
       { key: 'topList', label: '排行榜', icon: <OrderedListOutlined />, description: '排名列表展示', gsW: 5, gsH: 9, gsMinW: 3, gsMinH: 4, draggable: true },
       { key: 'search', label: '搜索', icon: <SearchOutlined />, description: '搜索功能', gsW: 8, gsH: 4, gsMinW: 4, gsMinH: 2, draggable: true },
@@ -82,71 +86,98 @@ const widgetCategories: WidgetCategory[] = [
     title: '微应用小部件',
     items: [
       // 微应用支持拖拽，落下后打开选择器
-      { key: 'microApp', label: '微应用', icon: <AppstoreOutlined />, description: '嵌入微前端应用', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
+      { key: 'microApp', label: '微应用', icon: <AppstoreOutlined />, description: '嵌入微应用', gsW: 6, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
     ]
   },
   {
     title: '悬浮模块',
     items: [
       // 悬浮模块支持拖拽，落下后打开选择器或直接添加
-      { key: 'floating-microApp', label: '微应用（悬浮）', icon: <RobotOutlined />, description: '悬浮窗口微应用', draggable: true },
+      { key: 'floating-microApp', label: '微应用（悬浮）', icon: <RobotOutlined />, description: '悬浮微应用', draggable: true },
       { key: 'floating-assistantHub', label: '助手中心', icon: <RobotOutlined />, description: '智能助手入口', draggable: true },
     ]
   },
 ];
 
 const WidgetDrawer: React.FC<WidgetDrawerProps> = ({ open, onClose, onSelect }) => {
+  const [collapsedMap, setCollapsedMap] = useState(() =>
+    Object.fromEntries(widgetCategories.map((category) => [category.title, false]))
+  );
+
   const handleSelect = (key: string) => {
     onSelect(key);
-    onClose();
   };
 
+  const handleToggleCategory = (title: string) => {
+    setCollapsedMap((prev) => ({
+      ...prev,
+      [title]: !prev?.[title],
+    }));
+  };
+
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Drawer
-      title="组件库"
-      open={open}
-      onClose={onClose}
-      placement="left"
-      styles={{ wrapper: { width: 400 } }}
-      className="widget-drawer"
-      forceRender
-      mask={false}
-      keyboard={false}
-    >
+    <div className="widget-drawer">
+      <div className="widget-drawer__header">
+        <div className="widget-drawer__title">
+          <AppstoreOutlined />
+          <span>组件库</span>
+        </div>
+        <Button type="text" icon={<CloseOutlined />} onClick={onClose} />
+      </div>
       <div className="widget-drawer-content">
         {widgetCategories.map((category) => (
           <div key={category.title} className="widget-category">
-            <div className="category-title">{category.title}</div>
-            <div className="widget-grid">
-              {category.items.map((item) => (
-                <div
-                  key={item.key}
-                  className={`widget-card ${item.draggable ? 'widget-drag-item' : ''}`}
-                  onClick={() => handleSelect(item.key)}
-                  // GridStack 拖拽属性 - 使用 data-gs-widget 传递完整配置
-                  data-widget-type={item.key}
-                  data-gs-widget={item.draggable ? JSON.stringify({
-                    w: item.gsW || 4,
-                    h: item.gsH || 4,
-                    minW: item.gsMinW || 1,
-                    minH: item.gsMinH || 1,
-                    content: item.label, // 拖拽预览时显示的内容
-                  }) : undefined}
-                >
-                  <div className="widget-card-icon">{item.icon}</div>
-                  <div className="widget-card-info">
-                    <div className="widget-card-label">{item.label}</div>
-                    {item.description && (
-                      <div className="widget-card-desc">{item.description}</div>
-                    )}
+            <button
+              type="button"
+              className="widget-category__header"
+              onClick={() => handleToggleCategory(category.title)}
+            >
+              <div className="widget-category__left">
+
+                <span className="widget-category__title">{category.title}（{category.items.length}）</span>
+              </div>
+              <span className="widget-category__count">
+                <DownOutlined
+                  className={`widget-category__arrow ${collapsedMap[category.title] ? 'is-collapsed' : ''}`}
+                /></span>
+            </button>
+            {!collapsedMap[category.title] && (
+              <div className="widget-grid">
+                {category.items.map((item) => (
+                  <div
+                    key={item.key}
+                    className={`widget-card ${item.draggable ? 'widget-drag-item' : ''}`}
+                    onClick={() => handleSelect(item.key)}
+                    data-widget-type={item.key}
+                    data-gs-widget={
+                      item.draggable
+                        ? JSON.stringify({
+                          w: item.gsW || 4,
+                          h: item.gsH || 4,
+                          minW: item.gsMinW || 1,
+                          minH: item.gsMinH || 1,
+                          content: item.label,
+                        })
+                        : undefined
+                    }
+                  >
+                    <div className="widget-card-icon">{item.icon}</div>
+                    <div className="widget-card-info">
+                      <div className="widget-card-label">{item.label}</div>
+                      {item.description && <div className="widget-card-desc">{item.description}</div>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
-    </Drawer>
+    </div>
   );
 };
 

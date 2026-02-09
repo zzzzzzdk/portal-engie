@@ -105,7 +105,7 @@ const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config }) => 
     if (item.openInNew) {
       window.open(item.path, '_blank');
     } else {
-      navigate(item.path);
+      window.location.href = item.path;
     }
   };
 

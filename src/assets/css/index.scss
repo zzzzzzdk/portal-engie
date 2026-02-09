@@ -112,6 +112,11 @@ body {
   }
 }
 
+.ant-app {
+  width: 100%;
+  height: 100%;
+}
+
 // ============================================
 // 极简风格下 Ant Design 组件样式覆盖
 // 使用 ThemeProvider 注入的 --card-* 和 --widget-* CSS 变量

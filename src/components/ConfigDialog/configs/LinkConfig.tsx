@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Select, Button, InputNumber, Divider, Tooltip } from 'antd';
+import { Form, Input, Select, Button, InputNumber, Divider, Tooltip, ColorPicker } from 'antd';
 import { PlusOutlined, DeleteOutlined, RightOutlined, DownOutlined } from '@ant-design/icons';
 import { WidgetConfigProps } from './types';
 import IconRenderer from '@/components/IconRenderer';
@@ -168,10 +168,7 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
                              name={[name, 'iconColor']}
                              label="图标颜色"
                           >
-                             <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
-                                <Input type="color" style={{width: 32, padding: 0, height: 32, border: 'none', cursor: 'pointer', background: 'transparent'}} />
-                                <span style={{fontSize: 12, color: 'var(--ant-color-text-secondary)'}}>选择颜色</span>
-                             </div>
+                             <ColorPicker showText allowClear />
                           </Form.Item>
                        </div>
 

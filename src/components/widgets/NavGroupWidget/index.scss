@@ -67,8 +67,8 @@
       cursor: pointer;
 
       &:hover {
-        background-color: rgba(0, 0, 0, 0.04);
-        transform: scale(1.05);
+        // background-color: rgba(0, 0, 0, 0.04);
+        // transform: scale(1.05);
       }
     }
   }
@@ -149,7 +149,7 @@
 
       &:hover {
         filter: brightness(1.1);
-        transform: translateX(2px);
+        // transform: translateX(2px);
       }
     }
   }
@@ -192,7 +192,7 @@
     &--clickable {
       &:hover {
         filter: brightness(1.15);
-        transform: scale(1.02);
+        // transform: scale(1.02);
       }
     }
   }

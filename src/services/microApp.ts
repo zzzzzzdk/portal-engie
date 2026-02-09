@@ -1,5 +1,6 @@
 // 微应用配置相关接口服务
 import ajax from '../utils/axios.config';
+import axios from 'axios';
 import type { MicroAppMetadata } from '@/types';
 
 // ============================================
@@ -45,6 +46,18 @@ export interface EventSaveParams {
 export interface DeleteParams {
   id: string;        // 数据库ID
   type: 'app' | 'module' | 'event';
+}
+
+export interface ImportConfigResult {
+  success: boolean;
+  version?: string;
+  appCount?: number;
+  moduleCount?: number;
+  importedAt?: string;
+}
+
+export interface ExportConfigDownload {
+  download_url: string;
 }
 
 // ============================================
@@ -111,5 +124,47 @@ export const deleteMicroAppItem = (data: DeleteParams) => {
     method: 'post',
     url: '/v1/micro_apps/delete',
     data,
+  });
+};
+
+/**
+ * 导入微应用配置
+ * @param file JSON 文件
+ */
+export const importMicroAppConfig = (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return ajax<ImportConfigResult>({
+    method: 'post',
+    url: '/v1/micro_apps/import_config',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+/**
+ * 发起导出任务，返回下载链接
+ */
+export const exportMicroAppConfig = () => {
+  return ajax<ExportConfigDownload>({
+    method: 'get',
+    url: '/v1/micro_apps/export_config',
+  });
+};
+
+/**
+ * 根据 download_url 下载导出文件
+ */
+export const downloadMicroAppConfig = (downloadUrl: string) => {
+  const isAbsolute = /^https?:\/\//i.test(downloadUrl);
+  const finalUrl = isAbsolute
+    ? downloadUrl
+    : downloadUrl.startsWith('/')
+      ? downloadUrl
+      : `/${downloadUrl}`;
+  return axios.get(finalUrl, {
+    responseType: 'blob',
   });
 };

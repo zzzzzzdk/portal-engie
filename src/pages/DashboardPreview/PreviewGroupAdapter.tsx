@@ -49,6 +49,17 @@ const PreviewGroupAdapter: React.FC<PreviewGroupAdapterProps> = ({ groupId }) =>
       style.padding = config.padding;
     }
 
+    // 背景模糊度
+    if (config.backdropBlur !== undefined && config.backdropBlur !== null) {
+      if (config.backdropBlur > 0) {
+        style.backdropFilter = `blur(${config.backdropBlur}px)`;
+        style.WebkitBackdropFilter = `blur(${config.backdropBlur}px)`;
+      } else {
+        style.backdropFilter = 'none';
+        style.WebkitBackdropFilter = 'none';
+      }
+    }
+
     return style;
   }, [group?.config]);
 
@@ -61,7 +72,7 @@ const PreviewGroupAdapter: React.FC<PreviewGroupAdapterProps> = ({ groupId }) =>
       style.color = config.titleColor;
     }
     // 处理字符串和数字类型的 fontSize（API 返回可能是字符串）
-    if (config.titleFontSize && config.titleFontSize) {
+    if (config.titleFontSize !== undefined && config.titleFontSize !== null) {
       const fontSize = Number(config.titleFontSize);
       if (!isNaN(fontSize)) {
         style.fontSize = fontSize;

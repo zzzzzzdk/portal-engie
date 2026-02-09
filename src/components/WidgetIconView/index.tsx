@@ -8,7 +8,6 @@ import { getWidgetIcon } from '@/utils/widgetHelpers';
 import { WidgetIconConfig } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import { useStore } from '@/store/useStore';
-import ConfigDialog from '@/components/ConfigDialog';
 import IconRenderer, { getIconValueType } from '@/components/IconRenderer';
 import clsx from 'clsx';
 import './index.scss';
@@ -28,10 +27,9 @@ interface WidgetIconViewProps {
 const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onClick }) => {
   const [iconConfig, setIconConfig] = useState<WidgetIconConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { removeWidget, refreshWidget } = useStore();
+  const { removeWidget, refreshWidget, openConfigPanel } = useStore();
 
   // 判断是否为小尺寸组件（w < 2 或 h < 2），小尺寸时不显示操作按钮以避免影响拖拽
   // 用户可通过右键菜单进行设置和删除操作
@@ -51,7 +49,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   const handleConfig = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setIsConfigOpen(true);
+    openConfigPanel({ type: 'widget', id: widget.id });
   };
 
   const handleDelete = (e?: React.MouseEvent) => {
@@ -268,11 +266,6 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
         </div>
       )}
 
-      <ConfigDialog
-        isOpen={isConfigOpen}
-        onClose={() => setIsConfigOpen(false)}
-        widget={widget}
-      />
     </div>
   );
 

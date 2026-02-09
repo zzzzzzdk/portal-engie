@@ -1,19 +1,93 @@
 .widget-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 16px 24px;
+  background: var(--ant-color-bg-container);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+
+    .ant-btn {
+      color: var(--ant-color-text-tertiary);
+    }
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ant-color-text, #1f1f1f);
+
+    .anticon {
+      color: var(--ant-color-primary);
+      font-size: 18px;
+    }
+  }
+
   .widget-drawer-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    overflow-y: auto;
+    padding-right: 4px;
   }
 
   .widget-category {
-    .category-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--ant-color-text-secondary);
+    padding-bottom: 4px;
+
+    &__header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+      border: none;
+      padding: 0;
       margin-bottom: 12px;
-      padding-left: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--ant-color-text-secondary);
+
+      &:hover .widget-category__title {
+        color: var(--ant-color-text);
+      }
+    }
+
+    &__left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    &__arrow {
+      transition: transform 0.2s ease;
+      color: var(--ant-color-text-tertiary);
+
+      &.is-collapsed {
+        transform: rotate(-90deg);
+      }
+    }
+
+    &__title {
+      font-size: 14px;
+      font-weight: 600;
+      color: inherit;
+    }
+
+    &__count {
+      min-width: 28px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      text-align: center;
+      color: var(--ant-color-text-secondary);
     }
 
     .widget-grid {

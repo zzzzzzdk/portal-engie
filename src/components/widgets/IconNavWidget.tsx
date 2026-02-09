@@ -94,7 +94,7 @@ const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 12,
+            // padding: 12,
             borderRadius: 12,
             transition: 'all 0.3s ease',
           }}

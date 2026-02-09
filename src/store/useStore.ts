@@ -16,6 +16,7 @@ import {
 } from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 
 // cellHeight=30 时的默认布局尺寸
 // 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
@@ -23,6 +24,7 @@ const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: numb
   clock: { w: 4, h: 6, minW: 2, minH: 3 },
   stats: { w: 10, h: 6, minW: 4, minH: 3 },
   chart: { w: 8, h: 9, minW: 4, minH: 4 },
+  carousel: { w: 40, h: 12, minW: 4, minH: 3 },
   link: { w: 5, h: 5, minW: 2, minH: 2 },
   news: { w: 6, h: 10, minW: 4, minH: 4 },
   topList: { w: 5, h: 9, minW: 3, minH: 4 },
@@ -44,7 +46,7 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
   backgroundColor: 'rgba(0, 0, 0, 0.02)',
 };
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
-const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 6, minH: 1 };
+const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 2, minH: 1 };
 const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAV_GROUP_LAYOUT = { w: 10, h: 10, x: 0, y: 0, minW: 4, minH: 4 };
 
@@ -80,15 +82,73 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
       return { ...baseConfig, title: 'Chart' };
+    case 'carousel':
+      return {
+        ...baseConfig,
+        title: '轮播图',
+        showTitle: false,
+        dataSourceType: 'static',
+        slides: [
+          {
+            id: 'slide-1',
+            title: '数字孪生驾驶舱',
+            description: '实时洞察关键指标，构建业务全景。',
+            imageUrl: `http://192.168.5.47:3003/701.jpg`,
+            buttonText: '立即查看',
+            buttonLink: '#',
+          },
+          {
+            id: 'slide-2',
+            title: 'AI 辅助决策',
+            description: '通过智能算法提升调度效率。',
+            imageUrl: `http://192.168.5.47:3003/702.jpg`,
+            buttonText: '了解更多',
+            buttonLink: '#',
+          },
+          {
+            id: 'slide-3',
+            title: '多终端实时协同',
+            description: '随时随地掌握现场动态。',
+            imageUrl: `http://192.168.5.47:3003/703.jpg`,
+            buttonText: '开启体验',
+            buttonLink: '#',
+          },
+        ],
+        autoplay: {
+          enabled: true,
+          delay: 5000,
+          pauseOnMouseEnter: true,
+          disableOnInteraction: false,
+        },
+        pagination: { enabled: true, type: 'bullets', clickable: true },
+        navigation: { enabled: true },
+        slidesPerView: 1,
+        slidesPerGroup: 1,
+        spaceBetween: 16,
+        loop: true,
+        effect: 'slide',
+        textAlign: 'left',
+        overlayStyle: 'gradient',
+        overlayColor: 'rgba(0, 0, 0, 0.45)',
+        buttonType: 'primary',
+      };
     case 'headerBar':
       return {
         ...baseConfig,
-        title: '头部栏',
+        title: '导航栏',
         showTitle: false,
-        headerTitle: '头部栏',  // 默认显示标题文字
-        textColor: '#ffffff',  // 白色文字
+        headerTitle: '导航栏',  // 默认显示标题文字
+        // textColor: '#222222',  // 白色文字
         fontFamily: 'YouSheBiaoTiHei',  // 默认字体
         backgroundType: 'gradient',
+        showNavMenu: false,
+        navDataSource: 'static',
+        navItems: [
+          { id: 'nav-1', name: '首页', url: '/' },
+          { id: 'nav-2', name: '仪表盘', url: '/dashboard' },
+          { id: 'nav-3', name: '工作台', url: '/workspace' },
+          { id: 'nav-4', name: '设置', url: '/settings' },
+        ],
         // backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',  // 默认渐变背景
       };
     case 'typography':
@@ -172,6 +232,7 @@ export const useStore = create<AppState>()(
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
+      configPanelTarget: null,
       floatingModules: [] as Widget[], // 悬浮模块列表
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
       dashboardConfig: {
@@ -532,6 +593,8 @@ export const useStore = create<AppState>()(
       setEditMode: (isEditMode: boolean) => set({ isEditMode }),
 
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
+      openConfigPanel: (target) => set({ configPanelTarget: target }),
+      closeConfigPanel: () => set({ configPanelTarget: null }),
 
       resetDashboard: () => set({
         widgets: [],
@@ -569,6 +632,7 @@ export const useStore = create<AppState>()(
         floatingModules?: Widget[];
         dashboardConfig?: any;
       }) => {
+        const sanitizedConfig = sanitizeDashboardConfig(data.dashboardConfig);
         set({
           widgets: data.widgets?.map(w => ({
             ...w,
@@ -579,7 +643,7 @@ export const useStore = create<AppState>()(
             layout: sanitizeLayout(g.layout)
           })) || [],
           floatingModules: data.floatingModules || [],
-          dashboardConfig: data.dashboardConfig || {
+          dashboardConfig: Object.keys(sanitizedConfig).length > 0 ? sanitizedConfig : {
             backgroundType: 'color',
             backgroundColor: '',
           },
@@ -809,11 +873,6 @@ export const useStore = create<AppState>()(
       name: 'portal-engine-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        widgets: state.widgets,
-        groups: state.groups,
-        floatingModules: state.floatingModules, // 持久化悬浮模块
-        globalMicroApps: state.globalMicroApps,  // 持久化全局微应用
-        dashboardConfig: state.dashboardConfig,
         floatingPanelPosition: state.floatingPanelPosition,
       }),
       // 从 localStorage 恢复时验证和清理数据

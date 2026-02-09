@@ -14,8 +14,9 @@ import {
   GridStackRender,
   useGridStackContext,
 } from '@/lib/gridstack';
-import { getPublishedDashboard, PublishedDashboard } from '@/services';
+import { getPublishedDashboard, parseDashboardSnapshot, PublishedDashboard } from '@/services';
 import { Widget, WidgetGroup, GRID_DENSITY_PRESETS } from '@/types';
+import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { PreviewDataProvider } from './PreviewDataContext';
 import PreviewWidgetAdapter from './PreviewWidgetAdapter';
 import PreviewGroupAdapter from './PreviewGroupAdapter';
@@ -23,6 +24,7 @@ import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
+import type { ThemePresetName } from '@/theme/tokens/presets';
 import 'gridstack/dist/gridstack.min.css';
 import '@/pages/DashboardGridStack/index.scss';
 import './index.scss';
@@ -126,7 +128,6 @@ const DashboardPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setEditMode } = useStore();
-  const { setThemeMode, setStyleMode, setStyleTokens } = useConfigStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<PublishedDashboard | null>(null);
@@ -134,8 +135,11 @@ const DashboardPreview: React.FC = () => {
   // 保存原始主题配置，用于退出预览时恢复
   const originalThemeRef = useRef<{
     themeMode: 'light' | 'dark';
+    themePreset: ThemePresetName;
     styleMode: 'normal' | 'minimal';
     styleTokens: any;
+    baseColors: any;
+    customTokens: any;
   } | null>(null);
 
   useEffect(() => {
@@ -150,8 +154,11 @@ const DashboardPreview: React.FC = () => {
     const currentState = useConfigStore.getState();
     originalThemeRef.current = {
       themeMode: currentState.themeMode,
+      themePreset: currentState.themePreset,
       styleMode: currentState.styleMode,
       styleTokens: currentState.styleTokens,
+      baseColors: currentState.baseColors,
+      customTokens: currentState.customTokens,
     };
 
     const fetchDashboard = async () => {
@@ -159,23 +166,46 @@ const DashboardPreview: React.FC = () => {
         setLoading(true);
         const res = await getPublishedDashboard({id});
         if (res.data) {
+          const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
+          if (!snapshot) {
+            setError('解析仪表盘配置失败');
+            return;
+          }
+          const dashboardConfig = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
+
           // 先应用发布时保存的主题配置，确保子应用初始化时能获取正确的主题状态
-          const { dashboardConfig } = res.data;
-          if (dashboardConfig) {
-            if (dashboardConfig.themeMode) {
-              setThemeMode(dashboardConfig.themeMode);
-            }
-            if (dashboardConfig.styleMode) {
-              setStyleMode(dashboardConfig.styleMode);
-            }
-            if (dashboardConfig.styleTokens) {
-              // 使用类型断言，因为存储的数据结构与 IWidgetStyleTokens 一致
-              setStyleTokens(dashboardConfig.styleTokens as any);
-            }
+          // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
+          const themeUpdate: Record<string, unknown> = {};
+          if (dashboardConfig.themeMode) {
+            themeUpdate.themeMode = dashboardConfig.themeMode;
+          }
+          if (dashboardConfig.themePreset) {
+            themeUpdate.themePreset = dashboardConfig.themePreset;
+          }
+          if (dashboardConfig.styleMode) {
+            themeUpdate.styleMode = dashboardConfig.styleMode;
+          }
+          // styleTokens 需要验证结构完整性
+          if (dashboardConfig.styleTokens?.widget && dashboardConfig.styleTokens?.card) {
+            themeUpdate.styleTokens = dashboardConfig.styleTokens;
+          }
+          if (dashboardConfig.baseColors) {
+            themeUpdate.baseColors = dashboardConfig.baseColors;
+          }
+          if (Object.keys(themeUpdate).length > 0) {
+            useConfigStore.setState(themeUpdate);
           }
 
           // 再设置仪表盘数据，触发组件渲染
-          setDashboardData(res.data);
+          setDashboardData({
+            id: res.data.id,
+            title: res.data.title,
+            publishTime: res.data.publishTime,
+            widgets: snapshot.widgets,
+            groups: snapshot.groups,
+            floatingModules: snapshot.floatingModules,
+            dashboardConfig,
+          });
         } else {
           setError(res.message || '获取仪表盘数据失败');
         }
@@ -191,11 +221,14 @@ const DashboardPreview: React.FC = () => {
     // 组件卸载时恢复原始主题配置
     return () => {
       if (originalThemeRef.current) {
-        setThemeMode(originalThemeRef.current.themeMode);
-        setStyleMode(originalThemeRef.current.styleMode);
-        if (originalThemeRef.current.styleTokens) {
-          setStyleTokens(originalThemeRef.current.styleTokens);
-        }
+        useConfigStore.setState({
+          themeMode: originalThemeRef.current.themeMode,
+          themePreset: originalThemeRef.current.themePreset,
+          styleMode: originalThemeRef.current.styleMode,
+          styleTokens: originalThemeRef.current.styleTokens,
+          baseColors: originalThemeRef.current.baseColors,
+          customTokens: originalThemeRef.current.customTokens,
+        });
       }
     };
   }, [id]);

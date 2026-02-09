@@ -1,13 +1,34 @@
-import React, { useMemo, useCallback } from 'react';
-import { Typography, Avatar, Dropdown, Space, MenuProps, theme, Radio } from 'antd';
-import { UserOutlined, LogoutOutlined, DownOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons';
+import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import { Typography, Avatar, Dropdown, Space, MenuProps, theme, Radio, Menu } from 'antd';
+import { UserOutlined, LogoutOutlined, DownOutlined, SunOutlined, MoonOutlined, MoreOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import IconRenderer from '@/components/IconRenderer';
-import { WidgetConfig } from '@/types';
+import { WidgetConfig, NavItem } from '@/types';
 import { useSystemStore } from '@/store/useSystemStore';
 import { useTheme } from '@/theme';
 import './index.scss';
 
 const { Text } = Typography;
+
+interface HeaderNavItem extends NavItem {
+  path?: string;
+}
+
+interface HeaderBarWidgetConfig extends WidgetConfig {
+  headerTitle?: string;
+  headerAlignment?: 'left' | 'center';
+  headerFontSize?: number;
+  fontFamily?: string;
+  textColor?: string;
+  showThemeSwitcher?: boolean;
+  showUserProfile?: boolean;
+  navItems?: HeaderNavItem[];
+  navDataSource?: 'static' | 'api';
+  navApiEndpoint?: string;
+  navGroupId?: string;
+  navTextColor?: string;
+  showNavMenu?: boolean;
+}
 
 interface HeaderBarWidgetProps {
   config?: WidgetConfig;
@@ -23,6 +44,10 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     { label: <SunOutlined />, value: 'light' },
     { label: <MoonOutlined />, value: 'dark' },
   ];
+
+  const headerConfig = config as HeaderBarWidgetConfig | undefined;
+  const [navItems, setNavItems] = useState<HeaderNavItem[]>(headerConfig?.navItems || []);
+  const [navLoading, setNavLoading] = useState(false);
 
   const renderIcon = () => {
     if (!config?.icon) {
@@ -115,18 +140,108 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     onClick: handleMenuClick,
   };
 
-  const alignment = config?.headerAlignment || 'left';
+  const navKeyMap = useMemo(() => {
+    return navItems.reduce<Record<string, HeaderNavItem>>((map, item, index) => {
+      const key = item.id || item.url || item.path || item.name || `nav-${index}`;
+      map[key] = item;
+      return map;
+    }, {});
+  }, [navItems]);
+
+  const navMenuItems = useMemo(() => {
+    return navItems.map((item, index) => ({
+      key: (item.id || item.url || item.path || item.name) + `nav-${index}`,
+      label: item.name || '未命名',
+    }));
+  }, [navItems]);
+
+  const alignment = headerConfig?.headerAlignment || 'left';
   const showUserProfile = config?.showUserProfile;
+  const showNavMenu = headerConfig?.showNavMenu;
+
+  // 导航数据加载
+  useEffect(() => {
+    if (!showNavMenu) {
+      setNavItems([]);
+      setNavLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const hasStaticNav = Array.isArray(headerConfig?.navItems) && headerConfig?.navItems.length;
+    const dataSource = headerConfig?.navDataSource || (hasStaticNav ? 'static' : 'api');
+
+    const loadNavItems = async () => {
+      if (dataSource === 'static') {
+        setNavItems(headerConfig?.navItems || []);
+        return;
+      }
+
+      const endpoint =
+        headerConfig?.navApiEndpoint ||
+        (headerConfig?.navGroupId ? `/api/nav-group/${headerConfig.navGroupId}` : undefined);
+
+      if (!endpoint) {
+        setNavItems([]);
+        return;
+      }
+
+      setNavLoading(true);
+      try {
+        const response = await axios.get(endpoint);
+        const payload = Array.isArray(response.data?.data)
+          ? response.data.data
+          : Array.isArray(response.data)
+            ? response.data
+            : [];
+
+        if (isMounted) {
+          setNavItems(payload as HeaderNavItem[]);
+        }
+      } catch (error) {
+        console.error('HeaderBarWidget: 导航数据加载失败', error);
+        if (isMounted) {
+          setNavItems([]);
+        }
+      } finally {
+        if (isMounted) {
+          setNavLoading(false);
+        }
+      }
+    };
+
+    loadNavItems();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navGroupId]);
+
+  const handleNavClick: MenuProps['onClick'] = ({ key }) => {
+    const target = navKeyMap[key];
+    const targetUrl = target?.url || target?.path;
+    if (!target || !targetUrl) {
+      return;
+    }
+
+    const shouldOpenNewTab = target.openInNew ?? /^https?:\/\//.test(targetUrl);
+    if (shouldOpenNewTab) {
+      window.open(targetUrl, '_blank');
+    } else {
+      window.location.href = targetUrl;
+    }
+  };
+
+  const navTextColor = headerConfig?.navTextColor || headerConfig?.textColor || config?.textColor || token.colorTextBase;
 
   return (
     <div
-      className={`header-bar-widget ${alignment === 'center' ? 'align-center' : ''}`}
+      className={`header-bar-widget alignment-${alignment}`}
       style={{
         ...backgroundStyle,
       }}
     >
       <div className="header-bar-content">
-        {/* Title Section */}
         <div className="title-section">
           {renderIcon()}
           <Typography.Title
@@ -138,13 +253,33 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
               fontSize: config?.headerFontSize || 24,
             }}
           >
-            {config?.headerTitle || ''}
+            {headerConfig?.headerTitle || ''}
           </Typography.Title>
         </div>
 
-        {/* Right Section - Theme Switcher & User Profile */}
+        {showNavMenu && (
+          <div
+            className="nav-section"
+            style={{ ['--header-nav-color' as string]: navTextColor } as React.CSSProperties}
+          >
+            {navLoading ? (
+              <Text type="secondary">导航加载中...</Text>
+            ) : navMenuItems.length > 0 ? (
+              <Menu
+                mode="horizontal"
+                selectable={false}
+                items={navMenuItems}
+                onClick={handleNavClick}
+                className="header-nav-menu"
+                overflowedIndicator={<MoreOutlined />}
+              />
+            ) : (
+              <Text type="secondary">暂无导航配置</Text>
+            )}
+          </div>
+        )}
+
         <div className="right-section">
-          {/* Theme Switcher */}
           {config?.showThemeSwitcher && (
             <div className="theme-switcher-section">
               <Radio.Group
@@ -157,7 +292,6 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
             </div>
           )}
 
-          {/* User Profile Section */}
           {showUserProfile && (
             <div className="user-profile-section">
               <Dropdown menu={userMenuProps} trigger={['click']}>

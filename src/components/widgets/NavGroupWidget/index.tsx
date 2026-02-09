@@ -184,13 +184,12 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
     }
   }, [widget?.refreshCount, loadData]);
 
-  // 点击导航项
+  // 点击导航项（默认新窗口打开）
   const handleItemClick = (item: NavItem) => {
     if (item.url) {
       console.log('导航组点击:', item.name, item.url);
-      // 内网环境，仅输出日志
-      // 如需跳转可取消下方注释
-      if (item.openInNew) {
+      // 默认新窗口打开，除非明确设置 openInNew: false
+      if (item.openInNew !== false) {
         window.open(item.url, '_blank');
       } else {
         window.location.href = item.url;
@@ -225,6 +224,9 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
       background: bgValue,
       width: iconSize + 36,
       height: iconSize + 36,
+      borderRadius: itemBorderRadius,
+      backdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
+      WebkitBackdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
     };
   };
 

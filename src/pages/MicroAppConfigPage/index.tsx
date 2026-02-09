@@ -14,6 +14,7 @@ import {
   Upload,
   Tabs,
   Switch,
+  Typography,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,8 +22,8 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   UploadOutlined,
-  AppstoreOutlined,
   ReloadOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -31,11 +32,15 @@ import {
   saveModule,
   saveEvent,
   deleteMicroAppItem,
+  importMicroAppConfig,
+  exportMicroAppConfig,
+  downloadMicroAppConfig,
 } from '@/services/microApp';
 import { microAppConfigLoader, MICRO_APP_CONFIG_CHANGED_EVENT, MicroAppConfigChangeDetail } from '@/utils/microAppConfig';
 import type { EmittableEvent, MicroAppModule, MicroAppSystem, MicroAppMetadata } from '@/types';
 import IconPicker from '@/components/IconPicker';
 import { getIconValueType } from '@/components/IconPicker/types';
+import { useTableScroll } from '@/hooks/useTableScroll';
 import './index.scss';
 
 // 使用 MicroAppMetadata 作为 MicroAppConfig 的别名
@@ -43,6 +48,8 @@ type MicroAppConfig = MicroAppMetadata;
 
 const MicroAppConfigPage: React.FC = () => {
   const [config, setConfig] = useState<MicroAppConfig>({ version: '1.0.0', apps: [] });
+  const { scrollY } = useTableScroll({ headerHeight: 191, footerHeight: 44 })
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [systemModalOpen, setSystemModalOpen] = useState(false);
@@ -125,33 +132,67 @@ const MicroAppConfigPage: React.FC = () => {
   }, []);
 
   // 导出配置
-  const handleExport = () => {
-    const dataStr = JSON.stringify(config, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'micro-apps.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    message.success('配置已导出');
+  const handleExport = async () => {
+    const hide = message.loading('正在导出配置...', 0);
+    try {
+      const res = await exportMicroAppConfig();
+      if (res.code !== 20000 || !res.data?.download_url) {
+        throw new Error(res.message || '导出链接获取失败');
+      }
+      const downloadRes = await downloadMicroAppConfig(res.data.download_url);
+      const blob = downloadRes.data;
+      if (!(blob instanceof Blob)) {
+        throw new Error('导出数据异常');
+      }
+      let filename = 'micro-apps-config.json';
+      const headerAccessor = downloadRes.headers as (Record<string, string | undefined> & {
+        get?: (name: string) => string | null;
+      });
+      const disposition = headerAccessor?.get
+        ? headerAccessor.get('content-disposition') || headerAccessor.get('Content-Disposition') || undefined
+        : headerAccessor?.['content-disposition'] || headerAccessor?.['Content-Disposition'];
+      if (disposition) {
+        const matched = disposition.match(/filename="?([^"]+)"?/i);
+        if (matched?.[1]) {
+          filename = decodeURIComponent(matched[1]);
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success('配置已导出');
+    } catch (error) {
+      console.error(error);
+      message.error(error instanceof Error ? error.message : '导出配置失败');
+    } finally {
+      hide();
+    }
   };
 
-  // 导入配置 - 导入后需要逐个调用保存接口
-  const handleImport = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const importedConfig = JSON.parse(e.target?.result as string) as MicroAppConfig;
-        // 先更新本地状态
-        updateConfigState(importedConfig);
-        message.success('配置已导入到本地，请手动保存各项配置');
-      } catch (error) {
-        message.error('配置文件格式错误');
+  // 导入配置 - 调用导入接口并刷新配置
+  const handleImport = async (file: File) => {
+    const hide = message.loading('正在导入配置...', 0);
+    try {
+      const res = await importMicroAppConfig(file);
+      if (res.code === 20000) {
+        const stats = res.data;
+        message.success(`导入成功：${stats?.appCount ?? 0} 个系统，${stats?.moduleCount ?? 0} 个模块`);
+        await loadConfig();
+      } else {
+        message.error(res.message || '导入配置失败');
       }
-    };
-    reader.readAsText(file);
-    return false; // 阻止自动上传
+    } catch (error) {
+      console.error(error);
+      message.error('导入配置失败');
+    } finally {
+      hide();
+    }
+    return false; // 阻止 Upload 自动上传
   };
 
   // 添加/编辑系统 - 使用saveApp API
@@ -329,18 +370,22 @@ const MicroAppConfigPage: React.FC = () => {
     }
   };
 
-  // 系统表格列
   const systemColumns: ColumnsType<MicroAppSystem> = [
     {
-      title: '系统ID',
+      title: '系统',
       key: 'systemId',
-      width: 150,
-      render: (_text, record) => record.systemId || record.id,
+      width: 180,
+      render: (_text, record) => (
+        <div className="system-id-cell">
+          <div className="system-id-cell__name">{record.name}</div>
+          <div className="system-id-cell__id">{record.systemId || record.id}</div>
+        </div>
+      ),
     },
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '描述', dataIndex: 'description', key: 'description' },
-    { title: '图标', dataIndex: 'icon', key: 'icon' },
-    { title: '分类', dataIndex: 'category', key: 'category' },
+    { title: '名称', dataIndex: 'name', key: 'name', responsive: ['lg'] },
+    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: '图标', dataIndex: 'icon', key: 'icon', width: 140 },
+    { title: '分类', dataIndex: 'category', key: 'category', width: 120 },
     {
       title: '模块数量',
       key: 'moduleCount',
@@ -349,7 +394,7 @@ const MicroAppConfigPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 200,
       render: (_text, record) => (
         <Space>
           <Button
@@ -378,15 +423,17 @@ const MicroAppConfigPage: React.FC = () => {
     },
   ];
 
-  // 渲染模块卡片
   const renderModules = (system: MicroAppSystem) => {
     return (
       <div className="modules-section">
         <div className="modules-header">
-          <h3>模块列表</h3>
+          <div>
+            <h3>模块列表</h3>
+            <p className="modules-header__desc">围绕 {system.name} 的业务模块</p>
+          </div>
           <Button
             type="primary"
-            size="small"
+            className="modules-header__add"
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingModule({ systemId: system.id, module: null });
@@ -403,11 +450,15 @@ const MicroAppConfigPage: React.FC = () => {
               key={module.id}
               size="small"
               className="module-card"
-              title={module.name}
-              extra={
-                <Space>
+            >
+              <div className="module-card__header">
+                <div>
+                  <div className="module-card__title">{module.name}</div>
+                  <div className="module-card__meta">ID: {module.moduleId || module.id}</div>
+                </div>
+                <Space size={8}>
                   <Button
-                    type="link"
+                    type="text"
                     size="small"
                     icon={<EditOutlined />}
                     onClick={() => {
@@ -421,25 +472,34 @@ const MicroAppConfigPage: React.FC = () => {
                     description="删除后该模块下的所有事件也将被删除"
                     onConfirm={() => handleDeleteModule(module.id)}
                   >
-                    <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                    <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                   </Popconfirm>
                 </Space>
-              }
-            >
-              <p><strong>模块ID:</strong> {module.moduleId || module.id}</p>
-              <p><strong>描述:</strong> {module.description}</p>
-              <p><strong>URL:</strong> {module.url}</p>
-              <p><strong>Entry:</strong> {module.entry}</p>
-              <p>
-                <strong>默认尺寸:</strong> {module.defaultSize?.w || 6} x {module.defaultSize?.h || 4}
-              </p>
-              {module.forceIconOnly && (
-                <Tag color="purple">图标模式</Tag>
-              )}
+              </div>
+              <div className="module-card__body">
+                <Typography.Paragraph type="secondary">
+                  描述：<Typography.Text type="secondary">{module.description || '无'}</Typography.Text>
+                </Typography.Paragraph>
+                <Typography.Paragraph className="module-card__link">
+                  <LinkOutlined />
+                  <a href={module.url} target="_blank" rel="noreferrer">{module.url}</a>
+                </Typography.Paragraph>
+                <Typography.Paragraph>
+                  <Typography.Text type="secondary">Entry：</Typography.Text>
+                  {module.entry || '无'}
+                </Typography.Paragraph>
+                <Typography.Paragraph>
+                  <Typography.Text type="secondary">默认尺寸：</Typography.Text>
+                  {module.defaultSize?.w || 6} × {module.defaultSize?.h || 4}
+                </Typography.Paragraph>
+                {module.forceIconOnly && (
+                  <Tag color="purple">图标模式</Tag>
+                )}
+              </div>
 
-              {/* 事件管理 */}
               <Tabs
                 size="small"
+                className="module-card__tabs"
                 items={[
                   {
                     key: 'emittable',
@@ -528,53 +588,46 @@ const MicroAppConfigPage: React.FC = () => {
 
   return (
     <div className="micro-app-config-page">
-      <Card
-        title={
-          <Space>
-            <AppstoreOutlined />
-            微应用配置管理
-          </Space>
-        }
-        extra={
-          <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadConfig}
-              loading={loading}
-            >
-              刷新
-            </Button>
-            <Upload beforeUpload={handleImport} showUploadList={false}>
-              <Button icon={<UploadOutlined />}>导入配置</Button>
-            </Upload>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>
-              导出配置
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingSystem(null);
-                systemForm.resetFields();
-                setSystemModalOpen(true);
-              }}
-            >
-              添加系统
-            </Button>
-          </Space>
-        }
-      >
-        <Table
-          columns={systemColumns}
-          dataSource={config.apps}
-          rowKey="id"
-          loading={loading}
-          expandable={{
-            expandedRowRender: renderModules,
+      <div className="page-toolbar">
+        <Space size={12}>
+          <Button icon={<ReloadOutlined />} onClick={loadConfig} loading={loading}>
+            刷新
+          </Button>
+          <Upload beforeUpload={handleImport} showUploadList={false}>
+            <Button icon={<UploadOutlined />}>导入配置</Button>
+          </Upload>
+          <Button icon={<DownloadOutlined />} onClick={handleExport}>
+            导出配置
+          </Button>
+        </Space>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditingSystem(null);
+            systemForm.resetFields();
+            setSystemModalOpen(true);
           }}
-          pagination={false}
-        />
-      </Card>
+        >
+          添加系统
+        </Button>
+      </div>
+
+      <Table
+        bordered
+        columns={systemColumns}
+        dataSource={config.apps}
+        rowKey="id"
+        loading={loading}
+        expandable={{
+          expandedRowRender: renderModules,
+        }}
+        pagination={false}
+        className="system-table"
+        scroll={{
+          y: scrollY
+        }}
+      />
 
       {/* 系统编辑对话框 */}
       <Modal
