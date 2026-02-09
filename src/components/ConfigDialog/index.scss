@@ -154,6 +154,7 @@
       gap: 12px;
       cursor: pointer;
       min-height: 48px;
+      justify-content: space-between;
 
       .header-icon {
         color: var(--ant-color-text-tertiary);
@@ -233,6 +234,7 @@
     .card-body {
       display: none;
       border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+      padding: 16px;
       
       .body-content {
          padding: 20px; // More padding

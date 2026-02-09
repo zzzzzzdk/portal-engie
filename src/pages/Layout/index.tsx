@@ -219,7 +219,7 @@ const Layout: React.FC = () => {
       dataTable: '数据表格',
       cardGrid: '卡片网格',
       customForm: '自定义表单',
-      headerBar: '头部栏',
+      headerBar: '导航栏',
       pageNavigator: '页面切换工具',
       iconNav: '图标导航',
       navGroup: '导航组',

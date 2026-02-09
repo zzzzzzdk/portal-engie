@@ -13,6 +13,7 @@ import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
 import ChartWidget from '@/components/widgets/ChartWidget';
+import CarouselWidget from '@/components/widgets/CarouselWidget';
 import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
 import TopListWidget from '@/components/widgets/TopListWidget';
@@ -45,8 +46,8 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
   const { w, h } = resolvedWidget.layout;
   const forceIconOnly = resolvedWidget.config.forceIconOnly;
 
-  // iconNav 类型本身就是图标导航组件，不需要切换到 icon-only 视图
-  const skipIconOnlyMode = type === 'iconNav';
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'navGroup', 'headerBar', 'carousel'];
+  const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
   if (!skipIconOnlyMode && (forceIconOnly || isIconOnlyMode(w, h))) {
@@ -70,6 +71,8 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <StatsWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
+      case 'carousel':
+        return <CarouselWidget {...commonProps} />;
       case 'link':
         return <LinkWidget {...commonProps} />;
       case 'news':

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
@@ -14,7 +14,7 @@ import BackgroundSettings from '@/components/BackgroundSettings';
 import AssistantHubConfig from '@/components/AssistantHubConfig';
 import IconPicker from '@/components/IconPicker';
 import { getIconValueType } from '@/components/IconPicker/types';
-import { LinkConfig, SearchConfig, CustomFormConfig, DataTableConfig } from './configs';
+import { LinkConfig, SearchConfig, CustomFormConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -49,6 +49,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules, groups, updateGroup, updateGroupConfig } = useStore();
   const styleTokens = useConfigStore((state) => state.styleTokens);
   const [form] = Form.useForm();
+  const showNavMenuValue = Form.useWatch('showNavMenu', form);
+  const navItemsValue = Form.useWatch('navItems', form);
   const [fileList, setFileList] = useState<any[]>([]);
   const [bgUploading, setBgUploading] = useState(false);
 
@@ -147,6 +149,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         const initialValues = {
           title: widget.title,
           showTitle: widget.config.showTitle !== false,
+          showNavMenu: widget.config.showNavMenu ?? false,
           refreshInterval: widget.config.refreshInterval,
           systemId: widget.config.systemId,
           moduleId: widget.config.moduleId,
@@ -208,13 +211,16 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           iconColor: normalizeColorForForm(widget.config.iconColor),
           itemIconColor: normalizeColorForForm(widget.config.itemIconColor),
           itemColor: normalizeColorForForm(widget.config.itemColor),
-          backgroundColor: normalizeColorForForm(widget.config.backgroundColor),
+          backgroundColor: normalizeColorForForm(widget.config.backgroundColor, styleTokens?.widget?.background || '#FFFFFF'),
           // 标题颜色默认值
           titleColor: normalizeColorForForm(widget.config.titleColor, '#222222'),
           // navGroup 导航项样式颜色（使用风格 Token 默认值）
           itemBgColor: normalizeColorForForm(widget.config.itemBgColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemBgColor : undefined),
           itemTextColor: normalizeColorForForm(widget.config.itemTextColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemTextColor : undefined),
           displayMode: widget.config.displayMode || 'text',
+          navDataSource: widget.config.navDataSource || (widget.config.navItems?.length ? 'static' : 'api'),
+          navItems: widget.config.navItems || [],
+          navTextColor: normalizeColorForForm(widget.config.navTextColor),
         };
 
         form.setFieldsValue({
@@ -276,7 +282,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
       }
     }
-  }, [isOpen, widget, form, isFloatingModule, isGroup, group, navGroupItemDefaults]);
+  }, [isOpen, widget, form, isFloatingModule, isGroup, group, navGroupItemDefaults, styleTokens]);
 
   const handleOk = async () => {
     try {
@@ -343,6 +349,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           padding,
         });
 
+        message.success('配置保存成功');
         return;
       }
 
@@ -598,9 +605,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           if (normalizedRestConfig.itemTextColor) {
             normalizedRestConfig.itemTextColor = normalizeColor(normalizedRestConfig.itemTextColor);
           }
+          if (normalizedRestConfig.navTextColor) {
+            normalizedRestConfig.navTextColor = normalizeColor(normalizedRestConfig.navTextColor);
+          }
           // pageNavigator 的颜色字段
           if (normalizedRestConfig.itemColor) {
             normalizedRestConfig.itemColor = normalizeColor(normalizedRestConfig.itemColor);
+          }
+          if (normalizedRestConfig.backgroundColor) {
+            normalizedRestConfig.backgroundColor = normalizeColorValue(
+              normalizedRestConfig.backgroundColor,
+              normalizedBgColor,
+            );
           }
 
           // navGroup 特殊处理：数据来源和静态导航项
@@ -622,6 +638,29 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               // 接口模式：清除 staticItems
               normalizedRestConfig.staticItems = undefined;
             }
+          } else if (widget.type === 'headerBar') {
+            const navSource = normalizedRestConfig.navDataSource || (normalizedRestConfig.navItems?.length ? 'static' : 'api');
+            if (navSource === 'static') {
+              normalizedRestConfig.navApiEndpoint = undefined;
+              normalizedRestConfig.navGroupId = undefined;
+              if (!Array.isArray(normalizedRestConfig.navItems)) {
+                normalizedRestConfig.navItems = [];
+              }
+            } else {
+              normalizedRestConfig.navItems = undefined;
+            }
+          }
+
+          if (
+            widget.type === 'carousel' &&
+            normalizedRestConfig.slides &&
+            Array.isArray(normalizedRestConfig.slides)
+          ) {
+            normalizedRestConfig.slides = normalizedRestConfig.slides.map((slide: any) => ({
+              ...slide,
+              badgeColor: normalizeColorValue(slide.badgeColor),
+              overlayColor: normalizeColorValue(slide.overlayColor),
+            }));
           }
 
           updateWidget(widget.id, {
@@ -643,6 +682,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
       }
 
+      message.success('配置保存成功');
     } catch (error) {
       console.error('Failed to save widget config:', error);
     }
@@ -710,7 +750,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     const hasComponentConfig = [
       'typography', 'headerBar', 'link', 'dataTable',
       'customForm', 'pageNavigator', 'microApp', 'search',
-      'iconNav', 'navGroup'
+      'iconNav', 'navGroup', 'carousel'
     ].includes(widget.type) || isAssistantHub;
 
     if (!hasComponentConfig) {
@@ -801,23 +841,31 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                </Form.Item>
             </div>
             <div className="form-row-2">
-               <Form.Item name="fontFamily" label="字体">
-                 <Select showSearch allowClear options={[
-                     { value: 'YouSheBiaoTiHei', label: 'YouSheBiaoTiHei (优设标题黑)' },
-                     { value: 'Microsoft YaHei', label: 'Microsoft YaHei (微软雅黑)' },
-                     { value: 'SimHei', label: 'SimHei (黑体)' },
-                     { value: 'Arial', label: 'Arial' },
-                     { value: 'sans-serif', label: 'sans-serif (无衬线)' },
-                   ]}
-                 />
-               </Form.Item>
-               <Form.Item name="showThemeSwitcher" label="显示换肤按钮" valuePropName="checked">
-                 <Switch />
-               </Form.Item>
+              <Form.Item name="fontFamily" label="字体">
+                <Select showSearch allowClear options={[
+                    { value: 'YouSheBiaoTiHei', label: 'YouSheBiaoTiHei (优设标题黑)' },
+                    { value: 'Microsoft YaHei', label: 'Microsoft YaHei (微软雅黑)' },
+                    { value: 'SimHei', label: 'SimHei (黑体)' },
+                    { value: 'Arial', label: 'Arial' },
+                    { value: 'sans-serif', label: 'sans-serif (无衬线)' },
+                  ]}
+                />
+              </Form.Item>
+              <Form.Item name="showThemeSwitcher" label="显示换肤按钮" valuePropName="checked">
+                <Switch />
+              </Form.Item>
             </div>
-            <Form.Item name="icon" label="图标">
-              <IconPicker mode="simple" placeholder="选择图标" />
+            <Form.Item
+              name="showNavMenu"
+              label="显示导航区域"
+              tooltip="开启后可在“导航配置”页签设置数据来源与内容"
+              valuePropName="checked"
+            >
+              <Switch />
             </Form.Item>
+              <Form.Item name="icon" label="图标">
+                <IconPicker mode="simple" placeholder="选择图标" />
+              </Form.Item>
             <Form.Item name="backgroundImage" label="背景图片">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <Upload
@@ -862,6 +910,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         )}
 
         {widget.type === 'link' && <LinkConfig form={form} widget={widget} />}
+        {widget.type === 'carousel' && <CarouselConfig form={form} widget={widget} />}
 
         {widget.type === 'dataTable' && <DataTableConfig form={form} widget={widget} />}
 
@@ -1159,10 +1208,126 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     );
   };
 
+  const renderHeaderNavTab = () => {
+    if (widget.type !== 'headerBar') {
+      return <div className="empty-hint">当前组件无导航配置</div>;
+    }
+
+    if (!showNavMenuValue) {
+      return <div className="empty-hint">请先在“组件配置”中开启“显示导航区域”开关</div>;
+    }
+
+    return (
+      <>
+        <Form.Item name="navDataSource" label="数据来源" initialValue="api">
+          <Radio.Group>
+            <Radio value="api">接口获取</Radio>
+            <Radio value="static">手动配置</Radio>
+          </Radio.Group>
+        </Form.Item>
+        <Form.Item name="navTextColor" label="文字颜色">
+          <ColorPicker showText allowClear />
+        </Form.Item>
+        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.navDataSource !== cur.navDataSource}>
+          {({ getFieldValue }) => {
+            const source = getFieldValue('navDataSource') || 'api';
+            if (source === 'static') {
+              return (
+                <Form.List name="navItems">
+                  {(fields, { add, remove }) => (
+                    <>
+                      <Collapse
+                        bordered={false}
+                        className="nav-items-collapse"
+                        expandIconPosition="end"
+                      >
+                        {fields.map(({ key, name, ...restField }, index) => {
+                          const navName = navItemsValue?.[name]?.name || `导航项 ${index + 1}`;
+                          return (
+                            <Collapse.Panel
+                              key={key}
+                              header={navName}
+                              extra={
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    remove(name);
+                                  }}
+                                />
+                              }
+                            >
+                              <div className="config-item-card">
+                                <div className="card-content" style={{ padding: 12 }}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'name']}
+                                    label="导航名称"
+                                    rules={[{ required: true, message: '请输入导航名称' }]}
+                                  >
+                                    <Input placeholder="例如：仪表盘" />
+                                  </Form.Item>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'url']}
+                                    label="跳转链接"
+                                    rules={[{ required: true, message: '请输入跳转链接' }]}
+                                  >
+                                    <Input placeholder="/dashboard 或 https://example.com" />
+                                  </Form.Item>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'openInNew']}
+                                    label="新窗口打开"
+                                    valuePropName="checked"
+                                  >
+                                    <Switch />
+                                  </Form.Item>
+                                </div>
+                              </div>
+                            </Collapse.Panel>
+                          );
+                        })}
+                      </Collapse>
+                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} style={{ marginTop: 12 }}>
+                        添加导航项
+                      </Button>
+                    </>
+                  )}
+                </Form.List>
+              );
+            }
+            return (
+              <>
+                <Form.Item
+                  name="navGroupId"
+                  label="导航组 ID"
+                  extra="填写后默认请求 /api/nav-group/{ID}"
+                >
+                  <Input placeholder="例如：main" />
+                </Form.Item>
+                <Form.Item
+                  name="navApiEndpoint"
+                  label="接口地址"
+                  extra="优先使用此地址，不填写则根据导航组 ID 拼接"
+                >
+                  <Input placeholder="/api/nav-group/main" />
+                </Form.Item>
+              </>
+            );
+          }}
+        </Form.Item>
+      </>
+    );
+  };
+
   const renderDataTab = () => {
     const hasDataConfig = [
       'chart', 'stats', 'customForm', 'dataTable',
-      'microApp', 'search', 'navGroup'
+      'microApp', 'search', 'navGroup', 'carousel'
     ].includes(widget.type);
 
     if (!hasDataConfig) {
@@ -1300,6 +1465,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 }}
               </Form.Item>
             </>
+         )}
+
+         {widget.type === 'carousel' && (
+            <CarouselDataConfig form={form} widget={widget} />
          )}
 
          {widget.type === 'microApp' && (
@@ -1453,14 +1622,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const hasComponentConfig = [
     'typography', 'headerBar', 'link', 'dataTable',
     'customForm', 'pageNavigator', 'microApp', 'search',
-    'iconNav', 'navGroup'
+    'iconNav', 'navGroup', 'carousel'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置
   const hasDataConfig = [
     'chart', 'stats', 'customForm', 'dataTable',
-    'microApp', 'search', 'navGroup'
+    'microApp', 'search', 'navGroup', 'carousel'
   ].includes(widget.type);
+
+  const hasHeaderNavTab = !isGroup && widget.type === 'headerBar';
+  const headerNavTabs = hasHeaderNavTab
+    ? [{ key: 'nav', label: '导航配置', children: renderHeaderNavTab(), forceRender: true }]
+    : [];
 
   // 根据类型构建 tabs（按需显示）
   const items = isGroup
@@ -1468,6 +1642,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     : [
         { key: 'basic', label: '基础配置', children: renderBasicTab(), forceRender: true },
         ...(hasComponentConfig ? [{ key: 'component', label: '组件配置', children: renderComponentTab(), forceRender: true }] : []),
+        ...headerNavTabs,
         ...(hasDataConfig ? [{ key: 'data', label: '数据与交互', children: renderDataTab(), forceRender: true }] : []),
       ];
 

@@ -24,6 +24,7 @@ const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: numb
   clock: { w: 4, h: 6, minW: 2, minH: 3 },
   stats: { w: 10, h: 6, minW: 4, minH: 3 },
   chart: { w: 8, h: 9, minW: 4, minH: 4 },
+  carousel: { w: 40, h: 12, minW: 4, minH: 3 },
   link: { w: 5, h: 5, minW: 2, minH: 2 },
   news: { w: 6, h: 10, minW: 4, minH: 4 },
   topList: { w: 5, h: 9, minW: 3, minH: 4 },
@@ -81,15 +82,73 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
       return { ...baseConfig, title: 'Chart' };
+    case 'carousel':
+      return {
+        ...baseConfig,
+        title: '轮播图',
+        showTitle: false,
+        dataSourceType: 'static',
+        slides: [
+          {
+            id: 'slide-1',
+            title: '数字孪生驾驶舱',
+            description: '实时洞察关键指标，构建业务全景。',
+            imageUrl: `http://192.168.5.47:3003/701.jpg`,
+            buttonText: '立即查看',
+            buttonLink: '#',
+          },
+          {
+            id: 'slide-2',
+            title: 'AI 辅助决策',
+            description: '通过智能算法提升调度效率。',
+            imageUrl: `http://192.168.5.47:3003/702.jpg`,
+            buttonText: '了解更多',
+            buttonLink: '#',
+          },
+          {
+            id: 'slide-3',
+            title: '多终端实时协同',
+            description: '随时随地掌握现场动态。',
+            imageUrl: `http://192.168.5.47:3003/703.jpg`,
+            buttonText: '开启体验',
+            buttonLink: '#',
+          },
+        ],
+        autoplay: {
+          enabled: true,
+          delay: 5000,
+          pauseOnMouseEnter: true,
+          disableOnInteraction: false,
+        },
+        pagination: { enabled: true, type: 'bullets', clickable: true },
+        navigation: { enabled: true },
+        slidesPerView: 1,
+        slidesPerGroup: 1,
+        spaceBetween: 16,
+        loop: true,
+        effect: 'slide',
+        textAlign: 'left',
+        overlayStyle: 'gradient',
+        overlayColor: 'rgba(0, 0, 0, 0.45)',
+        buttonType: 'primary',
+      };
     case 'headerBar':
       return {
         ...baseConfig,
-        title: '头部栏',
+        title: '导航栏',
         showTitle: false,
-        headerTitle: '头部栏',  // 默认显示标题文字
-        textColor: '#ffffff',  // 白色文字
+        headerTitle: '导航栏',  // 默认显示标题文字
+        // textColor: '#222222',  // 白色文字
         fontFamily: 'YouSheBiaoTiHei',  // 默认字体
         backgroundType: 'gradient',
+        showNavMenu: false,
+        navDataSource: 'static',
+        navItems: [
+          { id: 'nav-1', name: '首页', url: '/' },
+          { id: 'nav-2', name: '仪表盘', url: '/dashboard' },
+          { id: 'nav-3', name: '工作台', url: '/workspace' },
+          { id: 'nav-4', name: '设置', url: '/settings' },
+        ],
         // backgroundGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',  // 默认渐变背景
       };
     case 'typography':

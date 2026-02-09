@@ -12,6 +12,7 @@ export type WidgetType =
   | 'clock'
   | 'stats'
   | 'chart'
+  | 'carousel'
   | 'link'
   | 'news'
   | 'topList'
@@ -19,7 +20,7 @@ export type WidgetType =
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
-  | 'headerBar'        // 头部栏组件
+  | 'headerBar'        // 导航栏组件
   | 'typography'       // 文本/标题组件
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule'   // 悬浮模块
@@ -61,6 +62,12 @@ export interface WidgetConfig {
   backgroundRepeat?: string;   // 背景重复
   backgroundPosition?: string; // 背景位置
   boxShadow?: string;          // 阴影效果
+  navItems?: NavItem[];        // 头部导航静态数据
+  navDataSource?: 'static' | 'api';  // 导航数据来源
+  navApiEndpoint?: string;     // 导航接口地址
+  navGroupId?: string;         // 导航组 ID（拼接默认接口）
+  navTextColor?: string;       // 导航文字颜色
+  showNavMenu?: boolean;       // 是否显示导航区域
   [key: string]: any; // Allow custom properties for different widgets
 }
 
@@ -213,6 +220,107 @@ export interface AppState {
     config?: Partial<MicroAppWidgetConfig>
   ) => void;
   removeGlobalMicroApp: (id: string) => void;
+}
+
+export type CarouselDataSourceType = 'static' | 'api';
+
+export interface CarouselSlide {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  link?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  buttonType?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+  badge?: string;
+  badgeColor?: string;
+  contentAlign?: 'left' | 'center' | 'right';
+  overlay?: 'gradient' | 'solid' | 'none';
+  overlayColor?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CarouselApiMapping {
+  idField?: string;
+  titleField?: string;
+  subtitleField?: string;
+  descriptionField?: string;
+  imageField?: string;
+  thumbnailField?: string;
+  linkField?: string;
+  buttonTextField?: string;
+  badgeField?: string;
+}
+
+export interface CarouselApiConfig {
+  endpoint: string;
+  method?: 'GET' | 'POST';
+  params?: Record<string, any>;
+  headers?: Record<string, string>;
+  body?: Record<string, any>;
+  listField?: string;
+  mapping?: CarouselApiMapping;
+}
+
+export interface CarouselAutoplayConfig {
+  enabled?: boolean;
+  delay?: number;
+  pauseOnMouseEnter?: boolean;
+  disableOnInteraction?: boolean;
+  stopOnLastSlide?: boolean;
+}
+
+export interface CarouselPaginationConfig {
+  enabled?: boolean;
+  type?: 'bullets' | 'fraction' | 'progressbar';
+  clickable?: boolean;
+}
+
+export interface CarouselNavigationConfig {
+  enabled?: boolean;
+}
+
+export interface CarouselScrollbarConfig {
+  enabled?: boolean;
+  draggable?: boolean;
+}
+
+export interface CarouselBreakpointSetting {
+  minWidth: number;
+  slidesPerView?: number | 'auto';
+  slidesPerGroup?: number;
+  spaceBetween?: number;
+}
+
+export interface CarouselWidgetConfig extends WidgetConfig {
+  dataSourceType?: CarouselDataSourceType;
+  slides?: CarouselSlide[];
+  apiConfig?: CarouselApiConfig;
+  refreshInterval?: number;
+  slidesPerView?: number | 'auto';
+  slidesPerGroup?: number;
+  spaceBetween?: number;
+  centeredSlides?: boolean;
+  loop?: boolean;
+  autoHeight?: boolean;
+  allowTouchMove?: boolean;
+  grabCursor?: boolean;
+  effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'creative';
+  speed?: number;
+  autoplay?: CarouselAutoplayConfig;
+  pagination?: CarouselPaginationConfig;
+  navigation?: CarouselNavigationConfig;
+  scrollbar?: CarouselScrollbarConfig;
+  responsive?: CarouselBreakpointSetting[];
+  aspectRatio?: number;
+  textAlign?: 'left' | 'center' | 'right';
+  overlayStyle?: 'gradient' | 'solid' | 'none';
+  overlayColor?: string;
+  buttonType?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+  emptyMessage?: string;
 }
 
 // Form builder types

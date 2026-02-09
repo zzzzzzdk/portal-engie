@@ -21,6 +21,7 @@ import SearchWidget from '@/components/widgets/SearchWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
+import CarouselWidget from '@/components/widgets/CarouselWidget';
 import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
@@ -81,8 +82,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
   // - iconNav: 本身就是图标导航组件
   // - typography: 文本组件，缩小时仍需显示内容
   // - navGroup: 导航组组件，缩小时仍需显示导航项
-  // - headerBar: 头部栏组件，通常不会缩小到 icon 尺寸
-  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'navGroup', 'headerBar'];
+  // - headerBar: 导航栏组件，通常不会缩小到 icon 尺寸
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'navGroup', 'headerBar', 'carousel'];
   const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
@@ -107,6 +108,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <StatsWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
+      case 'carousel':
+        return <CarouselWidget {...commonProps} />;
       case 'link':
         return <LinkWidget {...commonProps} />;
       case 'news':
