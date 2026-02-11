@@ -545,6 +545,15 @@ const ensureSeededDashboards = () => {
         },
       },
     },
+    pub_3: { id: '33',   publishedAt: '2026-01-01 16:58:02',},
+    pub_4: {  id: '44',  publishedAt: '2026-01-01 16:58:02',},
+    pub_5: {  id: '55',  publishedAt: '2026-01-01 16:58:02',},
+    pub_6: {  id: '66',  publishedAt: '2026-01-01 16:58:02',},
+    pub_7: {  id: '77',  publishedAt: '2026-01-01 16:58:02',},
+    pub_8: {  id: '88',  publishedAt: '2026-01-01 16:58:02',},
+    pub_9: {  id: '99',  publishedAt: '2026-01-01 16:58:02',},
+    pub_10: {  id: '10',  publishedAt: '2026-01-01 16:58:02',},
+    pub_11: {  id: '11',  publishedAt: '2026-01-01 16:58:02',},
   };
 
   Object.entries(seededDashboards).forEach(([key, value]) => {
@@ -576,7 +585,7 @@ const formatDashboardRecord = (dashboard, fallbackId) => {
   };
   return {
     id: dashboard.id || fallbackId,
-    title: dashboard.title || '未命名仪表盘',
+    title: dashboard.title || '未命名工作台',
     publishTime: dashboard.publishedAt || '',
     status: dashboard.status ?? 1,
     dashboardConfig: JSON.stringify(snapshot),
@@ -585,14 +594,14 @@ const formatDashboardRecord = (dashboard, fallbackId) => {
 };
 
 /**
- * @api {post} /v1/dashboard/publish 发布仪表盘
+ * @api {post} /v1/dashboard/publish 发布工作台
  * @apiName publishDashboard
  * @apiGroup Dashboard
  *
- * @apiParam {Object} dashboard 仪表盘配置
+ * @apiParam {Object} dashboard 工作台配置
  * @apiParam {Array} dashboard.widgets 组件列表
  * @apiParam {Array} dashboard.groups 分组列表
- * @apiParam {Object} dashboard.config 仪表盘配置(背景等)
+ * @apiParam {Object} dashboard.config 工作台配置(背景等)
  * @apiParam {String} dashboard.gridDensity 网格密度
  *
  * @apiSuccess {Number} code 状态码
@@ -628,7 +637,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
     mockDashboards[id] = {
       ...existingRecord,
       id,
-      title: title || parsedSnapshot?.dashboardConfig?.title || '未命名仪表盘',
+      title: title || parsedSnapshot?.dashboardConfig?.title || '未命名工作台',
       widgets: parsedSnapshot?.widgets || [],
       groups: parsedSnapshot?.groups || [],
       floatingModules: parsedSnapshot?.floatingModules || [],
@@ -736,7 +745,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
   req.json.message = '获取成功';
   req.json.data = {
     list,
-    total,
+    total:  100,
     page: currentPage,
     page_size: currentPageSize,
   };
@@ -745,18 +754,18 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
 });
 
 /**
- * @api {get} /v1/dashboard/publish/:id 获取发布的仪表盘详情
+ * @api {get} /v1/dashboard/publish/:id 获取发布的工作台详情
  * @apiName getPublishedDashboard
  * @apiGroup Dashboard
  *
  * @apiParam {String} id 发布ID
  *
  * @apiSuccess {Number} code 状态码
- * @apiSuccess {Object} data 仪表盘数据
+ * @apiSuccess {Object} data 工作台数据
  * @apiSuccess {Array} data.widgets 组件列表
  * @apiSuccess {Array} data.groups 分组列表
  * @apiSuccess {Array} data.floatingModules 悬浮模块列表
- * @apiSuccess {Object} data.dashboardConfig 仪表盘配置
+ * @apiSuccess {Object} data.dashboardConfig 工作台配置
  */
 router.get('/v1/dashboard/publish', async (req, res) => {
   await req.sleep(0.3);
@@ -815,7 +824,7 @@ router.post('/v1/dashboard/publish/delete', async (req, res) => {
 const configurationJsonStorage = {};
 
 /**
- * @api {post} /v1/dashboard/home/configuration-json 暂存仪表盘配置
+ * @api {post} /v1/dashboard/home/configuration-json 暂存工作台配置
  * @apiName saveConfigurationJson
  * @apiGroup Dashboard
  *
@@ -882,7 +891,7 @@ router.post('/v1/dashboard/home/configuration-json', async (req, res) => {
 });
 
 /**
- * @api {get} /v1/dashboard/home/configuration-json 获取暂存的仪表盘配置
+ * @api {get} /v1/dashboard/home/configuration-json 获取暂存的工作台配置
  * @apiName getConfigurationJson
  * @apiGroup Dashboard
  *

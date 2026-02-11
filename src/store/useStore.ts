@@ -145,7 +145,7 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         navDataSource: 'static',
         navItems: [
           { id: 'nav-1', name: '首页', url: '/' },
-          { id: 'nav-2', name: '仪表盘', url: '/dashboard' },
+          { id: 'nav-2', name: '工作台', url: '/dashboard' },
           { id: 'nav-3', name: '工作台', url: '/workspace' },
           { id: 'nav-4', name: '设置', url: '/settings' },
         ],
@@ -625,7 +625,7 @@ export const useStore = create<AppState>()(
         console.log('Loading dashboard config...');
       },
 
-      // 从API数据加载仪表盘（用于编辑已发布的仪表盘）
+      // 从API数据加载工作台（用于编辑已发布的工作台）
       loadDashboardFromData: (data: {
         widgets?: Widget[];
         groups?: WidgetGroup[];

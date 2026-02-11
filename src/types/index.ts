@@ -132,7 +132,7 @@ export interface UserInfo {
 }
 
 export interface DashboardConfig {
-  title?: string; // 仪表盘标题（编辑模式下使用）
+  title?: string; // 工作台标题（编辑模式下使用）
   backgroundType?: 'color' | 'image' | 'gradient';
   backgroundColor?: string;
   backgroundImage?: string;

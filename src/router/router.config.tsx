@@ -45,7 +45,7 @@ const routeConfig: RouteConfig[] = [
         element: () => import('@/pages/Dashboard'),
         meta: {
           requiresAuth: false,
-          title: '仪表盘 - Portal Engine',
+          title: '工作台 - Portal Engine',
         },
       },
       {
@@ -53,7 +53,7 @@ const routeConfig: RouteConfig[] = [
         element: () => import('@/pages/DashboardGridStack'),
         meta: {
           requiresAuth: false,
-          title: '仪表盘 (GridStack) - Portal Engine',
+          title: '工作台 (GridStack) - Portal Engine',
         },
       },
       {
@@ -79,7 +79,7 @@ const routeConfig: RouteConfig[] = [
     element: () => import('@/pages/DashboardPreview'),
     meta: {
       requiresAuth: false,
-      title: '仪表盘预览 - Portal Engine',
+      title: '工作台预览 - Portal Engine',
     },
   },
   {

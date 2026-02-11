@@ -1,7 +1,7 @@
 /**
- * DashboardPreview - 仪表盘预览页面
+ * DashboardPreview - 工作台预览页面
  *
- * 根据 URL 中的 ID 获取发布的仪表盘数据并只读展示
+ * 根据 URL 中的 ID 获取发布的工作台数据并只读展示
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -144,7 +144,7 @@ const DashboardPreview: React.FC = () => {
 
   useEffect(() => {
     if (!id) {
-      setError('缺少仪表盘 ID');
+      setError('缺少工作台 ID');
       setLoading(false);
       return;
     }
@@ -168,7 +168,7 @@ const DashboardPreview: React.FC = () => {
         if (res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
           if (!snapshot) {
-            setError('解析仪表盘配置失败');
+            setError('解析工作台配置失败');
             return;
           }
           const dashboardConfig = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
@@ -196,7 +196,7 @@ const DashboardPreview: React.FC = () => {
             useConfigStore.setState(themeUpdate);
           }
 
-          // 再设置仪表盘数据，触发组件渲染
+          // 再设置工作台数据，触发组件渲染
           setDashboardData({
             id: res.data.id,
             title: res.data.title,
@@ -207,10 +207,10 @@ const DashboardPreview: React.FC = () => {
             dashboardConfig,
           });
         } else {
-          setError(res.message || '获取仪表盘数据失败');
+          setError(res.message || '获取工作台数据失败');
         }
       } catch (err) {
-        setError('获取仪表盘数据失败，请稍后重试');
+        setError('获取工作台数据失败，请稍后重试');
       } finally {
         setLoading(false);
       }
@@ -254,7 +254,7 @@ const DashboardPreview: React.FC = () => {
   if (loading) {
     return (
       <div className="dashboard-preview-loading">
-        <Spin size="large" tip="正在加载仪表盘..." />
+        <Spin size="large" tip="正在加载工作台..." />
       </div>
     );
   }
@@ -265,7 +265,7 @@ const DashboardPreview: React.FC = () => {
         <Result
           status="error"
           title="加载失败"
-          subTitle={error || '未找到仪表盘数据'}
+          subTitle={error || '未找到工作台数据'}
           extra={[
             <Button key="back" onClick={() => navigate(-1)}>
               返回

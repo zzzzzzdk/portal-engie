@@ -607,7 +607,7 @@ const DashboardGridStack: React.FC = () => {
         if (res.code === 20000 && res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
           if (!snapshot) {
-            message.error('解析仪表盘配置失败');
+            message.error('解析工作台配置失败');
           } else {
             const config = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
             applyThemeFromConfig(config);
@@ -626,7 +626,7 @@ const DashboardGridStack: React.FC = () => {
               localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, targetId);
             }
             if (editId) {
-              message.success('已加载仪表盘数据');
+              message.success('已加载工作台数据');
             } else {
               message.success('已恢复上次编辑内容');
             }
@@ -635,14 +635,14 @@ const DashboardGridStack: React.FC = () => {
           if (isResumeFromStorage && typeof window !== 'undefined') {
             localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
           }
-          message.error(res.message || '加载仪表盘数据失败');
+          message.error(res.message || '加载工作台数据失败');
         }
       } catch (error) {
-        console.error('加载仪表盘数据失败:', error);
+        console.error('加载工作台数据失败:', error);
         if (isResumeFromStorage && typeof window !== 'undefined') {
           localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
         }
-        message.error('加载仪表盘数据失败');
+        message.error('加载工作台数据失败');
       }
 
       if (!cancelled) {
@@ -668,7 +668,7 @@ const DashboardGridStack: React.FC = () => {
   if (isLoadingRemoteData) {
     return (
       <div className="dashboard-container dashboard-loading">
-        正在加载仪表盘数据...
+        正在加载工作台数据...
       </div>
     );
   }

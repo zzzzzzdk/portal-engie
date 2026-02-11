@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Empty, Spin } from 'antd';
+import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Empty, Spin, Pagination } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -12,7 +12,7 @@ import {
   ShareAltOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { ColumnsType } from 'antd/es/table';
 import { getPublishList, deletePublishedDashboard, PublishListItem } from '@/services/dashboard';
 import { useStore } from '@/store/useStore';
 import { useTableScroll } from '@/hooks/useTableScroll';
@@ -23,7 +23,7 @@ const VIEW_MODE_KEY = 'publish_list_view_mode';
 
 const PublishList: React.FC = () => {
   const navigate = useNavigate();
-  const { scrollY } = useTableScroll({ headerHeight: 195, footerHeight: 68 })
+  const { scrollY } = useTableScroll({ headerHeight: 195, footerHeight: 90 })
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<PublishListItem[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -66,10 +66,8 @@ const PublishList: React.FC = () => {
     fetchList(1, pagination.pageSize);
   }, []);
 
-  // 分页变化
-  const handleTableChange = (paginationConfig: TablePaginationConfig) => {
-    const { current = 1, pageSize = 10 } = paginationConfig;
-    fetchList(current, pageSize, searchText || undefined);
+  const handlePaginationChange = (page: number, pageSize: number = pagination.pageSize) => {
+    fetchList(page, pageSize, searchText || undefined);
   };
 
   // 搜索
@@ -103,8 +101,12 @@ const PublishList: React.FC = () => {
           const res = await deletePublishedDashboard({ id: record.id });
           if (res.code === 20000) {
             message.success('删除成功');
-            // 刷新列表，保持当前分页
-            fetchList(pagination.current, pagination.pageSize, searchText || undefined);
+            const { current, pageSize, total } = pagination;
+            const remainingTotal = Math.max(0, total - 1);
+            const currentStartIndex = (current - 1) * pageSize;
+            const shouldGoPrev = current > 1 && currentStartIndex >= remainingTotal;
+            const targetPage = shouldGoPrev ? current - 1 : current;
+            fetchList(targetPage, pageSize, searchText || undefined);
           } else {
             message.error(res.message || '删除失败');
           }
@@ -239,8 +241,8 @@ const PublishList: React.FC = () => {
     },
     {
       title: '发布时间',
-      dataIndex: 'publishTime',
-      key: 'publishTime',
+      dataIndex: 'publishedAt',
+      key: 'publishedAt',
       width: 180,
       render: (time: string) => {
         if (!time) return '-';
@@ -334,7 +336,8 @@ const PublishList: React.FC = () => {
                   </div>
                 </div>
                 <div className="publish-card__body">
-                  <div className="publish-card__title">{item.title || '未命名'}
+                  <div className="publish-card__title" title={item.title}>
+                    <div className="title">{item.title || '未命名'}</div>
                     <div className="publish-card__actions">
                       <div className="publish-card__action-row">
                         <Tooltip title={
@@ -360,7 +363,8 @@ const PublishList: React.FC = () => {
                     </div>
                   </div>
                   <div className="publish-card__info">
-                    <span>{item.publishTime ? new Date(item.publishTime).toLocaleString('zh-CN') : '未发布'}</span>
+                    <span className='info-id' title={item.id}>{item.id ? item.id : '--'}</span>
+                    <span title={item.publishedAt}>{item.publishedAt ? item.publishedAt : '--'}</span>
                   </div>
 
                 </div>
@@ -412,19 +416,25 @@ const PublishList: React.FC = () => {
             dataSource={dataSource}
             rowKey="id"
             loading={loading}
-            pagination={{
-              ...pagination,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 条`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-            }}
-            onChange={handleTableChange}
+            pagination={false}
             scroll={{ x: 1100, y: scrollY }}
           />
         ) : (
           renderCards()
         )}
+      </div>
+      <div className="publish-list-pagination">
+        <Pagination
+          current={pagination.current}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          showSizeChanger={true}
+          showQuickJumper={true}
+          pageSizeOptions={['10', '20', '50', '100']}
+          showTotal={(total) => `共 ${total} 条`}
+          onChange={handlePaginationChange}
+          onShowSizeChange={handlePaginationChange}
+        />
       </div>
     </div>
   );

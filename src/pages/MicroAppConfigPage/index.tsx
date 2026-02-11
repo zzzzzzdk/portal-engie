@@ -15,6 +15,7 @@ import {
   Tabs,
   Switch,
   Typography,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,6 +25,7 @@ import {
   UploadOutlined,
   ReloadOutlined,
   LinkOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -181,7 +183,7 @@ const MicroAppConfigPage: React.FC = () => {
       const res = await importMicroAppConfig(file);
       if (res.code === 20000) {
         const stats = res.data;
-        message.success(`导入成功：${stats?.appCount ?? 0} 个系统，${stats?.moduleCount ?? 0} 个模块`);
+        message.success(`导入成功`);
         await loadConfig();
       } else {
         message.error(res.message || '导入配置失败');
@@ -249,7 +251,7 @@ const MicroAppConfigPage: React.FC = () => {
     }
   };
 
-  // 添加/编辑模块 - 使用saveModule API
+  // 添加/编辑微应用 - 使用saveModule API
   const handleSaveModule = async () => {
     try {
       const values = await moduleForm.validateFields();
@@ -276,7 +278,7 @@ const MicroAppConfigPage: React.FC = () => {
       });
 
       if (res.code === 20000) {
-        message.success(editingModule?.module ? '模块已更新' : '模块已添加');
+        message.success(editingModule?.module ? '微应用已更新' : '微应用已添加');
         setModuleModalOpen(false);
         moduleForm.resetFields();
         setEditingModule(undefined);
@@ -296,12 +298,12 @@ const MicroAppConfigPage: React.FC = () => {
     }
   };
 
-  // 删除模块 - 使用deleteMicroAppItem API
+  // 删除微应用 - 使用deleteMicroAppItem API
   const handleDeleteModule = async (moduleId: string) => {
     try {
       const res = await deleteMicroAppItem({ id: moduleId, type: 'module' });
       if (res.code === 20000) {
-        message.success('模块已删除');
+        message.success('微应用已删除');
         // 刷新列表
         await loadConfig();
       } else {
@@ -325,7 +327,7 @@ const MicroAppConfigPage: React.FC = () => {
 
       const res = await saveEvent({
         id: editingEvent?.event?.id, // 数据库ID（编辑时携带）
-        moduleId: editingEvent?.moduleId || '', // 所属模块ID
+        moduleId: editingEvent?.moduleId || '', // 所属微应用ID
         event_type: eventType,
         type: values.type,
         name: values.name,
@@ -372,7 +374,7 @@ const MicroAppConfigPage: React.FC = () => {
 
   const systemColumns: ColumnsType<MicroAppSystem> = [
     {
-      title: '系统',
+      title: '系统名称',
       key: 'systemId',
       width: 180,
       render: (_text, record) => (
@@ -382,12 +384,12 @@ const MicroAppConfigPage: React.FC = () => {
         </div>
       ),
     },
-    { title: '名称', dataIndex: 'name', key: 'name', responsive: ['lg'] },
+    // { title: '名称', dataIndex: 'name', key: 'name', responsive: ['lg'] },
     { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: '图标', dataIndex: 'icon', key: 'icon', width: 140 },
+    // { title: '图标', dataIndex: 'icon', key: 'icon', width: 140 },
     { title: '分类', dataIndex: 'category', key: 'category', width: 120 },
     {
-      title: '模块数量',
+      title: '微应用数量',
       key: 'moduleCount',
       render: (_text, record) => <Tag color="blue">{record.modules.length}</Tag>,
     },
@@ -411,7 +413,7 @@ const MicroAppConfigPage: React.FC = () => {
           </Button>
           <Popconfirm
             title="确定删除此系统吗？"
-            description="删除后该系统下的所有模块和事件也将被删除"
+            description="删除后该系统下的所有微应用和事件也将被删除"
             onConfirm={() => handleDeleteSystem(record.id)}
           >
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
@@ -428,8 +430,8 @@ const MicroAppConfigPage: React.FC = () => {
       <div className="modules-section">
         <div className="modules-header">
           <div>
-            <h3>模块列表</h3>
-            <p className="modules-header__desc">围绕 {system.name} 的业务模块</p>
+            <h3>微应用列表</h3>
+            <p className="modules-header__desc">围绕 {system.name} 的业务微应用</p>
           </div>
           <Button
             type="primary"
@@ -441,7 +443,7 @@ const MicroAppConfigPage: React.FC = () => {
               setModuleModalOpen(true);
             }}
           >
-            添加模块
+            添加微应用
           </Button>
         </div>
         <div className="modules-grid">
@@ -468,8 +470,8 @@ const MicroAppConfigPage: React.FC = () => {
                     }}
                   />
                   <Popconfirm
-                    title="确定删除此模块吗？"
-                    description="删除后该模块下的所有事件也将被删除"
+                    title="确定删除此微应用吗？"
+                    description="删除后该微应用下的所有事件也将被删除"
                     onConfirm={() => handleDeleteModule(module.id)}
                   >
                     <Button type="text" size="small" danger icon={<DeleteOutlined />} />
@@ -664,25 +666,25 @@ const MicroAppConfigPage: React.FC = () => {
           >
             <Input.TextArea placeholder="系统描述信息" rows={3} />
           </Form.Item>
-          <Form.Item
+          {/* <Form.Item
             name="icon"
             label="图标"
           >
             <IconPicker mode="simple" placeholder="选择系统图标" />
-          </Form.Item>
+          </Form.Item> */}
           <Form.Item
             name="category"
             label="分类"
-            rules={[{ required: true, message: '请输入分类' }]}
+            // rules={[{ required: true, message: '请输入分类' }]}
           >
             <Input placeholder="例如: 业务系统" />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 模块编辑对话框 */}
+      {/* 微应用编辑对话框 */}
       <Modal
-        title={editingModule?.module ? '编辑模块' : '添加模块'}
+        title={editingModule?.module ? '编辑微应用' : '添加微应用'}
         open={moduleModalOpen}
         onOk={handleSaveModule}
         onCancel={() => {
@@ -696,16 +698,16 @@ const MicroAppConfigPage: React.FC = () => {
         <Form form={moduleForm} layout="vertical">
           <Form.Item
             name="moduleId"
-            label="模块ID"
-            rules={[{ required: !editingModule?.module, message: '请输入模块ID' }]}
+            label="微应用ID"
+            rules={[{ required: !editingModule?.module, message: '请输入微应用ID' }]}
             hidden={!!editingModule?.module}
           >
             <Input placeholder="例如: finance-report" />
           </Form.Item>
           <Form.Item
             name="name"
-            label="模块名称"
-            rules={[{ required: true, message: '请输入模块名称' }]}
+            label="微应用名称"
+            rules={[{ required: true, message: '请输入微应用名称' }]}
           >
             <Input placeholder="例如: 财务报表" />
           </Form.Item>
@@ -713,18 +715,25 @@ const MicroAppConfigPage: React.FC = () => {
             name="description"
             label="描述"
           >
-            <Input.TextArea placeholder="模块描述信息" rows={2} />
+            <Input.TextArea placeholder="微应用描述信息" rows={2} />
           </Form.Item>
           <Form.Item
             name="url"
-            label="访问URL"
-            rules={[{ required: true, message: '请输入访问URL' }]}
+            label="微应用URL"
+            rules={[{ required: true, message: '请输入微应用URL' }]}
           >
             <Input placeholder="例如: http://192.168.13.31:3001/#/report" />
           </Form.Item>
           <Form.Item
             name="entry"
-            label="入口地址"
+            label={
+              <span>
+                入口地址
+                <Tooltip title="入口地址用于微前端运行时拉取资源，应指向部署目录或 remoteEntry.js 所在路径；上面的“微应用URL”仅用于门户内打开页面时的默认路由。">
+                  <QuestionCircleOutlined style={{ marginLeft: 4 }} />
+                </Tooltip>
+              </span>
+            }
             rules={[{ required: true, message: '请输入入口地址' }]}
           >
             <Input placeholder="例如: http://192.168.13.31:3001/" />
@@ -734,7 +743,7 @@ const MicroAppConfigPage: React.FC = () => {
             label="图标"
             tooltip="支持选择内置图标、输入URL、上传图片或粘贴SVG代码"
           >
-            <IconPicker mode="full" placeholder="选择或上传模块图标" />
+            <IconPicker mode="full" placeholder="选择或上传微应用图标" />
           </Form.Item>
           <Form.Item
             name="forceIconOnly"

@@ -332,7 +332,7 @@ const Layout: React.FC = () => {
       updateDashboardConfig({
         title: values.title,
       });
-      message.success(currentAction === 'publish' ? '仪表盘发布成功' : '暂存成功');
+      message.success(currentAction === 'publish' ? '工作台发布成功' : '暂存成功');
       setPublishModalOpen(false);
       publishForm.resetFields();
     } catch (error) {
@@ -435,7 +435,7 @@ const Layout: React.FC = () => {
     {
       key: '/dashboard-gridstack',
       icon: <DashboardOutlined />,
-      label: '仪表盘',
+      label: '工作台',
     },
     {
       key: '/micro-app-config',

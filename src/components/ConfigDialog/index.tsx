@@ -1268,7 +1268,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                                     label="导航名称"
                                     rules={[{ required: true, message: '请输入导航名称' }]}
                                   >
-                                    <Input placeholder="例如：仪表盘" />
+                                    <Input placeholder="例如：工作台" />
                                   </Form.Item>
                                   <Form.Item
                                     {...restField}
