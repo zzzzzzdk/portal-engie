@@ -355,20 +355,17 @@ const Layout: React.FC = () => {
       return
     }
 
-    // 处理风格切换
-    if (key === 'style-normal') {
-      themeSystem.setStyle('normal')
-      message.success('已切换到标准风格')
-      return
-    }
-    if (key === 'style-minimal') {
-      themeSystem.setStyle('minimal')
-      message.success('已切换到极简风格')
-      return
-    }
-
     // 使用新的主题系统切换预设
     themeSystem.applyPreset(key as 'light' | 'dark' | 'blue' | 'purple', true)
+  }
+
+  const handleStyleModeChange = (mode: 'normal' | 'minimal') => {
+    if (themeSystem.styleMode === mode) {
+      message.info(`已是${mode === 'normal' ? '标准' : '极简'}风格`)
+      return
+    }
+    themeSystem.setStyle(mode)
+    message.success(`已切换到${mode === 'normal' ? '标准' : '极简'}风格`)
   }
 
   const handleResetDashboard = () => {
@@ -399,17 +396,13 @@ const Layout: React.FC = () => {
       key: 'dark',
       label: '暗黑主题',
     },
-    {
-      type: 'divider',
-    },
-    {
-      key: 'style-normal',
-      label: `标准风格 ${themeSystem.styleMode === 'normal' ? '✓' : ''}`,
-    },
-    {
-      key: 'style-minimal',
-      label: `极简风格 ${themeSystem.styleMode === 'minimal' ? '✓' : ''}`,
-    },
+    // {
+    //   type: 'divider',
+    // },
+    // {
+    //   key: 'custom',
+    //   label: '自定义主题...',
+    // },
     // {
     //   type: 'divider',
     // },
@@ -495,7 +488,7 @@ const Layout: React.FC = () => {
               </Dropdown>
 
               <Tooltip title="退出登录">
-                <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout}  />
+                <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
               </Tooltip>
             </Space>
           </Header>
@@ -511,6 +504,7 @@ const Layout: React.FC = () => {
                   <span className="app-sub-header__mode-label">编辑模式</span>
                   <Switch checked={isEditMode} onChange={setEditMode} />
                 </div>
+
                 <Space size={12} wrap>
                   <Button
                     type="primary"
@@ -537,7 +531,22 @@ const Layout: React.FC = () => {
                   <Button className="app-sub-header__publish-btn" icon={<CloudUploadOutlined />} loading={publishButtonLoading} onClick={handlePublish}>
                     发布
                   </Button>
-
+                  <div className="app-sub-header__style-toggle">
+                    <Button.Group size="small">
+                      <Button
+                        type={themeSystem.styleMode === 'normal' ? 'primary' : 'default'}
+                        onClick={() => handleStyleModeChange('normal')}
+                      >
+                        标准
+                      </Button>
+                      <Button
+                        type={themeSystem.styleMode === 'minimal' ? 'primary' : 'default'}
+                        onClick={() => handleStyleModeChange('minimal')}
+                      >
+                        极简
+                      </Button>
+                    </Button.Group>
+                  </div>
                   <Button onClick={toggleFullScreen} className='full' icon={<FullscreenOutlined />} />
                 </Space>
               </div>
@@ -606,7 +615,7 @@ const Layout: React.FC = () => {
       />
 
       <Modal
-        title={publishAction === 'draft' ? "保存": "发布"}
+        title={publishAction === 'draft' ? "保存" : "发布"}
         open={publishModalOpen}
         onOk={handlePublishSubmit}
         onCancel={() => setPublishModalOpen(false)}
