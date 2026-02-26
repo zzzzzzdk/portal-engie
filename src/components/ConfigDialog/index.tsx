@@ -23,6 +23,11 @@ interface ConfigDialogProps {
   widget: Widget;
 }
 
+const DEFAULT_STATS_ITEMS = [
+  { key: 'activeUsers', label: '活跃用户', precision: 0, trend: 'up' },
+  { key: 'idleRate', label: '空闲率', precision: 2, suffix: '%', trend: 'down' },
+];
+
 // 规范化颜色值（处理 ColorPicker 对象和序列化后的 JSON 对象）
 const normalizeColorValue = (color: any, defaultColor?: string): string | undefined => {
   if (!color) return defaultColor;
@@ -51,6 +56,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const [form] = Form.useForm();
   const showNavMenuValue = Form.useWatch('showNavMenu', form);
   const navItemsValue = Form.useWatch('navItems', form);
+  const statsItemsValue = Form.useWatch('statsItems', form);
   const [fileList, setFileList] = useState<any[]>([]);
   const [bgUploading, setBgUploading] = useState(false);
 
@@ -225,7 +231,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
         form.setFieldsValue({
           ...normalizedConfig,
-          // 🔧 title 必须放在 normalizedConfig 之后，否则会被 widget.config.title（默认标题）覆盖
+// title ???? normalizedConfig ??????? widget.config.title????????
           title: widget.title,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
@@ -235,6 +241,20 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           backgroundGradient: widget.config.backgroundGradient,
           // backdropBlur 由 BackgroundSettings 组件根据主题自动设置默认值
         });
+
+        if (widget.type === 'chart') {
+          form.setFieldsValue({
+            xAxisField: widget.config.xAxisField || 'xAxis',
+            yAxisField: widget.config.yAxisField || 'series',
+          });
+        }
+
+        if (widget.type === 'stats') {
+          const statsItems = widget.config.statsItems && widget.config.statsItems.length > 0
+            ? widget.config.statsItems
+            : DEFAULT_STATS_ITEMS;
+          form.setFieldsValue({ statsItems });
+        }
 
         // navGroup 特有配置：数据来源和静态导航项
         if (widget.type === 'navGroup') {
@@ -727,7 +747,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           <div></div>
         </div>
 
-        {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp'].includes(widget.type) && (
+        {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp', 'news', 'topList'].includes(widget.type) && (
           <Form.Item
             name="refreshInterval"
             label="刷新间隔 (秒)"
@@ -749,7 +769,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     // 检查是否有特定组件配置
     const hasComponentConfig = [
       'typography', 'headerBar', 'link', 'dataTable',
-      'customForm', 'pageNavigator', 'microApp', 'search',
+      'customForm', 'pageNavigator', 'microApp',
       'iconNav', 'navGroup', 'carousel'
     ].includes(widget.type) || isAssistantHub;
 
@@ -1043,10 +1063,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
            </Form.Item>
         )}
         
-        {widget.type === 'search' && (
-           <div className="empty-hint">请在"数据与交互"标签页配置搜索路由</div>
-        )}
-
         {widget.type === 'iconNav' && (
           <>
             <Form.Item name="icon" label="图标">
@@ -1268,7 +1284,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                                     label="导航名称"
                                     rules={[{ required: true, message: '请输入导航名称' }]}
                                   >
-                                    <Input placeholder="例如：仪表盘" />
+                                    <Input placeholder="例如：工作台" />
                                   </Form.Item>
                                   <Form.Item
                                     {...restField}
@@ -1327,20 +1343,202 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const renderDataTab = () => {
     const hasDataConfig = [
       'chart', 'stats', 'customForm', 'dataTable',
-      'microApp', 'search', 'navGroup', 'carousel'
+      'microApp', 'search', 'navGroup', 'carousel',
+      'news', 'topList'
     ].includes(widget.type);
 
     if (!hasDataConfig) {
        return <div className="empty-hint">当前组件无数据或交互配置</div>;
     }
 
+    const apiPlaceholderMap: Record<string, string> = {
+      chart: '/api/chart-data',
+      stats: '/api/stats',
+      customForm: '/api/form-submit',
+      dataTable: '/api/table-data',
+      news: '/api/news',
+      topList: '/api/top-list',
+    };
+    const apiPlaceholder = apiPlaceholderMap[widget.type] || '/api/data';
+    const statsFieldPreview = (Array.isArray(statsItemsValue) && statsItemsValue.length > 0
+      ? statsItemsValue
+      : DEFAULT_STATS_ITEMS)
+      .map((item: any) => item?.key)
+      .filter(Boolean)
+      .join('、');
+
     return (
       <>
-         {['chart', 'stats', 'customForm', 'dataTable'].includes(widget.type) && (
-            <Form.Item name="apiEndpoint" label="数据接口">
-              <Input placeholder="/api/data" />
+        {['chart', 'stats', 'customForm', 'dataTable', 'news', 'topList'].includes(widget.type) && (
+          <Form.Item
+            name="apiEndpoint"
+            label="数据接口"
+            extra={
+              widget.type === 'news'
+                ? '接口需返回数组或 { data/list } 格式，包含标题、摘要、链接、封面等字段'
+                : widget.type === 'topList'
+                  ? '接口需返回数组或 { data/list } 格式，包含名称、数值、变化、单位等字段'
+                  : undefined
+            }
+          >
+            <Input placeholder={apiPlaceholder} />
+          </Form.Item>
+        )}
+
+        {widget.type === 'stats' && (
+          <>
+            <div className="empty-hint" style={{ marginBottom: 12 }}>
+              {`接口需返回形如 { 字段: 数值 } 的对象，下方“数据字段”即接口字段名。当前字段：${statsFieldPreview || 'activeUsers、idleRate'}`}
+            </div>
+            <Form.List name="statsItems">
+              {(fields, { add, remove }) => (
+                <div className="config-list-container">
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div key={key} className="config-item-card">
+                      <div className="card-content" style={{ padding: '12px', position: 'relative' }}>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => remove(name)}
+                          style={{ position: 'absolute', top: 8, right: 8 }}
+                        />
+                        <div className="form-row-2">
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'label']}
+                            label="显示名称"
+                            rules={[{ required: true, message: '请输入显示名称' }]}
+                          >
+                            <Input placeholder="例如：活跃用户" />
+                          </Form.Item>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'key']}
+                            label="数据字段"
+                            rules={[{ required: true, message: '请输入数据字段名' }]}
+                            tooltip="接口响应对象中的字段名"
+                          >
+                            <Input placeholder="activeUsers" />
+                          </Form.Item>
+                        </div>
+                        <div className="form-row-3">
+                          <Form.Item {...restField} name={[name, 'precision']} label="小数位数">
+                            <InputNumber min={0} max={6} style={{ width: '100%' }} />
+                          </Form.Item>
+                          <Form.Item {...restField} name={[name, 'suffix']} label="数值后缀">
+                            <Input placeholder="例如：%" />
+                          </Form.Item>
+                          <Form.Item {...restField} name={[name, 'trend']} label="趋势方向">
+                            <Select allowClear placeholder="自动">
+                              <Select.Option value="up">上涨</Select.Option>
+                              <Select.Option value="down">下降</Select.Option>
+                              <Select.Option value="none">不显示</Select.Option>
+                            </Select>
+                          </Form.Item>
+                        </div>
+                        <Form.Item {...restField} name={[name, 'color']} label="自定义颜色">
+                          <ColorPicker showText allowClear />
+                        </Form.Item>
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    type="dashed"
+                    onClick={() => add({ key: `metric_${fields.length + 1}`, label: '新的指标' })}
+                    block
+                    icon={<PlusOutlined />}
+                  >
+                    添加统计项
+                  </Button>
+                </div>
+              )}
+            </Form.List>
+          </>
+        )}
+
+        {widget.type === 'chart' && (
+          <>
+            <div className="empty-hint" style={{ marginBottom: 12 }}>
+              接口需返回包含 X 轴类目数组与数值数组的对象（可在下方指定字段），示例：{`{ xAxis: ['一月'], series: [120] }`}
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="xAxisField" label="X 轴字段" initialValue="xAxis">
+                <Input placeholder="xAxis" />
+              </Form.Item>
+              <Form.Item name="yAxisField" label="数值字段" initialValue="series">
+                <Input placeholder="series" />
+              </Form.Item>
+            </div>
+          </>
+        )}
+
+        {widget.type === 'news' && (
+          <>
+            <div className="form-row-2">
+              <Form.Item name="maxItems" label="最大条数" initialValue={10}>
+                <InputNumber min={1} max={50} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="avatarField" label="封面字段" initialValue="avatar">
+                <Input placeholder="avatar" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="titleField" label="标题字段" initialValue="title">
+                <Input placeholder="title" />
+              </Form.Item>
+              <Form.Item name="descriptionField" label="摘要字段" initialValue="description">
+                <Input placeholder="description" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="urlField" label="链接字段" initialValue="url">
+                <Input placeholder="url" />
+              </Form.Item>
+              <div></div>
+            </div>
+          </>
+        )}
+
+        {widget.type === 'topList' && (
+          <>
+            <div className="form-row-2">
+              <Form.Item name="nameField" label="名称字段" initialValue="name">
+                <Input placeholder="name" />
+              </Form.Item>
+              <Form.Item name="valueField" label="数值字段" initialValue="value">
+                <Input placeholder="value" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="changeField" label="变化字段" initialValue="change">
+                <Input placeholder="change" />
+              </Form.Item>
+              <Form.Item name="unitField" label="单位字段" initialValue="unit">
+                <Input placeholder="unit" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="maxItems" label="显示条数" initialValue={10}>
+                <InputNumber min={1} max={50} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item name="highlightTop" label="高亮前N名" initialValue={3}>
+                <InputNumber min={0} max={10} style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item name="listTitle" label="列表标题">
+                <Input placeholder="例如：当月销量排行榜" />
+              </Form.Item>
+              <Form.Item name="valueLabel" label="数值标签">
+                <Input placeholder="例如：销量" />
+              </Form.Item>
+            </div>
+            <Form.Item name="changeLabel" label="变化标签">
+              <Input placeholder="例如：变化" />
             </Form.Item>
-         )}
+          </>
+        )}
 
          {widget.type === 'navGroup' && (
             <>
@@ -1621,14 +1819,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   // 判断是否有组件配置
   const hasComponentConfig = [
     'typography', 'headerBar', 'link', 'dataTable',
-    'customForm', 'pageNavigator', 'microApp', 'search',
+    'customForm', 'pageNavigator', 'microApp',
     'iconNav', 'navGroup', 'carousel'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置
   const hasDataConfig = [
     'chart', 'stats', 'customForm', 'dataTable',
-    'microApp', 'search', 'navGroup', 'carousel'
+    'microApp', 'search', 'navGroup', 'carousel',
+    'news', 'topList'
   ].includes(widget.type);
 
   const hasHeaderNavTab = !isGroup && widget.type === 'headerBar';

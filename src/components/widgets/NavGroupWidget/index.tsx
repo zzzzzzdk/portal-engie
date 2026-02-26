@@ -80,15 +80,15 @@ const getRandomGradient = (index: number): string => {
 
 // 默认导航数据
 const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '仪表盘仪表盘仪表盘仪表盘仪表盘仪表盘仪表盘' },
-  { id: '2', url: '/settings', icon: 'SettingOutlined', name: '设置设置设置设置设置设置设置设置' },
+  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '工作台' },
+  { id: '2', url: '/settings', icon: 'SettingOutlined', name: '设置' },
   { id: '3', url: '/users', icon: 'UserOutlined', name: '用户' },
   { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件' },
-  { id: '5', url: '/files', icon: 'FolderOutlined', name: '文件' },
-  { id: '6', url: '/files', icon: 'FolderOutlined', name: '文件' },
-  { id: '7', url: '/files', icon: 'FolderOutlined', name: '文件' },
-  { id: '8', url: '/files', icon: 'FolderOutlined', name: '文件' },
-  { id: '9', url: '/files', icon: 'FolderOutlined', name: '文件' },
+  // { id: '5', url: '/files', icon: 'FolderOutlined', name: '文件' },
+  // { id: '6', url: '/files', icon: 'FolderOutlined', name: '文件' },
+  // { id: '7', url: '/files', icon: 'FolderOutlined', name: '文件' },
+  // { id: '8', url: '/files', icon: 'FolderOutlined', name: '文件' },
+  // { id: '9', url: '/files', icon: 'FolderOutlined', name: '文件' },
 ];
 
 const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {

@@ -143,7 +143,7 @@ export const ANTD_OUTLINED_ICONS: IconItem[] = [
   { name: 'BarChartOutlined', component: BarChartOutlined, type: 'antd-outlined', keywords: ['chart', '柱状图', '图表'] },
   { name: 'LineChartOutlined', component: LineChartOutlined, type: 'antd-outlined', keywords: ['chart', '折线图', '图表'] },
   { name: 'PieChartOutlined', component: PieChartOutlined, type: 'antd-outlined', keywords: ['chart', '饼图', '图表'] },
-  { name: 'DashboardOutlined', component: DashboardOutlined, type: 'antd-outlined', keywords: ['dashboard', '仪表盘', '面板'] },
+  { name: 'DashboardOutlined', component: DashboardOutlined, type: 'antd-outlined', keywords: ['dashboard', '工作台', '面板'] },
   { name: 'ShoppingCartOutlined', component: ShoppingCartOutlined, type: 'antd-outlined', keywords: ['cart', '购物车', '购物'] },
   { name: 'WalletOutlined', component: WalletOutlined, type: 'antd-outlined', keywords: ['wallet', '钱包', '支付'] },
 ];

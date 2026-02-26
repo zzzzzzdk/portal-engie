@@ -13,7 +13,7 @@ import { isDevelopment } from './config/env'
 /**
  * 系统初始化包装组件
  * 在系统加载完成前显示加载状态
- * 同时初始化仪表盘数据
+ * 同时初始化工作台数据
  */
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -23,7 +23,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const initializeSystem = useSystemStore((state) => state.initializeSystem)
 
-  // 仪表盘初始化
+  // 工作台初始化
   const { setEditMode, loadDashboard } = useStore()
   const [retryCount, setRetryCount] = useState(0)
   const [dashboardInitialized, setDashboardInitialized] = useState(false)
@@ -61,9 +61,9 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
     }
   }, [sysConfig, isPublicPath, navigate])
 
-  // 仪表盘数据初始化
+  // 工作台数据初始化
   useEffect(() => {
-    // 只在系统初始化完成、有 token、且未初始化仪表盘时执行
+    // 只在系统初始化完成、有 token、且未初始化工作台时执行
     const token = getToken()
     if (initialized && !isPublicPath && !dashboardInitialized && token) {
       loadDashboard()

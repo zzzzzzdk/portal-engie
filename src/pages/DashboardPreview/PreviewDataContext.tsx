@@ -1,7 +1,7 @@
 /**
  * PreviewDataContext - 预览页面数据上下文
  *
- * 为预览页面提供从 API 获取的仪表盘数据
+ * 为预览页面提供从 API 获取的工作台数据
  */
 
 import React, { createContext, useContext, useMemo } from 'react';

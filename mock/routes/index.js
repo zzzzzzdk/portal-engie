@@ -144,7 +144,7 @@ router.all("/v1/user/info", async function (req, res, next) {
         path: "/home",
       },
       {
-        title: "仪表盘",
+        title: "工作台",
         icon: "fill_shouye",
         path: "/data-board",
       },
@@ -368,7 +368,7 @@ router.post("/micro-app/save-config", async (req, res) => {
 router.get("/api/nav-group", async (req, res) => {
   await req.sleep(0.3);
   req.json.data = [
-    { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '仪表盘', description: '数据可视化面板' },
+    { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '工作台', description: '数据可视化面板' },
     { id: '2', url: '/settings', icon: 'SettingOutlined', name: '系统设置', description: '系统配置管理' },
     { id: '3', url: '/users', icon: 'UserOutlined', name: '用户管理', description: '用户账号管理' },
     { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件管理', description: '文件存储管理' },

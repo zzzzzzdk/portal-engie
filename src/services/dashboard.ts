@@ -1,8 +1,8 @@
-// 仪表盘相关接口服务
+// 工作台相关接口服务
 import ajax from '../utils/axios.config';
 import type { Widget, WidgetGroup, DashboardConfig } from '@/types';
 
-// 仪表盘快照：统一打包 widgets/groups/floatingModules/page config
+// 工作台快照：统一打包 widgets/groups/floatingModules/page config
 export interface DashboardSnapshot {
   widgets: Widget[];
   groups: WidgetGroup[];
@@ -32,7 +32,7 @@ export interface PublishDashboardResponse {
 export interface PublishListItem {
   id: string;
   title: string;
-  publishTime: string;
+  publishedAt: string;
   status?: number;
   componentCount?: number;
   cover_url?: string;
@@ -62,19 +62,19 @@ export interface PublishedDashboardRecord {
   coverUrl?: string;
 }
 
-// 解析后的仪表盘结构（供前端使用）
+// 解析后的工作台结构（供前端使用）
 export interface PublishedDashboard extends DashboardSnapshot {
   id: string;
   title: string;
   publishTime?: string;
 }
 
-// 序列化仪表盘快照
+// 序列化工作台快照
 export const serializeDashboardSnapshot = (snapshot: DashboardSnapshot): string => {
   return JSON.stringify(snapshot);
 };
 
-// 反序列化仪表盘快照
+// 反序列化工作台快照
 export const parseDashboardSnapshot = (
   snapshotString?: string | null
 ): DashboardSnapshot | null => {
@@ -96,7 +96,7 @@ export const parseDashboardSnapshot = (
 };
 
 /**
- * 发布仪表盘
+ * 发布工作台
  */
 export const publishDashboard = (data: PublishDashboardParams) => {
   return ajax<PublishDashboardResponse>({
@@ -118,7 +118,7 @@ export const getPublishList = (params: PublishListParams) => {
 };
 
 /**
- * 获取已发布仪表盘详情（原始结构）
+ * 获取已发布工作台详情（原始结构）
  */
 export const getPublishedDashboard = (data: { id: string }) => {
   return ajax<PublishedDashboardRecord>({
@@ -129,7 +129,7 @@ export const getPublishedDashboard = (data: { id: string }) => {
 };
 
 /**
- * 删除已发布仪表盘
+ * 删除已发布工作台
  */
 export const deletePublishedDashboard = (data: { id: string }) => {
   return ajax<{ success: boolean }>({

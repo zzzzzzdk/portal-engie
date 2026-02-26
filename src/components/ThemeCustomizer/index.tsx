@@ -196,24 +196,6 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
                     深色模式
                   </Button>
                 </Space>
-                <p style={{ marginTop: 16 }}>显示风格：</p>
-                <Space>
-                  <Button
-                    type={theme.styleMode === 'normal' ? 'primary' : 'default'}
-                    onClick={() => handleStyleChange('normal')}
-                  >
-                    标准风格
-                  </Button>
-                  <Button
-                    type={theme.styleMode === 'minimal' ? 'primary' : 'default'}
-                    onClick={() => handleStyleChange('minimal')}
-                  >
-                    极简风格
-                  </Button>
-                </Space>
-                <p style={{ marginTop: 8, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
-                  极简风格：半透明背景 + 毛玻璃效果，适合搭配深色/渐变背景
-                </p>
               </div>
             ),
           },
@@ -407,6 +389,32 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
                   </Space>
                 </Form.Item>
               </Form>
+            ),
+          },
+          {
+            key: 'style',
+            label: '界面风格',
+            children: (
+              <div className="style-section">
+                <p>选择显示风格：</p>
+                <Space>
+                  <Button
+                    type={theme.styleMode === 'normal' ? 'primary' : 'default'}
+                    onClick={() => handleStyleChange('normal')}
+                  >
+                    标准风格
+                  </Button>
+                  <Button
+                    type={theme.styleMode === 'minimal' ? 'primary' : 'default'}
+                    onClick={() => handleStyleChange('minimal')}
+                  >
+                    极简风格
+                  </Button>
+                </Space>
+                <p style={{ marginTop: 8, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                  极简风格：半透明背景 + 毛玻璃效果，适合搭配深色/渐变背景
+                </p>
+              </div>
             ),
           },
         ]}

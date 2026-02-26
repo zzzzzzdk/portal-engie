@@ -18,23 +18,14 @@ const DataTableConfig: React.FC<WidgetConfigProps> = () => {
 
   return (
     <>
-      <div className="form-row-2">
-         <Form.Item
-           name="apiEndpoint"
-           label="数据接口"
-           tooltip="配置后将从接口获取数据"
-         >
-           <Input placeholder="/api/table-data" />
-         </Form.Item>
-         <Form.Item
-           name="rowKey"
-           label="行Key字段"
-           tooltip="数据中的唯一标识字段名"
-           initialValue="key"
-         >
-           <Input placeholder="key" />
-         </Form.Item>
-      </div>
+      <Form.Item
+        name="rowKey"
+        label="行Key字段"
+        tooltip="对应数据中的唯一标识字段名"
+        initialValue="key"
+      >
+        <Input placeholder="key" />
+      </Form.Item>
 
       <div className="form-row-2">
         <Form.Item
