@@ -264,6 +264,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             staticItems: widget.config.staticItems || [],
           });
         }
+
+        if (widget.type === 'myDocuments') {
+          form.setFieldsValue({
+            btnColor: normalizeColorForForm(widget.config.btnColor, '#1677ff'),
+            btnTextColor: normalizeColorForForm(widget.config.btnTextColor, '#ffffff'),
+          });
+        }
       }
 
       // 如果是悬浮模块，添加悬浮模块特有的配置
@@ -613,6 +620,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           if (normalizedRestConfig.textColor) {
             normalizedRestConfig.textColor = normalizeColor(normalizedRestConfig.textColor);
           }
+          // myDocuments 按钮颜色
+          if (normalizedRestConfig.btnColor) {
+            normalizedRestConfig.btnColor = normalizeColor(normalizedRestConfig.btnColor);
+          }
+          if (normalizedRestConfig.btnTextColor) {
+            normalizedRestConfig.btnTextColor = normalizeColor(normalizedRestConfig.btnTextColor);
+          }
           if (normalizedRestConfig.iconColor) {
             normalizedRestConfig.iconColor = normalizeColor(normalizedRestConfig.iconColor);
           }
@@ -770,7 +784,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     const hasComponentConfig = [
       'typography', 'headerBar', 'link', 'dataTable',
       'customForm', 'pageNavigator', 'microApp',
-      'iconNav', 'navGroup', 'carousel'
+      'iconNav', 'navGroup', 'carousel', 'myDocuments'
     ].includes(widget.type) || isAssistantHub;
 
     if (!hasComponentConfig) {
@@ -1217,6 +1231,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   <InputNumber min={0} max={30} step={1} style={{ width: 70 }} suffix="px" />
                 </Form.Item>
               </div>
+            </Form.Item>
+          </>
+        )}
+
+        {widget.type === 'myDocuments' && (
+          <>
+            <Form.Item name="btnColor" label="按钮颜色">
+              <ColorPicker showText allowClear />
+            </Form.Item>
+            <Form.Item name="btnTextColor" label="字体颜色">
+              <ColorPicker showText allowClear />
             </Form.Item>
           </>
         )}
@@ -1820,7 +1845,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const hasComponentConfig = [
     'typography', 'headerBar', 'link', 'dataTable',
     'customForm', 'pageNavigator', 'microApp',
-    'iconNav', 'navGroup', 'carousel'
+    'iconNav', 'navGroup', 'carousel', 'myDocuments'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置

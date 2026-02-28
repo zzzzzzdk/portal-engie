@@ -26,7 +26,8 @@ export type WidgetType =
   | 'floatingModule'   // 悬浮模块
   | 'pageNavigator'    // 页面切换工具
   | 'iconNav'          // 图标导航组件
-  | 'navGroup';        // 导航组组件
+  | 'navGroup'         // 导航组组件
+  | 'myDocuments';     // 我的文档组件
 
 /**
  * 导航项数据结构（用于 NavGroupWidget 接口返回）
@@ -638,3 +639,56 @@ export interface FloatingModuleConfig extends WidgetConfig {
 }
 
 export * from './widget-size';
+
+// ============================================
+// 文件管理相关类型定义（MinIO）
+// ============================================
+
+export interface BucketInfo {
+  name: string;
+  creation_date?: string;
+}
+
+export interface FileInfo {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size?: number;
+  last_modified?: string;
+  content_type?: string;
+  etag?: string;
+}
+
+export interface FileListResponse {
+  bucket: string;
+  prefix: string;
+  files: FileInfo[];
+  total: number;
+}
+
+export interface PreviewInfo {
+  url: string;
+  content_type: string;
+  file_name: string;
+  can_edit: boolean;
+  can_preview_office: boolean;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  file_path: string;
+  size: number;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+  deleted_count: number;
+}
+
+// OnlyOffice 编辑器配置响应
+export interface OnlyOfficeConfigResponse {
+  config: Record<string, any>;   // OnlyOffice DocEditor 配置对象
+  onlyoffice_url: string;        // OnlyOffice 服务地址
+}

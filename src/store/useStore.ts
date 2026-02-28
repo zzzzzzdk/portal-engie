@@ -153,6 +153,13 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       };
     case 'typography':
       return { ...baseConfig, title: '文本组件', content: '这是一段文本', showTitle: false };
+    case 'myDocuments':
+      return {
+        ...baseConfig,
+        title: '我的文档',
+        showTitle: false,
+        contentPadding: 0,
+      };
     case 'microApp':
       return {
         ...baseConfig,

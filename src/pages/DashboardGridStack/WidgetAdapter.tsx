@@ -28,6 +28,7 @@ import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget';
 import IconNavWidget from '@/components/widgets/IconNavWidget';
 import NavGroupWidget from '@/components/widgets/NavGroupWidget';
+import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
 import { WidgetType } from '@/types';
 import type { Layout } from 'react-grid-layout';
 
@@ -136,6 +137,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <IconNavWidget {...commonProps} />;
       case 'navGroup':
         return <NavGroupWidget {...commonProps} />;
+      case 'myDocuments':
+        return <MyDocumentsWidget {...commonProps} />;
       default:
         return <div>Unknown Widget Type: {type}</div>;
     }

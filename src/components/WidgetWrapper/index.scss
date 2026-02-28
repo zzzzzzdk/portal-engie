@@ -168,6 +168,20 @@
       border-radius: 0;
     }
   }
+
+  &.myDocuments {
+    background: transparent;
+    box-shadow: none;
+
+    &:hover {
+      box-shadow: none;
+    }
+
+    .widget-content {
+      padding: 0;
+      background-color: transparent;
+    }
+  }
 }
 
 // Hide actions when not in edit mode
