@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button, Input, Select, Checkbox, Space, Card, Form } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { FormField } from '@/types';
@@ -10,11 +10,36 @@ interface FormFieldBuilderProps {
 }
 
 const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChange }) => {
+  // 计算字段名重复集合
+  const duplicateNames = useMemo(() => {
+    const counts: Record<string, number> = {};
+    value.forEach(f => { if (f.name) counts[f.name] = (counts[f.name] || 0) + 1; });
+    return new Set(Object.keys(counts).filter(k => counts[k] > 1));
+  }, [value]);
+
+  // 获取字段名校验状态
+  const getNameError = (field: FormField): string | undefined => {
+    if (!field.name || !field.name.trim()) return '字段名不能为空';
+    if (duplicateNames.has(field.name)) return '字段名重复';
+    return undefined;
+  };
+
+  // 获取选项 value 校验状态
+  const getOptionValueError = (field: FormField, optIndex: number): string | undefined => {
+    const option = field.options?.[optIndex];
+    if (!option) return undefined;
+    const val = String(option.value);
+    if (!val || !val.trim()) return '值不能为空';
+    const hasDuplicate = field.options!.some((o, i) => i !== optIndex && String(o.value) === val);
+    if (hasDuplicate) return '值重复';
+    return undefined;
+  };
+
   const handleAdd = () => {
     const newField: FormField = {
       id: uuidv4(),
       type: 'text',
-      label: 'New Field',
+      label: '新字段',
       name: `field_${value.length + 1}`,
       required: false,
     };
@@ -47,7 +72,7 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
   const handleAddOption = (fieldIndex: number) => {
     const newValue = [...value];
     const field = newValue[fieldIndex];
-    const newOption = { label: 'Option', value: 'value' };
+    const newOption = { label: '选项', value: 'value' };
     field.options = field.options ? [...field.options, newOption] : [newOption];
     onChange?.(newValue);
   };
@@ -66,44 +91,58 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
   return (
     <div className="form-field-builder">
       {value.map((field, index) => (
-        <Card size="small" title={`Field ${index + 1}`} key={field.id} extra={<Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemove(index)} />} style={{ marginBottom: 8 }}>
+        <Card size="small" title={`字段 ${index + 1}`} key={field.id} extra={<Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemove(index)} />} style={{ marginBottom: 8 }}>
           <Space direction="vertical" style={{ width: '100%' }}>
             <Space style={{ width: '100%' }} align="start">
-              <Form.Item label="Label" style={{ marginBottom: 0, flex: 1 }}>
+              <Form.Item label="标签" style={{ marginBottom: 0, flex: 1 }}>
                 <Input value={field.label} onChange={(e) => handleChange(index, { label: e.target.value })} />
               </Form.Item>
-              <Form.Item label="Name" style={{ marginBottom: 0, flex: 1 }}>
+              <Form.Item
+                label="字段名"
+                style={{ marginBottom: 0, flex: 1 }}
+                validateStatus={getNameError(field) ? 'error' : undefined}
+                help={getNameError(field)}
+              >
                 <Input value={field.name} onChange={(e) => handleChange(index, { name: e.target.value })} />
               </Form.Item>
             </Space>
-            
+
             <Space style={{ width: '100%' }} align="start">
-              <Form.Item label="Type" style={{ marginBottom: 0, flex: 1 }}>
-                <Select value={field.type} onChange={(val) => handleChange(index, { type: val })} style={{ width: '100%' }}>
-                  <Select.Option value="text">Text</Select.Option>
-                  <Select.Option value="number">Number</Select.Option>
-                  <Select.Option value="select">Select</Select.Option>
-                  <Select.Option value="date">Date</Select.Option>
-                  <Select.Option value="checkbox">Checkbox</Select.Option>
+              <Form.Item label="类型" style={{ marginBottom: 0, flex: 1 }}>
+                <Select value={field.type} onChange={(val) => handleChange(index, { type: val })} style={{ width: '175px' }}>
+                  <Select.Option value="text">文本</Select.Option>
+                  <Select.Option value="number">数字</Select.Option>
+                  <Select.Option value="select">下拉选择</Select.Option>
+                  <Select.Option value="date">日期</Select.Option>
+                  <Select.Option value="checkbox">复选框</Select.Option>
                 </Select>
               </Form.Item>
-              <Form.Item label="Required" valuePropName="checked" style={{ marginBottom: 0, flex: 0, minWidth: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 30 }}>
-                 <Checkbox checked={field.required} onChange={(e) => handleChange(index, { required: e.target.checked })}>Required</Checkbox>
+              <Form.Item label="必填" valuePropName="checked"  style={{ marginBottom: 0, flex: 1 }}>
+                 <Checkbox checked={field.required} onChange={(e) => handleChange(index, { required: e.target.checked })}>必填</Checkbox>
               </Form.Item>
             </Space>
 
             {field.type === 'select' && (
-              <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
-                <div style={{ marginBottom: 8, fontWeight: 'bold' }}>Options:</div>
-                {field.options?.map((option, optIndex) => (
-                  <Space key={optIndex} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                    <Input placeholder="Label" value={option.label} onChange={(e) => handleOptionChange(index, optIndex, 'label', e.target.value)} />
-                    <Input placeholder="Value" value={String(option.value)} onChange={(e) => handleOptionChange(index, optIndex, 'value', e.target.value)} />
-                    <MinusCircleOutlined onClick={() => handleRemoveOption(index, optIndex)} />
-                  </Space>
-                ))}
+              <div style={{  padding: 8, borderRadius: 4 }}>
+                <div style={{ marginBottom: 8, fontWeight: 'bold' }}>选项列表:</div>
+                {field.options?.map((option, optIndex) => {
+                  const optValErr = getOptionValueError(field, optIndex);
+                  return (
+                    <Space key={optIndex} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                      <Input placeholder="显示文本" value={option.label} onChange={(e) => handleOptionChange(index, optIndex, 'label', e.target.value)} />
+                      <Form.Item
+                        style={{ marginBottom: 0 }}
+                        validateStatus={optValErr ? 'error' : undefined}
+                        help={optValErr}
+                      >
+                        <Input placeholder="值" value={String(option.value)} onChange={(e) => handleOptionChange(index, optIndex, 'value', e.target.value)} />
+                      </Form.Item>
+                      <MinusCircleOutlined onClick={() => handleRemoveOption(index, optIndex)} />
+                    </Space>
+                  );
+                })}
                 <Button type="dashed" onClick={() => handleAddOption(index)} block icon={<PlusOutlined />}>
-                  Add Option
+                  添加选项
                 </Button>
               </div>
             )}
@@ -111,7 +150,7 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
         </Card>
       ))}
       <Button type="dashed" onClick={handleAdd} block icon={<PlusOutlined />}>
-        Add Field
+        添加字段
       </Button>
     </div>
   );

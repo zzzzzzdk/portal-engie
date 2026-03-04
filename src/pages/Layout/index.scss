@@ -148,6 +148,24 @@
   }
 }
 
+.auto-save-indicator {
+  font-size: 12px;
+  color: var(--ant-color-text-quaternary, #bfbfbf);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: auto;
+
+  &.saved {
+    color: var(--ant-color-success, #52c41a);
+  }
+
+  &.error {
+    color: var(--ant-color-error, #ff4d4f);
+  }
+}
+
 .app-content {
   flex: 1;
   display: flex;

@@ -33,7 +33,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
   currentModuleId,
 }) => {
   const { widgets } = useStore();
-  const [routes, setRoutes] = useState<EventRouteConfig[]>(value);
+  const routes = value; // 直接使用受控值，不维护内部状态
   const [receiverApps, setReceiverApps] = useState<ReceiverApp[]>([]);
   const [currentAppEvents, setCurrentAppEvents] = useState<EmittableEvent[]>([]);
   const [microAppMetadata, setMicroAppMetadata] = useState<any>(null);
@@ -121,14 +121,8 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
     setReceiverListenableEvents(eventMap);
   }, [microAppMetadata, receiverApps]);
 
-  // 同步value变化
-  useEffect(() => {
-    setRoutes(value);
-  }, [value]);
-
-  // 通知父组件更新
+  // 通知父组件更新（受控模式，由 Form 管理状态）
   const triggerChange = (newRoutes: EventRouteConfig[]) => {
-    setRoutes(newRoutes);
     onChange?.(newRoutes);
   };
 

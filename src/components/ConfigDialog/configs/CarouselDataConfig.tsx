@@ -9,6 +9,7 @@ import {
   Divider,
   ColorPicker,
   Upload,
+  message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { WidgetConfigProps } from './types';
@@ -97,7 +98,18 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                             </Form.Item>
                             <Upload
                               showUploadList={false}
+                              accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                               beforeUpload={async (file) => {
+                                const isImage = file.type.startsWith('image/');
+                                if (!isImage) {
+                                  message.error('只能上传图片文件');
+                                  return false;
+                                }
+                                const isLt10M = file.size / 1024 / 1024 < 10;
+                                if (!isLt10M) {
+                                  message.error('图片大小不能超过 10MB');
+                                  return false;
+                                }
                                 setUploadingIndex(key.toString());
                                 try {
                                   const res = await uploadImage(file);

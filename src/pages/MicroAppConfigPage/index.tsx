@@ -178,6 +178,21 @@ const MicroAppConfigPage: React.FC = () => {
 
   // 导入配置 - 调用导入接口并刷新配置
   const handleImport = async (file: File) => {
+    // 前端校验：仅允许 .json 文件
+    if (!file.name.endsWith('.json')) {
+      message.error('仅支持导入 .json 格式的配置文件');
+      return false;
+    }
+
+    // 前端校验：读取文件内容并验证 JSON 格式
+    try {
+      const text = await file.text();
+      JSON.parse(text);
+    } catch {
+      message.error('文件内容不是有效的 JSON 格式，请检查文件');
+      return false;
+    }
+
     const hide = message.loading('正在导入配置...', 0);
     try {
       const res = await importMicroAppConfig(file);
@@ -465,7 +480,10 @@ const MicroAppConfigPage: React.FC = () => {
                     icon={<EditOutlined />}
                     onClick={() => {
                       setEditingModule({ systemId: system.id, module });
-                      moduleForm.setFieldsValue(module);
+                      moduleForm.setFieldsValue({
+                        ...module,
+                        icon: module.iconSvg || module.icon,
+                      });
                       setModuleModalOpen(true);
                     }}
                   />
@@ -595,7 +613,7 @@ const MicroAppConfigPage: React.FC = () => {
           <Button icon={<ReloadOutlined />} onClick={loadConfig} loading={loading}>
             刷新
           </Button>
-          <Upload beforeUpload={handleImport} showUploadList={false}>
+          <Upload beforeUpload={handleImport} showUploadList={false} accept=".json">
             <Button icon={<UploadOutlined />}>导入配置</Button>
           </Upload>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
@@ -754,13 +772,13 @@ const MicroAppConfigPage: React.FC = () => {
           >
             <Switch />
           </Form.Item>
-          <Form.Item label="默认尺寸">
+          <Form.Item label="默认尺寸" required>
             <Space>
-              <Form.Item name={['defaultSize', 'w']} noStyle initialValue={6}>
+              <Form.Item name={['defaultSize', 'w']} noStyle initialValue={6} rules={[{ required: true, message: '请输入宽度' }]}>
                 <InputNumber min={1} max={12} placeholder="宽度" />
               </Form.Item>
               <span>x</span>
-              <Form.Item name={['defaultSize', 'h']} noStyle initialValue={4}>
+              <Form.Item name={['defaultSize', 'h']} noStyle initialValue={4} rules={[{ required: true, message: '请输入高度' }]}>
                 <InputNumber min={1} placeholder="高度" />
               </Form.Item>
             </Space>

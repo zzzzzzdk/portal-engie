@@ -108,7 +108,7 @@ const calculateSmartPosition = (
 
   const currentCenterX = currentPos.x + currentSize.width / 2;
   const currentCenterY = currentPos.y + currentSize.height / 2;
-  
+
   const viewportCenterX = viewport.width / 2;
   const viewportCenterY = viewport.height / 2;
 
@@ -134,9 +134,9 @@ interface FloatingModuleProps {
 }
 
 const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
-const initialContainer = typeof document !== 'undefined' ? findFloatingContainer() : null;
-const initialViewport = getViewportSize(initialContainer);
-const initialOffset = initialContainer ? getContainerOffset(initialContainer) : { left: 0, top: 0 };
+  const initialContainer = typeof document !== 'undefined' ? findFloatingContainer() : null;
+  const initialViewport = getViewportSize(initialContainer);
+  const initialOffset = initialContainer ? getContainerOffset(initialContainer) : { left: 0, top: 0 };
   const {
     isEditMode,
     updateFloatingModulePosition,
@@ -173,7 +173,7 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
   const [position, setPosition] = useState<Position>(() => {
     // 如果有保存的位置，直接使用并限制在视口内
     if (config.position) {
-        return clampPosition(config.position, initialSizeState, initialViewport);
+      return clampPosition(config.position, initialSizeState, initialViewport);
     }
 
     // 默认位置逻辑
@@ -184,12 +184,12 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
 
     // 根据 defaultPosition 计算
     switch (config.defaultPosition) {
-        case 'bottom-left': return { x: padding, y: maxY };
-        case 'top-left': return { x: padding, y: padding };
-        case 'top-right': return { x: maxX, y: padding };
-        case 'center': return { x: (vp.width - initialSizeState.width) / 2, y: (vp.height - initialSizeState.height) / 2 };
-        case 'bottom-right':
-        default: return { x: maxX, y: maxY };
+      case 'bottom-left': return { x: padding, y: maxY };
+      case 'top-left': return { x: padding, y: padding };
+      case 'top-right': return { x: maxX, y: padding };
+      case 'center': return { x: (vp.width - initialSizeState.width) / 2, y: (vp.height - initialSizeState.height) / 2 };
+      case 'bottom-right':
+      default: return { x: maxX, y: maxY };
     }
   });
 
@@ -335,14 +335,14 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
   // 注意：这可能会与本地交互冲突，所以这里只在必要属性变化时更新，且加防抖或判断
   useEffect(() => {
     if (typeof config.isExpanded === 'boolean' && config.isExpanded !== isExpanded) {
-        setIsExpanded(config.isExpanded);
-        // 如果外部改变了展开状态，我们需要重新计算 size
-        const newSize = config.isExpanded 
-            ? { width: config.width || 380, height: config.height || 400 }
-            : { width: collapsedWidth, height: collapsedHeight };
-        setSize(newSize);
-        // 同时也需要调整 position 以适应新 size
-        setPosition(prev => calculateSmartPosition(prev, size, newSize, viewport));
+      setIsExpanded(config.isExpanded);
+      // 如果外部改变了展开状态，我们需要重新计算 size
+      const newSize = config.isExpanded
+        ? { width: config.width || 380, height: config.height || 400 }
+        : { width: collapsedWidth, height: collapsedHeight };
+      setSize(newSize);
+      // 同时也需要调整 position 以适应新 size
+      setPosition(prev => calculateSmartPosition(prev, size, newSize, viewport));
     }
   }, [config.isExpanded]);
 
@@ -406,14 +406,8 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
   }, [config.backgroundType, config.backgroundColor, config.backgroundImage, config.backgroundGradient]);
 
   const headerStyle = useMemo(
-    () => {
-      // 如果有自定义背景，header 变成透明
-      if (hasCustomBackground) {
-        return { background: 'transparent' };
-      }
-      return config.headerColor ? { background: config.headerColor } : {};
-    },
-    [config.headerColor, hasCustomBackground],
+    () => config.headerColor ? { background: config.headerColor } : {},
+    [config.headerColor],
   );
 
   const isDraggable = useMemo(
@@ -490,9 +484,9 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
     let nextSize: Size;
 
     if (nextExpanded) {
-        nextSize = { width: config.width || 380, height: config.height || 400 };
+      nextSize = { width: config.width || 380, height: config.height || 400 };
     } else {
-        nextSize = { width: collapsedWidth, height: collapsedHeight };
+      nextSize = { width: collapsedWidth, height: collapsedHeight };
     }
 
     // 智能计算新位置
@@ -501,7 +495,7 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
     setIsExpanded(nextExpanded);
     setSize(nextSize);
     setPosition(nextPos);
-    
+
     toggleFloatingModuleExpanded(widget.id);
     debouncedSavePosition(nextPos);
   }, [isExpanded, config.width, config.height, config.collapsible, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
@@ -569,119 +563,119 @@ const initialOffset = initialContainer ? getContainerOffset(initialContainer) : 
         handle=".drag-handle"
         bounds={dragBounds}
       >
-        <div 
-            ref={nodeRef}
-            style={{ 
-                position: 'fixed', 
-                left: containerEl ? containerOffset.left : 0,
-                top: containerEl ? containerOffset.top : 0,
-                zIndex: config.zIndex || 9999,
-                // Ensure the wrapper takes the size, crucial for Draggable to calculate bounds correctly
-                width: size.width,
-                height: size.height
-            }}
+        <div
+          ref={nodeRef}
+          style={{
+            position: 'fixed',
+            left: containerEl ? containerOffset.left : 0,
+            top: containerEl ? containerOffset.top : 0,
+            zIndex: config.zIndex || 9999,
+            // Ensure the wrapper takes the size, crucial for Draggable to calculate bounds correctly
+            width: size.width,
+            height: size.height
+          }}
         >
-            <Resizable
-              width={size.width}
-              height={size.height}
-              onResize={handleResize}
-              onResizeStop={handleResizeStop}
-              minConstraints={[config.minWidth || 300, config.minHeight || 400]}
-              maxConstraints={[config.maxWidth || 800, config.maxHeight || 900]}
-              resizeHandles={isResizable ? ['se'] : []}
+          <Resizable
+            width={size.width}
+            height={size.height}
+            onResize={handleResize}
+            onResizeStop={handleResizeStop}
+            minConstraints={[config.minWidth || 300, config.minHeight || 400]}
+            maxConstraints={[config.maxWidth || 800, config.maxHeight || 900]}
+            resizeHandles={isResizable ? ['se'] : []}
+          >
+            {/* Content Wrapper */}
+            <div
+              className="floating-module-wrapper"
+              style={{ width: size.width, height: size.height }}
             >
-              {/* Content Wrapper */}
-              <div 
-                className="floating-module-wrapper" 
-                style={{ width: size.width, height: size.height }}
-              >
-                  <AnimatePresence mode="wait">
-                    {isExpanded ? (
-                      <motion.div
-                        key="expanded"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className={`floating-module expanded theme-${actualTheme} ${isResizable ? 'resizable' : ''}`}
-                        style={{ ...moduleStyle, position: 'relative', width: '100%', height: '100%' }}
-                      >
-                         {/* Header */}
-                         {config.showTitle !== false ? (
-                            <div className={`floating-module-header drag-handle ${hasCustomBackground ? 'transparent-bg' : ''}`} style={headerStyle}>
-                              {isDraggable && <DragOutlined className="drag-icon" />}
-                              <span className="title">{widget.title}</span>
-                              <div className="actions">
-                                {isEditMode && (
-                                  <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn config-btn">
-                                    <SettingOutlined />
-                                  </button>
-                                )}
-                                {config.collapsible !== false && (
-                                  <button onClick={toggleExpand} className="action-btn minimize-btn">
-                                    <MinusOutlined />
-                                  </button>
-                                )}
-                                {isEditMode ? (
-                                  <Button onClick={handleDelete} className="action-btn delete-btn" danger><DeleteOutlined /></Button>
-                                ) : (
-                                  config.closable !== false && (
-                                    // <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
-                                    ""
-                                  )
-                                )}
-                              </div>
-                            </div>
-                         ) : (
-                             // Transparent Header for dragging when title is hidden
-                             isEditMode && (
-                                <div className="floating-module-header-transparent drag-handle">
-                                    {isDraggable && <DragOutlined className="drag-icon-transparent" />}
-                                    <div className="actions-transparent">
-                                       <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn-transparent"><SettingOutlined /></button>
-                                        {config.collapsible !== false && (
-                                            <button onClick={toggleExpand} className="action-btn-transparent"><MinusOutlined /></button>
-                                        )}
-                                        <button onClick={handleDelete} className="action-btn-transparent delete-btn"><CloseOutlined /></button>
-                                    </div>
-                                </div>
-                             )
-                         )}
-                         
-                         <div className="floating-module-content">
-                            <div className="drag-mask" />
-                            {renderContent}
-                         </div>
-                      </motion.div>
+              <AnimatePresence mode="wait">
+                {isExpanded ? (
+                  <motion.div
+                    key="expanded"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className={`floating-module expanded theme-${actualTheme} ${isResizable ? 'resizable' : ''}`}
+                    style={{ ...moduleStyle, position: 'relative', width: '100%', height: '100%' }}
+                  >
+                    {/* Header */}
+                    {config.showTitle !== false ? (
+                      <div className={`floating-module-header drag-handle ${hasCustomBackground ? 'custom-bg' : ''}`} style={headerStyle}>
+                        {isDraggable && <DragOutlined className="drag-icon" />}
+                        <span className="title" style={config.titleColor ? { color: config.titleColor } : undefined}>{widget.title}</span>
+                        <div className="actions" style={config.titleColor ? { color: config.titleColor } : undefined}>
+                          {isEditMode && (
+                            <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn config-btn">
+                              <SettingOutlined />
+                            </button>
+                          )}
+                          {config.collapsible !== false && (
+                            <button onClick={toggleExpand} className="action-btn minimize-btn">
+                              <MinusOutlined />
+                            </button>
+                          )}
+                          {isEditMode ? (
+                            <Button onClick={handleDelete} className="action-btn delete-btn" danger><DeleteOutlined /></Button>
+                          ) : (
+                            config.closable !== false && (
+                              // <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
+                              ""
+                            )
+                          )}
+                        </div>
+                      </div>
                     ) : (
-                        <motion.div
-                            key="collapsed"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            transition={{ duration: 0.2 }}
-                            className={`floating-module collapsed theme-${actualTheme} drag-handle`}
-                            style={{
-                                ...moduleStyle,
-                                position: 'relative',
-                                width: '100%',
-                                height: '100%',
-                                cursor: 'pointer',
-                                ...(collapsedBgColor ? { background: collapsedBgColor } : {}),
-                            }}
-                            onClick={toggleExpand}
-                        >
-                            <IconRenderer
-                                value={collapsedIcon as string}
-                                size={collapsedIconSize}
-                                color="#fff"
-                                fallbackText={widget.title}
-                            />
-                        </motion.div>
+                      // Transparent Header for dragging when title is hidden
+                      isEditMode && (
+                        <div className="floating-module-header-transparent drag-handle">
+                          {isDraggable && <DragOutlined className="drag-icon-transparent" />}
+                          <div className="actions-transparent">
+                            <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn-transparent"><SettingOutlined /></button>
+                            {config.collapsible !== false && (
+                              <button onClick={toggleExpand} className="action-btn-transparent"><MinusOutlined /></button>
+                            )}
+                            <button onClick={handleDelete} className="action-btn-transparent delete-btn"><CloseOutlined /></button>
+                          </div>
+                        </div>
+                      )
                     )}
-                  </AnimatePresence>
-              </div>
-            </Resizable>
+
+                    <div className="floating-module-content">
+                      <div className="drag-mask" />
+                      {renderContent}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapsed"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                    className={`floating-module collapsed theme-${actualTheme} drag-handle`}
+                    style={{
+                      ...moduleStyle,
+                      position: 'relative',
+                      width: '100%',
+                      height: '100%',
+                      cursor: 'pointer',
+                      ...(collapsedBgColor ? { background: collapsedBgColor } : {}),
+                    }}
+                    onClick={toggleExpand}
+                  >
+                    <IconRenderer
+                      value={collapsedIcon as string}
+                      size={collapsedIconSize}
+                      color="#fff"
+                      fallbackText={widget.title}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </Resizable>
         </div>
       </Draggable>
 

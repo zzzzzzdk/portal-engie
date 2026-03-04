@@ -20,6 +20,9 @@ const DashboardConfigDialog: React.FC<DashboardConfigDialogProps> = ({ isOpen, o
         backgroundColor: dashboardConfig.backgroundColor || '#f5f5f5',
         backgroundImage: dashboardConfig.backgroundImage,
         backgroundGradient: dashboardConfig.backgroundGradient,
+        backgroundSize: dashboardConfig.backgroundSize,
+        backgroundRepeat: dashboardConfig.backgroundRepeat,
+        backgroundPosition: dashboardConfig.backgroundPosition,
       });
     }
   }, [isOpen, dashboardConfig, form]);
@@ -44,6 +47,9 @@ const DashboardConfigDialog: React.FC<DashboardConfigDialogProps> = ({ isOpen, o
         backgroundColor: backgroundColor,
         backgroundImage: values.backgroundImage,
         backgroundGradient: values.backgroundGradient,
+        backgroundSize: values.backgroundSize,
+        backgroundRepeat: values.backgroundRepeat,
+        backgroundPosition: values.backgroundPosition,
       };
 
       updateDashboardConfig(config);
@@ -63,9 +69,10 @@ const DashboardConfigDialog: React.FC<DashboardConfigDialogProps> = ({ isOpen, o
       width={500}
     >
       <Form form={form} layout="vertical">
-        <BackgroundSettings 
-          form={form} 
-          initialValues={dashboardConfig} 
+        <BackgroundSettings
+          form={form}
+          initialValues={dashboardConfig}
+          showEffects={false}
         />
       </Form>
     </Modal>

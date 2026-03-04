@@ -33,12 +33,16 @@ interface BackgroundSettingsProps {
     backgroundColor?: string;
     backgroundImage?: string;
     backgroundGradient?: string;
+    backgroundSize?: string;      // 背景图大小
+    backgroundRepeat?: string;    // 背景图重复
+    backgroundPosition?: string;  // 背景图位置
     backdropBlur?: number;  // 背景模糊度 (px)
     boxShadow?: string;     // 阴影效果
   };
+  showEffects?: boolean; // 是否显示背景模糊和阴影效果，默认 true
 }
 
-const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialValues }) => {
+const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialValues, showEffects = true }) => {
   const [activeTab, setActiveTab] = useState<string>('color');
   const [fileList, setFileList] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -128,7 +132,6 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
         >
           <ColorPicker
             showText
-            format="rgb"
             defaultFormat="rgb"
           />
         </Form.Item>
@@ -308,42 +311,46 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
         size="small"
         style={{ marginTop: 8 }}
       />
-      <Form.Item
-        label="背景模糊"
-        tooltip={
-          styleMode === 'minimal' && themeDefaultBlur
-            ? `极简模式默认模糊 ${themeDefaultBlur}px，设置为 0 可禁用模糊效果`
-            : '设置毛玻璃效果，值越大越模糊 (0-30px)，设置为 0 可禁用'
-        }
-        style={{ marginTop: 16 }}
-      >
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Form.Item name="backdropBlur" noStyle>
-            <Slider
-              min={0}
-              max={30}
-              step={1}
-              style={{ flex: 1 }}
-            />
+      {showEffects && (
+        <>
+          <Form.Item
+            label="背景模糊"
+            tooltip={
+              styleMode === 'minimal' && themeDefaultBlur
+                ? `极简模式默认模糊 ${themeDefaultBlur}px，设置为 0 可禁用模糊效果`
+                : '设置毛玻璃效果，值越大越模糊 (0-30px)，设置为 0 可禁用'
+            }
+            style={{ marginTop: 16 }}
+          >
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Form.Item name="backdropBlur" noStyle>
+                <Slider
+                  min={0}
+                  max={30}
+                  step={1}
+                  style={{ flex: 1 }}
+                />
+              </Form.Item>
+              <Form.Item name="backdropBlur" noStyle>
+                <InputNumber
+                  min={0}
+                  max={30}
+                  step={1}
+                  style={{ width: 70 }}
+                  suffix="px"
+                />
+              </Form.Item>
+            </div>
           </Form.Item>
-          <Form.Item name="backdropBlur" noStyle>
-            <InputNumber
-              min={0}
-              max={30}
-              step={1}
-              style={{ width: 70 }}
-              suffix="px"
-            />
+          <Form.Item
+            name="boxShadow"
+            label="阴影效果"
+            tooltip="CSS box-shadow 属性，如: 0 4px 12px rgba(0,0,0,0.15)"
+          >
+            <Input placeholder="0 4px 12px rgba(0,0,0,0.15)" allowClear />
           </Form.Item>
-        </div>
-      </Form.Item>
-      <Form.Item
-        name="boxShadow"
-        label="阴影效果"
-        tooltip="CSS box-shadow 属性，如: 0 4px 12px rgba(0,0,0,0.15)"
-      >
-        <Input placeholder="0 4px 12px rgba(0,0,0,0.15)" allowClear />
-      </Form.Item>
+        </>
+      )}
     </>
   );
 };

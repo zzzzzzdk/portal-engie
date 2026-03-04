@@ -138,6 +138,9 @@ export interface DashboardConfig {
   backgroundColor?: string;
   backgroundImage?: string;
   backgroundGradient?: string;
+  backgroundSize?: string;      // 背景图大小 (cover, contain, 100% 100%, auto)
+  backgroundRepeat?: string;    // 背景图重复 (no-repeat, repeat, repeat-x, repeat-y)
+  backgroundPosition?: string;  // 背景图位置 (center, top, bottom left, etc.)
   // 主题配置（发布时保存，预览时使用）
   themeMode?: 'light' | 'dark';
   themePreset?: string;               // 主题预设名称
@@ -161,6 +164,7 @@ export interface AppState {
   widgets: Widget[];
   groups: WidgetGroup[];
   isEditMode: boolean;
+  isDirty: boolean;        // 是否有未保存的变更
   isFullScreen: boolean;
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
@@ -181,6 +185,8 @@ export interface AppState {
   updateGroup: (id: string, updates: Partial<WidgetGroup>) => void;
   updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => void;
   setEditMode: (isEditMode: boolean) => void;
+  markDirty: () => void;
+  clearDirty: () => void;
   toggleFullScreen: () => void;
   openConfigPanel: (target: ConfigPanelTarget) => void;
   closeConfigPanel: () => void;

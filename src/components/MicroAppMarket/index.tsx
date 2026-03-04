@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Image, Tag } from 'antd';
-import { AppstoreOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Image, Tag, Input } from 'antd';
+import { AppstoreOutlined, SearchOutlined } from '@ant-design/icons';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
+import { sanitizeSvg } from '@/utils/sanitizeSvg';
 import type { MicroAppSystem, MicroAppModule } from '@/types';
 import './index.scss';
 
@@ -18,12 +19,44 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [systemsByCategory, setSystemsByCategory] = useState<Record<string, MicroAppSystem[]>>({});
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   useEffect(() => {
     if (open) {
+      setSearchKeyword('');
       loadMicroApps();
     }
   }, [open]);
+
+  // 根据关键词过滤系统和模块
+  const filteredByCategory = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    if (!keyword) return systemsByCategory;
+
+    const result: Record<string, MicroAppSystem[]> = {};
+    for (const [category, systems] of Object.entries(systemsByCategory)) {
+      const filteredSystems: MicroAppSystem[] = [];
+      for (const system of systems) {
+        const systemMatch = system.name.toLowerCase().includes(keyword);
+        // 系统名匹配则保留全部模块，否则按模块名过滤
+        if (systemMatch) {
+          filteredSystems.push(system);
+        } else {
+          const matchedModules = system.modules.filter(
+            m => m.name.toLowerCase().includes(keyword) ||
+                 m.description?.toLowerCase().includes(keyword)
+          );
+          if (matchedModules.length > 0) {
+            filteredSystems.push({ ...system, modules: matchedModules });
+          }
+        }
+      }
+      if (filteredSystems.length > 0) {
+        result[category] = filteredSystems;
+      }
+    }
+    return result;
+  }, [systemsByCategory, searchKeyword]);
 
   const loadMicroApps = async () => {
     setLoading(true);
@@ -48,7 +81,7 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
     const cover = module.iconSvg ? (
       <div
         className="module-thumbnail module-thumbnail--svg"
-        dangerouslySetInnerHTML={{ __html: module.iconSvg }}
+        dangerouslySetInnerHTML={{ __html: sanitizeSvg(module.iconSvg) }}
       />
     ) : module.icon ? (
       <div className="module-thumbnail">
@@ -77,14 +110,14 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
           title={module.name}
           description={
             <div className="module-description">
-              <div className="module-desc-text">{module.description || '????'}</div>
+              <div className="module-desc-text">{module.description || '-'}</div>
               {module.defaultSize && (
                 <div className="module-size">
-                  ????: {module.defaultSize.w} ? {module.defaultSize.h}
+                  宽/高: {module.defaultSize.w} / {module.defaultSize.h}
                 </div>
               )}
               {module.forceIconOnly && (
-                <Tag color="purple" style={{ marginTop: 8 }}>????</Tag>
+                <Tag color="purple" style={{ marginTop: 8 }}>强制图标显示</Tag>
               )}
             </div>
           }
@@ -136,12 +169,12 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
       );
     }
 
-    const categories = Object.keys(systemsByCategory);
+    const categories = Object.keys(filteredByCategory);
     if (categories.length === 0) {
       return (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无可用的微应用"
+          description={searchKeyword ? '没有匹配的微应用' : '暂无可用的微应用'}
         />
       );
     }
@@ -152,10 +185,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
           <div key={category} className="category-section">
             <h3 className="category-title">{category}</h3>
             <Collapse
-              defaultActiveKey={systemsByCategory[category].map(s => s.id)}
+              defaultActiveKey={filteredByCategory[category].map(s => s.id)}
               className="system-collapse"
             >
-              {systemsByCategory[category].map((system) => renderSystemPanel(system))}
+              {filteredByCategory[category].map((system) => renderSystemPanel(system))}
             </Collapse>
           </div>
         ))}
@@ -185,7 +218,18 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
       className="micro-app-market-modal"
       destroyOnHidden
     >
-      {renderContent()}
+      <div className="market-search">
+        <Input
+          placeholder="搜索系统名称 / 微应用名称"
+          prefix={<SearchOutlined />}
+          allowClear
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+        />
+      </div>
+      <div className="market-scroll">
+        {renderContent()}
+      </div>
     </Modal>
   );
 };

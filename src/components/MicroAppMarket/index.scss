@@ -1,7 +1,20 @@
 .micro-app-market-modal {
   .ant-modal-body {
     max-height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .market-search {
+    flex-shrink: 0;
+    padding-bottom: 12px;
+  }
+
+  .market-scroll {
+    flex: 1;
     overflow-y: auto;
+    min-height: 0;
   }
 
   .market-title {

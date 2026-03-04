@@ -64,8 +64,7 @@ export const fileOpsApi = {
     }),
 
   download: (bucket: string, path: string): Promise<Blob> =>
-    fileApi.get(`/files/${bucket}/download`, {
-      params: { path },
+    fileApi.get(`/files/${bucket}/download?path=${encodeURIComponent(path)}`, {
       responseType: 'blob',
     }),
 

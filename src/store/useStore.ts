@@ -50,6 +50,9 @@ const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 2, minH: 1 };
 const DEFAULT_ICON_NAV_LAYOUT = { w: 2, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAV_GROUP_LAYOUT = { w: 10, h: 10, x: 0, y: 0, minW: 4, minH: 4 };
 
+// 抑制 dirty 标记的标志，在 loadDashboardFromData / resetDashboard 期间为 true
+let _suppressDirtyMark = false;
+
 // 验证并清理布局数据，确保所有必需的数值字段都是有效数字
 const sanitizeLayoutValue = (value: any, defaultValue: number, minValue?: number): number => {
   const num = typeof value === 'number' && !isNaN(value) ? value : defaultValue;
@@ -77,7 +80,7 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
   };
   switch (type) {
     case 'clock':
-      return { ...baseConfig, title: 'Clock' };
+      return { ...baseConfig, title: 'Clock', refreshInterval: 0 };
     case 'stats':
       return { ...baseConfig, title: 'Statistics' };
     case 'chart':
@@ -236,6 +239,7 @@ export const useStore = create<AppState>()(
       ] as Widget[],
       groups: [] as WidgetGroup[],
       isEditMode: true, // Default to edit mode for easier setup
+      isDirty: false,   // 是否有未保存的变更
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
@@ -598,21 +602,28 @@ export const useStore = create<AppState>()(
       },
 
       setEditMode: (isEditMode: boolean) => set({ isEditMode }),
+      markDirty: () => set({ isDirty: true }),
+      clearDirty: () => set({ isDirty: false }),
 
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
       openConfigPanel: (target) => set({ configPanelTarget: target }),
       closeConfigPanel: () => set({ configPanelTarget: null }),
 
-      resetDashboard: () => set({
-        widgets: [],
-        groups: [],
-        floatingModules: [] as Widget[], // 悬浮模块列表
-        globalMicroApps: [] as Widget[], // 全局无边框微应用列表
-        dashboardConfig: {
-          backgroundType: 'color',
-          backgroundColor: '',
-        },
-      }),
+      resetDashboard: () => {
+        _suppressDirtyMark = true;
+        set({
+          widgets: [],
+          groups: [],
+          floatingModules: [] as Widget[], // 悬浮模块列表
+          globalMicroApps: [] as Widget[], // 全局无边框微应用列表
+          dashboardConfig: {
+            backgroundType: 'color',
+            backgroundColor: '',
+          },
+          isDirty: false,
+        });
+        _suppressDirtyMark = false;
+      },
 
       saveDashboard: () => {
         // Zustand persist middleware handles localStorage automatically.
@@ -639,6 +650,7 @@ export const useStore = create<AppState>()(
         floatingModules?: Widget[];
         dashboardConfig?: any;
       }) => {
+        _suppressDirtyMark = true;
         const sanitizedConfig = sanitizeDashboardConfig(data.dashboardConfig);
         set({
           widgets: data.widgets?.map(w => ({
@@ -654,7 +666,9 @@ export const useStore = create<AppState>()(
             backgroundType: 'color',
             backgroundColor: '',
           },
+          isDirty: false,
         });
+        _suppressDirtyMark = false;
       },
 
       updateDashboardConfig: (config) =>
@@ -911,3 +925,18 @@ export const useStore = create<AppState>()(
     }
   )
 );
+
+// 自动检测内容变更并标记 isDirty
+// Zustand subscribe 在 set() 期间同步触发，_suppressDirtyMark 用于抑制加载/重置时的标记
+useStore.subscribe((state, prevState) => {
+  if (_suppressDirtyMark || state.isDirty) return;
+  if (
+    state.widgets !== prevState.widgets ||
+    state.groups !== prevState.groups ||
+    state.floatingModules !== prevState.floatingModules ||
+    state.dashboardConfig !== prevState.dashboardConfig ||
+    state.globalMicroApps !== prevState.globalMicroApps
+  ) {
+    useStore.setState({ isDirty: true });
+  }
+});

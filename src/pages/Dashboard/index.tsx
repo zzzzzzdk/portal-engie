@@ -121,11 +121,11 @@ const Dashboard: React.FC = () => {
       >
         {sanitizedWidgets.map((widget) => (
           <div key={widget.id} data-grid={widget.layout}>
-            <WidgetErrorBoundary widgetId={widget.id} widgetType={widget.type}>
-              <WidgetWrapper widget={widget}>
+            <WidgetWrapper widget={widget}>
+              <WidgetErrorBoundary widgetId={widget.id} widgetType={widget.type}>
                 {renderWidgetContent(widget)}
-              </WidgetWrapper>
-            </WidgetErrorBoundary>
+              </WidgetErrorBoundary>
+            </WidgetWrapper>
           </div>
         ))}
       </ResponsiveReactGridLayout>

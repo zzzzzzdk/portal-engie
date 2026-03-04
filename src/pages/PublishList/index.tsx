@@ -306,7 +306,7 @@ const PublishList: React.FC = () => {
     if (!loading && !dataSource.length) {
       return (
         <div className="publish-card-empty">
-          <Empty description="暂无应用" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         </div>
       );
     }

@@ -145,11 +145,11 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
   };
 
   return (
-    <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
-      <WidgetWrapper widget={resolvedWidget}>
+    <WidgetWrapper widget={resolvedWidget}>
+      <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
         {renderWidgetContent()}
-      </WidgetWrapper>
-    </WidgetErrorBoundary>
+      </WidgetErrorBoundary>
+    </WidgetWrapper>
   );
 };
 

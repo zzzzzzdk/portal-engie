@@ -140,20 +140,23 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     onClick: handleMenuClick,
   };
 
+  const getNavKey = useCallback((item: HeaderNavItem, index: number) => {
+    return `nav-${index}-${item.id || item.url || item.path || item.name}`;
+  }, []);
+
   const navKeyMap = useMemo(() => {
     return navItems.reduce<Record<string, HeaderNavItem>>((map, item, index) => {
-      const key = item.id || item.url || item.path || item.name || `nav-${index}`;
-      map[key] = item;
+      map[getNavKey(item, index)] = item;
       return map;
     }, {});
-  }, [navItems]);
+  }, [navItems, getNavKey]);
 
   const navMenuItems = useMemo(() => {
     return navItems.map((item, index) => ({
-      key: (item.id || item.url || item.path || item.name) + `nav-${index}`,
+      key: getNavKey(item, index),
       label: item.name || '未命名',
     }));
-  }, [navItems]);
+  }, [navItems, getNavKey]);
 
   const alignment = headerConfig?.headerAlignment || 'left';
   const showUserProfile = config?.showUserProfile;

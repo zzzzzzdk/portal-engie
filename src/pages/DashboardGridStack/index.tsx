@@ -77,9 +77,9 @@ const DashboardInner: React.FC = () => {
     if (dashboardConfig) {
       if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
         style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
-        style.backgroundSize = 'cover';
-        style.backgroundPosition = 'center';
-        style.backgroundRepeat = 'no-repeat';
+        style.backgroundSize = dashboardConfig.backgroundSize || 'cover';
+        style.backgroundPosition = dashboardConfig.backgroundPosition || 'center';
+        style.backgroundRepeat = dashboardConfig.backgroundRepeat || 'no-repeat';
         style.backgroundAttachment = 'fixed';
       } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
         style.background = dashboardConfig.backgroundGradient;

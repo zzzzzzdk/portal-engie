@@ -108,11 +108,11 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
   };
 
   return (
-    <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
-      <WidgetWrapper widget={resolvedWidget} isPreviewMode>
+    <WidgetWrapper widget={resolvedWidget} isPreviewMode>
+      <WidgetErrorBoundary widgetId={resolvedWidget.id} widgetType={resolvedWidget.type}>
         {renderWidgetContent()}
-      </WidgetWrapper>
-    </WidgetErrorBoundary>
+      </WidgetErrorBoundary>
+    </WidgetWrapper>
   );
 };
 

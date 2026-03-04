@@ -68,15 +68,20 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
   const valueLabel = listConfig?.valueLabel || '';
   const changeLabel = listConfig?.changeLabel || '';
 
-  // 转换数据格式
+  // 转换数据格式（确保类型安全）
   const transformData = useCallback((data: any[]): TopListItem[] => {
-    return data.slice(0, maxItems).map((item, index) => ({
-      id: item.id || `item-${index}`,
-      name: item[nameField] || item.name || '未知',
-      value: item[valueField] ?? item.value ?? 0,
-      change: item[changeField] || item.change,
-      unit: item[unitField] || item.unit,
-    }));
+    return data.slice(0, maxItems).map((item, index) => {
+      const rawValue = item[valueField] ?? item.value ?? 0;
+      const rawChange = item[changeField] ?? item.change;
+      const rawUnit = item[unitField] ?? item.unit;
+      return {
+        id: item.id || `item-${index}`,
+        name: String(item[nameField] ?? item.name ?? '未知'),
+        value: typeof rawValue === 'number' ? rawValue : (Number(rawValue) || 0),
+        change: rawChange != null ? String(rawChange) : undefined,
+        unit: rawUnit != null ? String(rawUnit) : undefined,
+      };
+    });
   }, [nameField, valueField, changeField, unitField, maxItems]);
 
   // 加载数据
@@ -189,7 +194,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
                   </Typography.Text>
                   {item.change && (
                     <Typography.Text
-                      type={item.change.startsWith('+') ? 'success' : item.change.startsWith('-') ? 'danger' : undefined}
+                      type={typeof item.change === 'string' && item.change.startsWith('+') ? 'success' : typeof item.change === 'string' && item.change.startsWith('-') ? 'danger' : undefined}
                     >
                       {changeLabel && <span style={{ marginRight: '2px', color: '#999' }}>{changeLabel}</span>}
                       {item.change}

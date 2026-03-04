@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Dropdown, Menu } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, DownOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, DownOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -15,6 +15,7 @@ import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WidgetDrawer from '@/components/WidgetDrawer';
 import Icon from '@/components/Icon';
 import { useTheme } from '@/theme'
+import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import captureDashboardCover from '@/utils/captureDashboardCover'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
@@ -44,6 +45,7 @@ const Layout: React.FC = () => {
     resetDashboard,
     closeConfigPanel,
     updateDashboardConfig,
+    clearDirty,
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ const Layout: React.FC = () => {
   const [widgetDrawerOpen, setWidgetDrawerOpen] = useState(false)
   const [publishAction, setPublishAction] = useState<'publish' | 'draft'>('publish')
   const [publishLoading, setPublishLoading] = useState(false)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle')
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
   const draftLoading = publishLoading && publishAction === 'draft'
   const publishButtonLoading = publishLoading && publishAction === 'publish'
@@ -223,6 +226,8 @@ const Layout: React.FC = () => {
       pageNavigator: '页面切换工具',
       iconNav: '图标导航',
       navGroup: '导航组',
+      typography: '文本',
+      carousel: '轮播图',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
@@ -332,12 +337,14 @@ const Layout: React.FC = () => {
       updateDashboardConfig({
         title: values.title,
       });
+      clearDirty();
       message.success(currentAction === 'publish' ? '工作台发布成功' : '暂存成功');
       setPublishModalOpen(false);
       publishForm.resetFields();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      message.error(currentAction === 'publish' ? '发布失败' : '暂存失败');
+      const errorMsg = error?.message || (currentAction === 'publish' ? "发布失败" : '暂存失败')
+      message.error(errorMsg);
     } finally {
       setPublishLoading(false);
     }
@@ -451,6 +458,29 @@ const Layout: React.FC = () => {
   };
   const isDashboardRoute = location.pathname === '/' || location.pathname.includes('dashboard-gridstack');
 
+  // 自动保存
+  const { lastSaveTimeRef } = useAutoSave({
+    enabled: isDashboardRoute,
+    onSaveStatusChange: setAutoSaveStatus,
+  });
+
+  // 自动保存状态提示
+  const autoSaveIndicator = useMemo(() => {
+    if (autoSaveStatus === 'saving') {
+      return <span className="auto-save-indicator"><SyncOutlined spin /> 自动保存中...</span>;
+    }
+    if (autoSaveStatus === 'saved') {
+      const timeStr = lastSaveTimeRef.current
+        ? lastSaveTimeRef.current.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      return <span className="auto-save-indicator saved"><CheckCircleOutlined /> 已自动保存 {timeStr}</span>;
+    }
+    if (autoSaveStatus === 'error') {
+      return <span className="auto-save-indicator error"><ExclamationCircleOutlined /> 自动保存失败</span>;
+    }
+    return null;
+  }, [autoSaveStatus, lastSaveTimeRef]);
+
   // 导航菜单点击处理
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     navigate(key);
@@ -527,6 +557,8 @@ const Layout: React.FC = () => {
                   <Button icon={<SaveOutlined />} onClick={() => openPublishModal('draft')} disabled={!isEditMode} loading={draftLoading} className='save'>
                     保存
                   </Button>
+
+                  {autoSaveIndicator}
 
                   <Button className="app-sub-header__publish-btn" icon={<CloudUploadOutlined />} loading={publishButtonLoading} onClick={handlePublish}>
                     发布
@@ -625,7 +657,7 @@ const Layout: React.FC = () => {
           <Form.Item
             name="title"
             label="名称"
-            rules={[{ required: true, message: '请输入名称' }]}
+            rules={[{ required: true, whitespace: true, message: '请输入名称' }]}
           >
             <Input placeholder="请输入名称" />
           </Form.Item>

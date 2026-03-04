@@ -7,6 +7,17 @@
   min-height: 200px;
 }
 
+// 在容器内部使用时，全覆盖遮挡异常的 Wujie 内容
+.micro-app-widget-container > .micro-app-widget-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 101;
+  background: var(--ant-color-bg-container, #fff);
+}
+
 .micro-app-widget-container {
   width: 100%;
   height: 100%;

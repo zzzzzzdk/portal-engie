@@ -39,15 +39,17 @@
       align-items: center;
       gap: 12px;
       margin-bottom: 12px;
-      background: var(--ant-color-bg-layout);
+      // background: var(--ant-color-primary-bg);
       padding: 8px;
       border-radius: 6px;
 
       .flow-node {
         flex: 1;
+        min-width: 0; // 防止 flex 子项被内容撑开
         display: flex;
         flex-direction: column;
         gap: 4px;
+        overflow: hidden;
 
         .node-label {
           font-size: 12px;
@@ -55,9 +57,36 @@
         }
 
         .node-select {
+          max-width: 100%;
+
           .ant-select-selector {
              padding-left: 0;
              font-weight: 500;
+          }
+
+          // 选中项文本溢出省略
+          .ant-select-selection-item {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          // 未选中时 placeholder 颜色更深，避免看起来像禁用态
+          .ant-select-selection-placeholder {
+            color: var(--ant-color-text-secondary);
+          }
+
+          // 添加下划线提示可交互
+          &:not(.ant-select-disabled) {
+            .ant-select-selector {
+              border-bottom: 1px dashed var(--ant-color-border) !important;
+              border-radius: 0;
+              transition: border-color 0.2s;
+            }
+
+            &:hover .ant-select-selector {
+              border-bottom-color: var(--ant-color-primary) !important;
+            }
           }
         }
       }
