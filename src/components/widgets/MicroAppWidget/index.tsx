@@ -8,7 +8,7 @@ import { getWidgetDisplayMode } from '@/utils/widgetHelpers';
 import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
-import { useTheme } from '@/theme/useTheme';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import './index.scss';
 
 const { bus, preloadApp } = WujieReact;
@@ -19,7 +19,7 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
-  const { themeMode, styleMode, styleTokens } = useTheme();
+  const { themeMode, styleMode, styleTokens } = useCanvasTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);

@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Button, Input, Select, Checkbox, Space, Card, Form } from 'antd';
-import { MinusCircleOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import React, { useMemo, useState } from 'react';
+import { Button, Input, Select, Checkbox, Space, Form, Collapse } from 'antd';
+import { PlusOutlined, DeleteOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { FormField } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -9,7 +9,19 @@ interface FormFieldBuilderProps {
   onChange?: (value: FormField[]) => void;
 }
 
+const FIELD_TYPE_LABELS: Record<string, string> = {
+  text: '单行文本',
+  textarea: '多行文本',
+  number: '数字',
+  select: '下拉选择',
+  radio: '单选框',
+  date: '日期',
+  checkbox: '复选框',
+};
+
 const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChange }) => {
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+
   // 计算字段名重复集合
   const duplicateNames = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -43,7 +55,9 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
       name: `field_${value.length + 1}`,
       required: false,
     };
-    onChange?.([...value, newField]);
+    const newValue = [...value, newField];
+    onChange?.(newValue);
+    setExpandedKeys(prev => [...prev, newField.id]);
   };
 
   const handleRemove = (index: number) => {
@@ -88,67 +102,100 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
     }
   };
 
+  const hasOptions = (type: string) => ['select', 'radio'].includes(type);
+
+  const collapseItems = value.map((field, index) => ({
+    key: field.id,
+    label: (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <span>{field.label || '未命名'} <span style={{ color: '#999', fontSize: 12 }}>({FIELD_TYPE_LABELS[field.type] || field.type})</span></span>
+      </div>
+    ),
+    extra: (
+      <Button
+        type="text"
+        danger
+        size="small"
+        icon={<DeleteOutlined />}
+        onClick={(e) => { e.stopPropagation(); handleRemove(index); }}
+      />
+    ),
+    children: (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Space style={{ width: '100%' }} align="start">
+          <Form.Item label="标签" style={{ marginBottom: 0, flex: 1 }}>
+            <Input value={field.label} onChange={(e) => handleChange(index, { label: e.target.value })} />
+          </Form.Item>
+          <Form.Item
+            label="字段名"
+            style={{ marginBottom: 0, flex: 1 }}
+            validateStatus={getNameError(field) ? 'error' : undefined}
+            help={getNameError(field)}
+          >
+            <Input value={field.name} onChange={(e) => handleChange(index, { name: e.target.value })} />
+          </Form.Item>
+        </Space>
+
+        <Space style={{ width: '100%' }} align="start">
+          <Form.Item label="类型" style={{ marginBottom: 0, flex: 1 }}>
+            <Select
+              value={field.type}
+              onChange={(val) => handleChange(index, { type: val })}
+              style={{ width: '175px' }}
+            >
+              <Select.Option value="text">单行文本</Select.Option>
+              <Select.Option value="textarea">多行文本</Select.Option>
+              <Select.Option value="number">数字</Select.Option>
+              <Select.Option value="select">下拉选择</Select.Option>
+              <Select.Option value="radio">单选框</Select.Option>
+              <Select.Option value="date">日期</Select.Option>
+              <Select.Option value="checkbox">复选框</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item label="必填" valuePropName="checked" style={{ marginBottom: 0, flex: 1 }}>
+            <Checkbox checked={field.required} onChange={(e) => handleChange(index, { required: e.target.checked })}>必填</Checkbox>
+          </Form.Item>
+        </Space>
+
+        {hasOptions(field.type) && (
+          <div style={{ padding: 8, borderRadius: 4 }}>
+            <div style={{ marginBottom: 8, fontWeight: 'bold' }}>选项列表:</div>
+            {field.options?.map((option, optIndex) => {
+              const optValErr = getOptionValueError(field, optIndex);
+              return (
+                <Space key={optIndex} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                  <Input placeholder="显示文本" value={option.label} onChange={(e) => handleOptionChange(index, optIndex, 'label', e.target.value)} />
+                  <Form.Item
+                    style={{ marginBottom: 0 }}
+                    validateStatus={optValErr ? 'error' : undefined}
+                    help={optValErr}
+                  >
+                    <Input placeholder="值" value={String(option.value)} onChange={(e) => handleOptionChange(index, optIndex, 'value', e.target.value)} />
+                  </Form.Item>
+                  <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveOption(index, optIndex)} />
+                </Space>
+              );
+            })}
+            <Button type="dashed" onClick={() => handleAddOption(index)} block icon={<PlusOutlined />}>
+              添加选项
+            </Button>
+          </div>
+        )}
+      </Space>
+    ),
+  }));
+
   return (
     <div className="form-field-builder">
-      {value.map((field, index) => (
-        <Card size="small" title={`字段 ${index + 1}`} key={field.id} extra={<Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemove(index)} />} style={{ marginBottom: 8 }}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Space style={{ width: '100%' }} align="start">
-              <Form.Item label="标签" style={{ marginBottom: 0, flex: 1 }}>
-                <Input value={field.label} onChange={(e) => handleChange(index, { label: e.target.value })} />
-              </Form.Item>
-              <Form.Item
-                label="字段名"
-                style={{ marginBottom: 0, flex: 1 }}
-                validateStatus={getNameError(field) ? 'error' : undefined}
-                help={getNameError(field)}
-              >
-                <Input value={field.name} onChange={(e) => handleChange(index, { name: e.target.value })} />
-              </Form.Item>
-            </Space>
-
-            <Space style={{ width: '100%' }} align="start">
-              <Form.Item label="类型" style={{ marginBottom: 0, flex: 1 }}>
-                <Select value={field.type} onChange={(val) => handleChange(index, { type: val })} style={{ width: '175px' }}>
-                  <Select.Option value="text">文本</Select.Option>
-                  <Select.Option value="number">数字</Select.Option>
-                  <Select.Option value="select">下拉选择</Select.Option>
-                  <Select.Option value="date">日期</Select.Option>
-                  <Select.Option value="checkbox">复选框</Select.Option>
-                </Select>
-              </Form.Item>
-              <Form.Item label="必填" valuePropName="checked"  style={{ marginBottom: 0, flex: 1 }}>
-                 <Checkbox checked={field.required} onChange={(e) => handleChange(index, { required: e.target.checked })}>必填</Checkbox>
-              </Form.Item>
-            </Space>
-
-            {field.type === 'select' && (
-              <div style={{  padding: 8, borderRadius: 4 }}>
-                <div style={{ marginBottom: 8, fontWeight: 'bold' }}>选项列表:</div>
-                {field.options?.map((option, optIndex) => {
-                  const optValErr = getOptionValueError(field, optIndex);
-                  return (
-                    <Space key={optIndex} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                      <Input placeholder="显示文本" value={option.label} onChange={(e) => handleOptionChange(index, optIndex, 'label', e.target.value)} />
-                      <Form.Item
-                        style={{ marginBottom: 0 }}
-                        validateStatus={optValErr ? 'error' : undefined}
-                        help={optValErr}
-                      >
-                        <Input placeholder="值" value={String(option.value)} onChange={(e) => handleOptionChange(index, optIndex, 'value', e.target.value)} />
-                      </Form.Item>
-                      <MinusCircleOutlined onClick={() => handleRemoveOption(index, optIndex)} />
-                    </Space>
-                  );
-                })}
-                <Button type="dashed" onClick={() => handleAddOption(index)} block icon={<PlusOutlined />}>
-                  添加选项
-                </Button>
-              </div>
-            )}
-          </Space>
-        </Card>
-      ))}
+      <Collapse
+        accordion={false}
+        activeKey={expandedKeys}
+        onChange={(keys) => setExpandedKeys(keys as string[])}
+        expandIcon={({ isActive }) => <CaretRightOutlined rotate={isActive ? 90 : 0} />}
+        items={collapseItems}
+        size="small"
+        style={{ marginBottom: 8 }}
+      />
       <Button type="dashed" onClick={handleAdd} block icon={<PlusOutlined />}>
         添加字段
       </Button>

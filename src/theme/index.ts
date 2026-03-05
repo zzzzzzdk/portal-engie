@@ -17,6 +17,10 @@ export { generatePalette, injectColorPalette, injectCSSVariables, toKebabCase } 
 
 // 组件
 export { ThemeProvider } from './ThemeProvider'
+export { CanvasThemeProvider } from './CanvasThemeProvider'
 
 // Hooks
 export { useTheme } from './useTheme'
+
+// 工具
+export { injectStyleTokens } from './utils'

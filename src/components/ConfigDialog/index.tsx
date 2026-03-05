@@ -3,7 +3,8 @@ import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, mess
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
 import { useStore } from '@/store/useStore';
-import { useConfigStore } from '@/store/useConfigStore';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
+import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import { uploadImage } from '@/services';
@@ -14,7 +15,7 @@ import BackgroundSettings from '@/components/BackgroundSettings';
 import AssistantHubConfig from '@/components/AssistantHubConfig';
 import IconPicker from '@/components/IconPicker';
 import { getIconValueType } from '@/components/IconPicker/types';
-import { LinkConfig, SearchConfig, CustomFormConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
+import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -52,7 +53,7 @@ const normalizeColorValue = (color: any, defaultColor?: string): string | undefi
 
 const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) => {
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules, groups, updateGroup, updateGroupConfig } = useStore();
-  const styleTokens = useConfigStore((state) => state.styleTokens);
+  const { styleTokens } = useCanvasTheme();
   const [form] = Form.useForm();
   const showNavMenuValue = Form.useWatch('showNavMenu', form);
   const navItemsValue = Form.useWatch('navItems', form);
@@ -272,6 +273,42 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           form.setFieldsValue({
             btnColor: normalizeColorForForm(widget.config.btnColor, '#1677ff'),
             btnTextColor: normalizeColorForForm(widget.config.btnTextColor, '#ffffff'),
+          });
+        }
+
+        // customForm 特有配置初始化
+        if (widget.type === 'customForm') {
+          form.setFieldsValue({
+            submitButtonText: widget.config.submitButtonText || '提交',
+            submitButtonSize: widget.config.submitButtonSize || 'middle',
+            submitButtonColor: normalizeColorForForm(widget.config.submitButtonColor),
+            submitButtonTextColor: normalizeColorForForm(widget.config.submitButtonTextColor, '#FFFFFF'),
+            showResetButton: widget.config.showResetButton ?? true,
+            resetButtonText: widget.config.resetButtonText || '重置',
+            resetButtonColor: normalizeColorForForm(widget.config.resetButtonColor),
+            resetButtonTextColor: normalizeColorForForm(widget.config.resetButtonTextColor, '#333333'),
+            buttonAlign: widget.config.buttonAlign || 'left',
+            borderRadius: widget.config.borderRadius,
+            fieldSpacing: widget.config.fieldSpacing,
+            submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
+            apiMethod: widget.config.apiMethod || 'POST',
+            apiHeadersList: widget.config.apiHeaders
+              ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
+              : [],
+            successMessage: widget.config.successMessage || '提交成功',
+            failureMessage: widget.config.failureMessage || '提交失败',
+            successResetForm: widget.config.successResetForm ?? false,
+          });
+        }
+
+        // search 特有配置初始化
+        if (widget.type === 'search') {
+          form.setFieldsValue({
+            submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
+            apiMethod: widget.config.apiMethod || 'GET',
+            apiHeadersList: widget.config.apiHeaders
+              ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
+              : [],
           });
         }
       }
@@ -654,6 +691,32 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           if (normalizedRestConfig.itemColor) {
             normalizedRestConfig.itemColor = normalizeColor(normalizedRestConfig.itemColor);
           }
+          // customForm 按钮颜色
+          if (normalizedRestConfig.submitButtonColor) {
+            normalizedRestConfig.submitButtonColor = normalizeColor(normalizedRestConfig.submitButtonColor);
+          }
+          if (normalizedRestConfig.submitButtonTextColor) {
+            normalizedRestConfig.submitButtonTextColor = normalizeColor(normalizedRestConfig.submitButtonTextColor);
+          }
+          if (normalizedRestConfig.resetButtonColor) {
+            normalizedRestConfig.resetButtonColor = normalizeColor(normalizedRestConfig.resetButtonColor);
+          }
+          if (normalizedRestConfig.resetButtonTextColor) {
+            normalizedRestConfig.resetButtonTextColor = normalizeColor(normalizedRestConfig.resetButtonTextColor);
+          }
+
+          // apiHeadersList 数组转换为 apiHeaders 对象
+          if (normalizedRestConfig.apiHeadersList) {
+            const headers: Record<string, string> = {};
+            (normalizedRestConfig.apiHeadersList as { key: string; value: string }[]).forEach(item => {
+              if (item.key?.trim()) {
+                headers[item.key.trim()] = item.value || '';
+              }
+            });
+            normalizedRestConfig.apiHeaders = Object.keys(headers).length > 0 ? headers : undefined;
+            delete normalizedRestConfig.apiHeadersList;
+          }
+
           if (normalizedRestConfig.backgroundColor) {
             normalizedRestConfig.backgroundColor = normalizeColorValue(
               normalizedRestConfig.backgroundColor,
@@ -786,7 +849,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         <div></div>
       </div>
 
-      {['clock', 'stats', 'chart', 'news', 'topList', 'dataTable', 'microApp', 'news', 'topList'].includes(widget.type) && (
+      {REFRESHABLE_WIDGET_TYPES.has(widget.type) && (
         <Form.Item
           name="refreshInterval"
           label="刷新间隔 (秒)"
@@ -974,9 +1037,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         {widget.type === 'dataTable' && <DataTableConfig form={form} widget={widget} />}
 
         {widget.type === 'customForm' && (
-          <Form.Item name="fields" label="表单字段">
-            <FormFieldBuilder />
-          </Form.Item>
+          <>
+            <Form.Item name="fields" label="表单字段">
+              <FormFieldBuilder />
+            </Form.Item>
+            <CustomFormStyleConfig form={form} widget={widget} />
+          </>
         )}
 
         {widget.type === 'pageNavigator' && (
@@ -1405,7 +1471,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     const apiPlaceholderMap: Record<string, string> = {
       chart: '/api/chart-data',
       stats: '/api/stats',
-      customForm: '/api/form-submit',
       dataTable: '/api/table-data',
       news: '/api/news',
       topList: '/api/top-list',
@@ -1420,7 +1485,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
     return (
       <>
-        {['chart', 'stats', 'customForm', 'dataTable', 'news', 'topList'].includes(widget.type) && (
+        {['chart', 'stats', 'dataTable', 'news', 'topList'].includes(widget.type) && (
           <Form.Item
             name="apiEndpoint"
             label="数据接口"
@@ -1784,6 +1849,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         <Form.Item label="图标大小" name="collapsedIconSize" rules={[{ type: 'number', min: 12 }]}>
           <InputNumber style={{ width: '100%' }} suffix="px" />
         </Form.Item>
+      </div>
+      <div className="form-row-3">
         <Form.Item label="折叠背景" name="collapsedBgColor">
           <ColorPicker showText allowClear />
         </Form.Item>

@@ -18,7 +18,7 @@ import Draggable, { DraggableEventHandler } from 'react-draggable';
 import { Resizable, ResizeCallbackData } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
-import { useConfigStore } from '@/store/useConfigStore';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
@@ -145,7 +145,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     removeFloatingModule,
     openConfigPanel,
   } = useStore();
-  const { themeMode } = useConfigStore();
+  const { themeMode } = useCanvasTheme();
   const [containerEl, setContainerEl] = useState<ContainerElement>(initialContainer);
   const [viewport, setViewport] = useState<Viewport>(initialViewport);
   const [containerOffset, setContainerOffset] = useState<ContainerOffset>(initialOffset);

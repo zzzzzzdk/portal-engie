@@ -5,4 +5,4 @@ export type { CurrentRouteInfo } from './useSystemStore';
 
 
 export { useConfigStore } from './useConfigStore';
-export type { ThemeMode, ThemeType, IThemeColors } from './useConfigStore';
+export type { ThemeType, IThemeColors } from './useConfigStore';

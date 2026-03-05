@@ -11,6 +11,8 @@ import {
 } from '@/lib/gridstack';
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
+import { CanvasThemeProvider } from '@/theme/CanvasThemeProvider';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
@@ -43,6 +45,8 @@ const DashboardInner: React.FC = () => {
     dashboardConfig,
     gridDensity,
   } = useStore();
+  const { isDark } = useCanvasTheme();
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const densityPreset = GRID_DENSITY_PRESETS[gridDensity];
   const [gridVisualMetrics, setGridVisualMetrics] = useState({
@@ -86,14 +90,14 @@ const DashboardInner: React.FC = () => {
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-container)';
+        style.backgroundColor = isDark ? '#141414' : 'var(--ant-color-bg-container, #f5f5f5)';
       }
     } else {
-      style.backgroundColor = 'var(--ant-color-bg-container)';
+      style.backgroundColor = isDark ? '#141414' : 'var(--ant-color-bg-container, #f5f5f5)';
     }
 
     return style;
-  }, [isEditMode, gridVisualMetrics, dashboardConfig]);
+  }, [isEditMode, gridVisualMetrics, dashboardConfig, isDark]);
 
   const syncLayoutFromGrid = useCallback(() => {
     if (pendingSyncFrameRef.current !== null) {
@@ -468,30 +472,30 @@ const DashboardInner: React.FC = () => {
   }, [gridStack, syncLayoutFromGrid]);
 
   return (
-    <div
-      className={clsx('dashboard-container', {
-        'grid-background': isEditMode,
-        'fullscreen': isFullScreen,
-      })}
-      style={backgroundStyle}
-    >
+    <CanvasThemeProvider containerRef={canvasContainerRef}>
+      <div
+        ref={canvasContainerRef}
+        className={clsx('dashboard-container', {
+          'grid-background': isEditMode,
+          'fullscreen': isFullScreen,
+        })}
+        style={backgroundStyle}
+      >
 
-      {/* GridStack 渲染器 */}
-      <GridStackRenderProvider>
-        <GridStackRender componentMap={{
-          WidgetAdapter: WidgetAdapter,
-          GroupAdapter: GroupAdapter,
-        }} />
-      </GridStackRenderProvider>
+        {/* GridStack 渲染器 */}
+        <GridStackRenderProvider>
+          <GridStackRender componentMap={{
+            WidgetAdapter: WidgetAdapter,
+            GroupAdapter: GroupAdapter,
+          }} />
+        </GridStackRenderProvider>
 
-      {/* 悬浮模块 */}
-      {floatingModules.map(module => (
-        <FloatingModule key={module.id} widget={module} />
-      ))}
-
-      {/* Debug Panel - 开发调试用 */}
-      {/* {import.meta.env.DEV && <DebugPanel />} */}
-    </div>
+        {/* 悬浮模块 */}
+        {floatingModules.map(module => (
+          <FloatingModule key={module.id} widget={module} />
+        ))}
+      </div>
+    </CanvasThemeProvider>
   );
 };
 
@@ -540,28 +544,21 @@ const DashboardGridStack: React.FC = () => {
     return persistApi.hasHydrated();
   });
 
-  const applyThemeFromConfig = useCallback((config?: DashboardConfig | null) => {
+  // 仅将全局配色（baseColors/customTokens）写入 ConfigStore
+  // themeMode/styleMode 保留在 dashboardConfig 中由 CanvasThemeProvider 处理
+  const applyGlobalColorsFromConfig = useCallback((config?: DashboardConfig | null) => {
     if (!config) {
       return;
     }
-    const themeUpdate: Record<string, unknown> = {};
-    if (config.themeMode) {
-      themeUpdate.themeMode = config.themeMode;
-    }
-    if (config.styleMode) {
-      themeUpdate.styleMode = config.styleMode;
-    }
-    if (config.styleTokens?.widget && config.styleTokens?.card) {
-      themeUpdate.styleTokens = config.styleTokens;
-    }
+    const globalUpdate: Record<string, unknown> = {};
     if (config.baseColors) {
-      themeUpdate.baseColors = config.baseColors;
+      globalUpdate.baseColors = config.baseColors;
     }
     if (config.customTokens) {
-      themeUpdate.customTokens = config.customTokens;
+      globalUpdate.customTokens = config.customTokens;
     }
-    if (Object.keys(themeUpdate).length > 0) {
-      useConfigStore.setState(themeUpdate);
+    if (Object.keys(globalUpdate).length > 0) {
+      useConfigStore.setState(globalUpdate);
     }
   }, []);
 
@@ -602,6 +599,11 @@ const DashboardGridStack: React.FC = () => {
         return;
       }
 
+      // 加载新的远程数据时，重置 GridStack 初始化选项
+      // 确保 GridStack 使用新数据重新初始化，而不是复用旧的 children
+      setInitialOptions(null);
+      setRemoteDataLoaded(false);
+
       try {
         const res = await getPublishedDashboard({ id: targetId });
         if (res.code === 20000 && res.data) {
@@ -610,7 +612,7 @@ const DashboardGridStack: React.FC = () => {
             message.error('解析工作台配置失败');
           } else {
             const config = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
-            applyThemeFromConfig(config);
+            applyGlobalColorsFromConfig(config);
             loadDashboardFromData({
               widgets: snapshot.widgets,
               groups: snapshot.groups,
@@ -656,7 +658,7 @@ const DashboardGridStack: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyThemeFromConfig]);
+  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyGlobalColorsFromConfig]);
 
   useEffect(() => {
     if (!isHydrated || !remoteDataLoaded || initialOptions) {

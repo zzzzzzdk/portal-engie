@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { useConfigStore } from '@/store/useConfigStore';
 import { publishDashboard, serializeDashboardSnapshot } from '@/services';
+import { getStylePreset } from '@/theme/tokens/styles';
+import type { StyleMode } from '@/theme/tokens/semantic';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 
@@ -67,14 +69,17 @@ export const useAutoSave = ({ enabled, onSaveStatusChange }: UseAutoSaveOptions)
     onSaveStatusChange?.('saving');
 
     try {
-      const { themeMode, themePreset, styleMode, styleTokens, baseColors } = useConfigStore.getState();
+      // 画布级主题配置已在 dashboardConfig 中，全局配色从 ConfigStore 取
+      const { themePreset, baseColors } = useConfigStore.getState();
       const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
+      const canvasStyleMode = (baseDashboardConfig.styleMode as StyleMode) || 'normal';
+      const canvasThemeMode = baseDashboardConfig.themeMode || 'light';
       const publishConfig = {
         ...baseDashboardConfig,
-        themeMode,
+        themeMode: canvasThemeMode,
         themePreset,
-        styleMode,
-        styleTokens,
+        styleMode: canvasStyleMode,
+        styleTokens: getStylePreset(canvasStyleMode, canvasThemeMode === 'dark'),
         baseColors,
         title,
       };

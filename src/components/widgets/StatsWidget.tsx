@@ -159,7 +159,7 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
                   value={value}
                   precision={item.precision ?? 0}
                   loading={loading}
-                  styles={{ content: { color } }}
+                  styles={{ content: { color }, prefix: { color }, suffix: { color } }}
                   prefix={item.prefix || getTrendIcon(item.trend)}
                   suffix={item.suffix || ''}
                 />

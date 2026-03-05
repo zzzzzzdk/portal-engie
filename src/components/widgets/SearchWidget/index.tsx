@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Input, Button, message, Select, Space } from 'antd';
 import { SearchOutlined, ClearOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
 import './index.scss'
@@ -30,6 +31,11 @@ interface SearchWidgetConfig extends WidgetConfig {
   eventRoutes?: EventRouteConfig[];  // 事件路由配置
   showClearButton?: boolean;  // 是否显示清除按钮
   layout?: 'inline' | 'vertical';  // 布局方式
+  // 数据交互
+  submitMethod?: 'api' | 'eventRoute';
+  apiEndpoint?: string;              // API 地址
+  apiMethod?: 'GET' | 'POST';       // HTTP 方法
+  apiHeaders?: Record<string, string>;
 }
 
 interface SearchWidgetProps {
@@ -46,6 +52,10 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   const eventRoutes = searchConfig?.eventRoutes || [];
   const showClearButton = searchConfig?.showClearButton ?? true;
   const layout = searchConfig?.layout || 'inline';
+  const submitMethod = searchConfig?.submitMethod || 'eventRoute';
+  const apiEndpoint = searchConfig?.apiEndpoint;
+  const apiMethod = searchConfig?.apiMethod || 'GET';
+  const apiHeaders = searchConfig?.apiHeaders;
 
   // 简单搜索状态
   const [searchValue, setSearchValue] = useState('');
@@ -61,7 +71,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     return initial;
   });
 
-  // 发送搜索事件到微应用
+  // 发送搜索事件到微应用（事件路由）
   const emitSearchEvent = useCallback((searchParams: Record<string, any>) => {
     const enabledRoutes = eventRoutes.filter(route => route.enabled !== false);
 
@@ -71,20 +81,10 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
       return;
     }
 
-    // 组件ID作为发送方
     const fromAppId = widget?.id || 'search-widget';
 
     enabledRoutes.forEach(route => {
       const targetEventType = route.toEventType || route.eventType || MicroAppEventType.DATA_QUERY;
-
-      console.log('发送搜索事件:', {
-        from: fromAppId,
-        to: route.toAppId,
-        eventType: targetEventType,
-        payload: searchParams,
-      });
-
-      // 通过 Wujie bus 发送事件
       bus.$emit(targetEventType, {
         from: fromAppId,
         to: route.toAppId,
@@ -100,13 +100,33 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     message.success('搜索请求已发送');
   }, [eventRoutes, widget?.id]);
 
+  // 统一搜索处理
+  const handleSearchSubmit = useCallback(async (searchParams: Record<string, any>) => {
+    if (submitMethod === 'api' && apiEndpoint) {
+      try {
+        await axios({
+          method: apiMethod,
+          url: apiEndpoint,
+          ...(apiMethod === 'GET' ? { params: searchParams } : { data: searchParams }),
+          ...(apiHeaders ? { headers: apiHeaders } : {}),
+        });
+        message.success('搜索请求已发送');
+      } catch (error) {
+        message.error('搜索请求失败');
+        console.error('搜索API请求失败:', error);
+      }
+    } else {
+      emitSearchEvent(searchParams);
+    }
+  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, emitSearchEvent]);
+
   // 简单搜索
   const handleSimpleSearch = (value: string) => {
     if (!value.trim()) {
       message.warning('请输入搜索内容');
       return;
     }
-    emitSearchEvent({ keyword: value.trim() });
+    handleSearchSubmit({ keyword: value.trim() });
   };
 
   // 多字段搜索
@@ -117,7 +137,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
       return;
     }
 
-    // 过滤空值
     const params: Record<string, string> = {};
     Object.entries(fieldValues).forEach(([key, value]) => {
       if (value && value.trim()) {
@@ -125,7 +144,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
       }
     });
 
-    emitSearchEvent(params);
+    handleSearchSubmit(params);
   };
 
   // 清除搜索

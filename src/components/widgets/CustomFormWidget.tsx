@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { Form, Input, Button, Select, Checkbox, DatePicker, InputNumber, message, Space } from 'antd';
+import { Form, Input, Button, Select, Checkbox, DatePicker, InputNumber, Radio, message, Space } from 'antd';
+import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, FormConfig, FormField, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
 
@@ -9,12 +10,30 @@ const { bus } = WujieReact;
  * 自定义表单组件配置
  */
 interface CustomFormWidgetConfig extends FormConfig {
-  eventRoutes?: EventRouteConfig[];  // 事件路由配置
-  submitButtonText?: string;         // 提交按钮文字
-  resetButtonText?: string;          // 重置按钮文字
-  showResetButton?: boolean;         // 是否显示重置按钮
-  layout?: 'horizontal' | 'vertical' | 'inline';  // 表单布局
-  labelWidth?: number;               // 标签宽度
+  eventRoutes?: EventRouteConfig[];
+  submitButtonText?: string;
+  resetButtonText?: string;
+  showResetButton?: boolean;
+  layout?: 'horizontal' | 'vertical' | 'inline';
+  labelWidth?: number;
+  // 按钮样式
+  submitButtonColor?: string;
+  submitButtonTextColor?: string;
+  submitButtonSize?: 'small' | 'middle' | 'large';
+  resetButtonColor?: string;
+  resetButtonTextColor?: string;
+  // 布局设置
+  buttonAlign?: 'left' | 'center' | 'right';
+  borderRadius?: number;
+  fieldSpacing?: number;
+  // 数据交互
+  submitMethod?: 'api' | 'eventRoute';
+  apiMethod?: 'POST' | 'PUT' | 'PATCH';
+  apiHeaders?: Record<string, string>;
+  // 提交反馈
+  successMessage?: string;
+  failureMessage?: string;
+  successResetForm?: boolean;
 }
 
 interface CustomFormWidgetProps {
@@ -40,74 +59,63 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   const showResetButton = formConfig.showResetButton ?? true;
   const layout = formConfig.layout || 'vertical';
   const labelWidth = formConfig.labelWidth;
+  const submitButtonColor = formConfig.submitButtonColor;
+  const submitButtonTextColor = formConfig.submitButtonTextColor;
+  const submitButtonSize = formConfig.submitButtonSize || 'middle';
+  const resetButtonColor = formConfig.resetButtonColor;
+  const resetButtonTextColor = formConfig.resetButtonTextColor;
+  const buttonAlign = formConfig.buttonAlign || 'left';
+  const borderRadius = formConfig.borderRadius;
+  const fieldSpacing = formConfig.fieldSpacing;
+  const submitMethod = formConfig.submitMethod || 'eventRoute';
+  const apiMethod = formConfig.apiMethod || 'POST';
+  const apiHeaders = formConfig.apiHeaders;
+  const successMessage = formConfig.successMessage || '提交成功';
+  const failureMessage = formConfig.failureMessage || '提交失败';
+  const successResetForm = formConfig.successResetForm ?? false;
 
-  // 发送表单数据到微应用
-  const emitFormEvent = useCallback((values: Record<string, any>) => {
-    const enabledRoutes = eventRoutes.filter(route => route.enabled !== false);
+  // 发送事件到微应用
+  const emitRoutes = useCallback((routes: EventRouteConfig[], values: Record<string, any>) => {
+    const enabledRoutes = routes.filter(route => route.enabled !== false);
+    if (enabledRoutes.length === 0) return;
 
-    if (enabledRoutes.length === 0) {
-      console.log('表单数据:', values);
-      message.info('表单数据已收集（未配置事件路由）');
-      return;
-    }
-
-    // 组件ID作为发送方
     const fromAppId = widget?.id || 'custom-form-widget';
-
     enabledRoutes.forEach(route => {
       const targetEventType = route.toEventType || route.eventType || MicroAppEventType.DATA_SUBMIT;
-
-      console.log('发送表单事件:', {
-        from: fromAppId,
-        to: route.toAppId,
-        eventType: targetEventType,
-        payload: values,
-      });
-
-      // 通过 Wujie bus 发送事件
       bus.$emit(targetEventType, {
         from: fromAppId,
         to: route.toAppId,
         type: targetEventType,
-        payload: {
-          action: 'submit',
-          data: values,
-        },
+        payload: { action: 'submit', data: values },
         timestamp: Date.now(),
       });
     });
-
-    message.success('表单数据已发送');
-  }, [eventRoutes, widget?.id]);
+  }, [widget?.id]);
 
   // 提交表单
   const onFinish = async (values: Record<string, any>) => {
-    console.log('表单提交数据:', values);
-
-    // 如果配置了 API 接口
-    if (formConfig.apiEndpoint) {
-      try {
-        // 实际项目中取消注释以下代码
-        // const response = await axios.post(formConfig.apiEndpoint, values);
-        // if (response.data.success) {
-        //   message.success('表单提交成功');
-        // }
-        console.log(`提交到接口 ${formConfig.apiEndpoint}:`, values);
-        message.success(`表单已提交到 ${formConfig.apiEndpoint}`);
-      } catch (error) {
-        message.error('表单提交失败');
-        console.error(error);
-        return;
+    try {
+      if (submitMethod === 'api' && formConfig.apiEndpoint) {
+        await axios({
+          method: apiMethod,
+          url: formConfig.apiEndpoint,
+          data: values,
+          ...(apiHeaders ? { headers: apiHeaders } : {}),
+        });
       }
+      if (submitMethod === 'eventRoute') {
+        emitRoutes(eventRoutes, values);
+      }
+      message.success(successMessage);
+      if (successResetForm) form.resetFields();
+    } catch (error) {
+      message.error(failureMessage);
+      console.error('表单提交失败:', error);
     }
-
-    // 发送到微应用
-    emitFormEvent(values);
   };
 
-  // 提交失败
-  const onFinishFailed = (errorInfo: any) => {
-    console.log('表单验证失败:', errorInfo);
+  // 提交失败（校验失败）
+  const onFinishFailed = () => {
     message.warning('请检查表单填写是否完整');
   };
 
@@ -122,16 +130,14 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     switch (field.type) {
       case 'text':
         return <Input placeholder={`请输入${field.label}`} />;
+      case 'textarea':
+        return <Input.TextArea rows={3} placeholder={`请输入${field.label}`} />;
       case 'number':
         return <InputNumber style={{ width: '100%' }} placeholder={`请输入${field.label}`} />;
       case 'select':
-        return (
-          <Select
-            options={field.options}
-            placeholder={`请选择${field.label}`}
-            allowClear
-          />
-        );
+        return <Select options={field.options} placeholder={`请选择${field.label}`} allowClear />;
+      case 'radio':
+        return <Radio.Group options={field.options} />;
       case 'date':
         return <DatePicker style={{ width: '100%' }} placeholder={`请选择${field.label}`} />;
       case 'checkbox':
@@ -152,8 +158,34 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     return {};
   };
 
+  // 按钮对齐样式
+  const buttonAlignStyle: React.CSSProperties = {
+    textAlign: buttonAlign,
+  };
+
+  // 提交按钮样式
+  const submitBtnStyle: React.CSSProperties | undefined = (submitButtonColor || submitButtonTextColor)
+    ? {
+        ...(submitButtonColor ? { backgroundColor: submitButtonColor, borderColor: submitButtonColor } : {}),
+        color: submitButtonTextColor || '#fff',
+      }
+    : undefined;
+
+  // 重置按钮样式
+  const resetBtnStyle: React.CSSProperties | undefined = (resetButtonColor || resetButtonTextColor)
+    ? {
+        ...(resetButtonColor ? { backgroundColor: resetButtonColor, borderColor: resetButtonColor } : {}),
+        color: resetButtonTextColor || undefined,
+      }
+    : undefined;
+
   return (
-    <div style={{ padding: '16px', height: '100%', overflow: 'auto' }}>
+    <div style={{
+      padding: '16px',
+      height: '100%',
+      overflow: 'auto',
+      ...(borderRadius !== undefined ? { borderRadius } : {}),
+    }}>
       <Form
         form={form}
         layout={layout}
@@ -169,17 +201,28 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
             rules={[{ required: field.required, message: `请输入${field.label}` }]}
             valuePropName={field.type === 'checkbox' ? 'checked' : 'value'}
             initialValue={field.defaultValue}
+            style={fieldSpacing !== undefined ? { marginBottom: fieldSpacing } : undefined}
           >
             {renderField(field)}
           </Form.Item>
         ))}
-        <Form.Item>
+        <Form.Item style={buttonAlignStyle}>
           <Space>
-            <Button type="primary" htmlType="submit" >
+            <Button
+              htmlType="submit"
+              type={submitButtonColor ? 'default' : 'primary'}
+              size={submitButtonSize}
+              style={submitBtnStyle}
+            >
               {submitButtonText}
             </Button>
             {showResetButton && (
-              <Button onClick={handleReset}>
+              <Button
+                onClick={handleReset}
+                size={submitButtonSize}
+                type={resetButtonColor ? 'default' : undefined}
+                style={resetBtnStyle}
+              >
                 {resetButtonText}
               </Button>
             )}

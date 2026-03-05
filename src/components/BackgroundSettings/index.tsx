@@ -3,7 +3,7 @@ import { Form, Input, Tabs, ColorPicker, Upload, Select, App as AntdApp, Slider,
 import { BgColorsOutlined, PictureOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd/es/form';
 import { uploadImage } from '@/services';
-import { useConfigStore } from '@/store/useConfigStore';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 
 /**
  * 从 CSS backdrop-filter 值中提取模糊数值
@@ -47,9 +47,7 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
   const [fileList, setFileList] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const { message } = AntdApp.useApp();
-  const themeMode = useConfigStore((state) => state.themeMode);
-  const styleMode = useConfigStore((state) => state.styleMode);
-  const styleTokens = useConfigStore((state) => state.styleTokens);
+  const { themeMode, styleMode, styleTokens } = useCanvasTheme();
 
   // 根据主题模式和风格模式获取默认背景色
   // 优先使用风格 Token 中的 widget.background（如极简模式的半透明背景）

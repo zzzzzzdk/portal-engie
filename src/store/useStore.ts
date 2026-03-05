@@ -249,6 +249,8 @@ export const useStore = create<AppState>()(
       dashboardConfig: {
         backgroundType: 'color',
         backgroundColor: '',
+        themeMode: 'light',
+        styleMode: 'normal',
       },
       gridDensity: 'compact',
       setGridDensity: (density) => set({ gridDensity: density }),
@@ -619,6 +621,8 @@ export const useStore = create<AppState>()(
           dashboardConfig: {
             backgroundType: 'color',
             backgroundColor: '',
+            themeMode: 'light',
+            styleMode: 'normal',
           },
           isDirty: false,
         });
@@ -665,6 +669,8 @@ export const useStore = create<AppState>()(
           dashboardConfig: Object.keys(sanitizedConfig).length > 0 ? sanitizedConfig : {
             backgroundType: 'color',
             backgroundColor: '',
+            themeMode: 'light',
+            styleMode: 'normal',
           },
           isDirty: false,
         });

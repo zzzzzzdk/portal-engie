@@ -1,58 +1,35 @@
 import { useCallback } from 'react'
 import { useConfigStore } from '@/store'
-import type { ThemeMode } from '@/store'
-import type { IBaseColors, ISemanticTokens, StyleMode } from './tokens/semantic'
+import type { IBaseColors, ISemanticTokens } from './tokens/semantic'
 import type { ThemePresetName } from './tokens/presets'
 import { getThemePreset } from './tokens/presets'
 
 /**
- * 主题 Hook
- * 提供主题相关的所有操作和状态
+ * 全局主题 Hook（仅管理全局配色/预设/布局）
+ *
+ * 注意：themeMode / styleMode / styleTokens 已迁移到画布级，
+ * 请使用 useCanvasTheme hook 获取画布级主题配置。
  */
 export const useTheme = () => {
-  // 获取所有主题相关状态和操作
-  const themeMode = useConfigStore((state) => state.themeMode)
+  // 获取全局主题状态和操作
   const themePreset = useConfigStore((state) => state.themePreset)
   const baseColors = useConfigStore((state) => state.baseColors)
   const customTokens = useConfigStore((state) => state.customTokens)
-  const styleMode = useConfigStore((state) => state.styleMode)
-  const styleTokens = useConfigStore((state) => state.styleTokens)
-  const setThemeMode = useConfigStore((state) => state.setThemeMode)
   const setThemePreset = useConfigStore((state) => state.setThemePreset)
   const setBaseColor = useConfigStore((state) => state.setBaseColor)
   const setBaseColors = useConfigStore((state) => state.setBaseColors)
   const updateCustomTokens = useConfigStore((state) => state.updateCustomTokens)
   const setCustomTokens = useConfigStore((state) => state.setCustomTokens)
-  const setStyleModeAction = useConfigStore((state) => state.setStyleMode)
-
-  // 使用 useCallback 避免无限循环
-  const toggleThemeMode = useCallback(() => {
-    useConfigStore.setState((state) => ({
-      themeMode: state.themeMode === 'light' ? 'dark' : 'light'
-    }))
-  }, [])
-
-  const setMode = useCallback((mode: ThemeMode) => {
-    setThemeMode(mode)
-  }, [setThemeMode])
 
   const applyPreset = useCallback((presetName: ThemePresetName, applyColors = true) => {
     const preset = getThemePreset(presetName)
-
-    // 根据预设自动切换主题模式
-    if (presetName === 'dark') {
-      setThemeMode('dark')
-    } else {
-      setThemeMode('light')
-    }
-
     setThemePreset(presetName)
 
     if (applyColors) {
       setBaseColors(preset.colors)
       setCustomTokens(preset)
     }
-  }, [setThemeMode, setThemePreset, setBaseColors, setCustomTokens])
+  }, [setThemePreset, setBaseColors, setCustomTokens])
 
   const resetTheme = useCallback(() => {
     const preset = getThemePreset(useConfigStore.getState().themePreset)
@@ -76,10 +53,6 @@ export const useTheme = () => {
     setCustomTokens(tokens)
   }, [setCustomTokens])
 
-  const setStyle = useCallback((mode: StyleMode) => {
-    setStyleModeAction(mode)
-  }, [setStyleModeAction])
-
   const getCSSVar = useCallback((path: string, prefix = 'ant') => {
     return `var(--${prefix}-${path.replace(/\./g, '-')})`
   }, [])
@@ -88,9 +61,7 @@ export const useTheme = () => {
     const state = useConfigStore.getState()
     return JSON.stringify(
       {
-        themeMode: state.themeMode,
         themePreset: state.themePreset,
-        styleMode: state.styleMode,
         baseColors: state.baseColors,
         customTokens: state.customTokens,
       },
@@ -102,9 +73,7 @@ export const useTheme = () => {
   const importTheme = useCallback((jsonString: string) => {
     try {
       const config = JSON.parse(jsonString)
-      if (config.themeMode) setThemeMode(config.themeMode)
       if (config.themePreset) setThemePreset(config.themePreset)
-      if (config.styleMode) setStyleModeAction(config.styleMode)
       if (config.baseColors) setBaseColors(config.baseColors)
       if (config.customTokens) setCustomTokens(config.customTokens)
       return true
@@ -112,85 +81,29 @@ export const useTheme = () => {
       console.error('Failed to import theme:', e)
       return false
     }
-  }, [setThemeMode, setThemePreset, setStyleModeAction, setBaseColors, setCustomTokens])
+  }, [setThemePreset, setBaseColors, setCustomTokens])
 
   return {
-    // === 状态 ===
-    themeMode,
+    // === 全局状态 ===
     themePreset,
-    styleMode,
     baseColors,
     customTokens,
-    styleTokens,
-    isDark: themeMode === 'dark',
-    isMinimal: styleMode === 'minimal',
-
-    // === 主题模式操作 ===
-    /**
-     * 切换主题模式（light ⇄ dark）
-     */
-    toggleThemeMode,
-
-    /**
-     * 设置主题模式
-     */
-    setMode,
 
     // === 主题预设操作 ===
-    /**
-     * 切换到指定预设主题
-     * @param presetName 预设名称
-     * @param applyColors 是否同步颜色配置（默认 true）
-     */
     applyPreset,
-
-    /**
-     * 重置为当前预设（放弃自定义修改）
-     */
     resetTheme,
 
-    // === 显示风格操作 ===
-    /**
-     * 设置显示风格（normal | minimal）
-     */
-    setStyle,
-
     // === 颜色操作 ===
-    /**
-     * 设置单个基础颜色
-     */
     setColor,
-
-    /**
-     * 批量设置基础颜色
-     */
     setColors,
 
     // === Token 操作 ===
-    /**
-     * 更新自定义 Token（部分更新）
-     */
     updateTokens,
-
-    /**
-     * 完全替换自定义 Token
-     */
     replaceTokens,
 
     // === 工具方法 ===
-    /**
-     * 获取 CSS 变量名
-     */
     getCSSVar,
-
-    /**
-     * 导出当前主题配置（JSON）
-     */
     exportTheme,
-
-    /**
-     * 导入主题配置
-     */
     importTheme,
   }
 }

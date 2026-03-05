@@ -333,11 +333,11 @@ export interface CarouselWidgetConfig extends WidgetConfig {
 // Form builder types
 export interface FormField {
   id: string;
-  type: 'text' | 'number' | 'select' | 'date' | 'checkbox';
+  type: 'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'checkbox';
   label: string;
   name: string;
   required?: boolean;
-  options?: { label: string; value: string | number }[]; // For select
+  options?: { label: string; value: string | number }[]; // For select/radio
   defaultValue?: any;
 }
 

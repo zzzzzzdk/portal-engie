@@ -5,7 +5,7 @@ import axios from 'axios';
 import IconRenderer from '@/components/IconRenderer';
 import { WidgetConfig, NavItem } from '@/types';
 import { useSystemStore } from '@/store/useSystemStore';
-import { useTheme } from '@/theme';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import './index.scss';
 
 const { Text } = Typography;
@@ -37,7 +37,7 @@ interface HeaderBarWidgetProps {
 const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
   const { userInfo, sysConfig, logout } = useSystemStore();
   const { token } = theme.useToken();
-  const { themeMode, setMode } = useTheme();
+  const { themeMode, setCanvasThemeMode } = useCanvasTheme();
 
   // 换肤选项
   const themeOptions = [
@@ -287,7 +287,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
             <div className="theme-switcher-section">
               <Radio.Group
                 options={themeOptions}
-                onChange={(e) => setMode(e.target.value)}
+                onChange={(e) => setCanvasThemeMode(e.target.value)}
                 value={themeMode}
                 optionType="button"
                 size="small"

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Dropdown, Menu } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, AppstoreOutlined, FullscreenOutlined, LogoutOutlined, BgColorsOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, DownOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -14,7 +14,9 @@ import ConfigDialog from '@/components/ConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WidgetDrawer from '@/components/WidgetDrawer';
 import Icon from '@/components/Icon';
-import { useTheme } from '@/theme'
+import { useCanvasTheme } from '@/hooks/useCanvasTheme'
+import { getStylePreset } from '@/theme/tokens/styles'
+import { useConfigStore } from '@/store/useConfigStore'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import captureDashboardCover from '@/utils/captureDashboardCover'
@@ -53,7 +55,7 @@ const Layout: React.FC = () => {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
   const { message, modal } = AntdApp.useApp();
-  const themeSystem = useTheme()
+  const canvasTheme = useCanvasTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
   const [dashboardConfigOpen, setDashboardConfigOpen] = useState(false)
   const [microAppMarketOpen, setMicroAppMarketOpen] = useState(false)
@@ -290,14 +292,17 @@ const Layout: React.FC = () => {
     try {
       const values = await publishForm.validateFields();
       const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
-      // 将主题配置合并到 dashboardConfig 中一起发布（排除 customTokens）
+      // 画布级主题配置已在 dashboardConfig 中（themeMode/styleMode），全局配色从 ConfigStore 取
+      const { themePreset, baseColors } = useConfigStore.getState();
+      const canvasStyleMode = baseDashboardConfig.styleMode || 'normal';
+      const canvasThemeMode = baseDashboardConfig.themeMode || 'light';
       const publishConfig = {
         ...baseDashboardConfig,
-        themeMode: themeSystem.themeMode,
-        themePreset: themeSystem.themePreset,
-        styleMode: themeSystem.styleMode,
-        styleTokens: themeSystem.styleTokens,
-        baseColors: themeSystem.baseColors,
+        themeMode: canvasThemeMode,
+        themePreset,
+        styleMode: canvasStyleMode,
+        styleTokens: getStylePreset(canvasStyleMode as 'normal' | 'minimal', canvasThemeMode === 'dark'),
+        baseColors,
         title: values.title,
       };
       const snapshot = {
@@ -356,23 +361,22 @@ const Layout: React.FC = () => {
     // navigate('/login');
   };
 
-  const handleThemeChange: MenuProps['onClick'] = ({ key }) => {
-    if (key === 'custom') {
-      setCustomizerOpen(true)
-      return
-    }
-
-    // 使用新的主题系统切换预设
-    themeSystem.applyPreset(key as 'light' | 'dark' | 'blue' | 'purple', true)
-  }
-
   const handleStyleModeChange = (mode: 'normal' | 'minimal') => {
-    if (themeSystem.styleMode === mode) {
+    if (canvasTheme.styleMode === mode) {
       message.info(`已是${mode === 'normal' ? '标准' : '极简'}风格`)
       return
     }
-    themeSystem.setStyle(mode)
-    message.success(`已切换到${mode === 'normal' ? '标准' : '极简'}风格`)
+    canvasTheme.setCanvasStyleMode(mode)
+    message.success(`已切换到${mode === 'normal' ? '标准' : '极简'}风格（仅当前画布）`)
+  }
+
+  const handleThemeModeChange = (mode: 'light' | 'dark') => {
+    if (canvasTheme.themeMode === mode) {
+      message.info(`已是${mode === 'light' ? '浅色' : '深色'}模式`)
+      return
+    }
+    canvasTheme.setCanvasThemeMode(mode)
+    message.success(`已切换到${mode === 'light' ? '浅色' : '深色'}模式（仅当前画布）`)
   }
 
   const handleResetDashboard = () => {
@@ -392,43 +396,6 @@ const Layout: React.FC = () => {
   const handleGoHome = () => {
     navigate('/')
   }
-
-  // 主题切换菜单
-  const themeMenuItems: MenuProps['items'] = [
-    {
-      key: 'light',
-      label: '浅色主题',
-    },
-    {
-      key: 'dark',
-      label: '暗黑主题',
-    },
-    // {
-    //   type: 'divider',
-    // },
-    // {
-    //   key: 'custom',
-    //   label: '自定义主题...',
-    // },
-    // {
-    //   type: 'divider',
-    // },
-    // {
-    //   key: 'blue',
-    //   label: '蓝色主题',
-    // },
-    // {
-    //   key: 'purple',
-    //   label: '紫色主题',
-    // },
-    // {
-    //   type: 'divider',
-    // },
-    // {
-    //   key: 'custom',
-    //   label: '自定义主题...',
-    // },
-  ]
 
   // 头部导航菜单配置
   const headerMenuItems: MenuProps['items'] = [
@@ -506,17 +473,6 @@ const Layout: React.FC = () => {
             </div>
 
             <Space size="middle">
-              <Dropdown
-                menu={{
-                  items: themeMenuItems,
-                  onClick: handleThemeChange,
-                  selectedKeys: [themeSystem.themePreset],
-                }}
-                placement="bottomRight"
-              >
-                <Button type="text" className="utility-btn" icon={<BgColorsOutlined />} title="主题切换" />
-              </Dropdown>
-
               <Tooltip title="退出登录">
                 <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
               </Tooltip>
@@ -566,13 +522,27 @@ const Layout: React.FC = () => {
                   <div className="app-sub-header__style-toggle">
                     <Button.Group size="small">
                       <Button
-                        type={themeSystem.styleMode === 'normal' ? 'primary' : 'default'}
+                        type={canvasTheme.themeMode === 'light' ? 'primary' : 'default'}
+                        onClick={() => handleThemeModeChange('light')}
+                      >
+                        浅色
+                      </Button>
+                      <Button
+                        type={canvasTheme.themeMode === 'dark' ? 'primary' : 'default'}
+                        onClick={() => handleThemeModeChange('dark')}
+                      >
+                        深色
+                      </Button>
+                    </Button.Group>
+                    <Button.Group size="small" style={{ marginLeft: 4 }}>
+                      <Button
+                        type={canvasTheme.styleMode === 'normal' ? 'primary' : 'default'}
                         onClick={() => handleStyleModeChange('normal')}
                       >
                         标准
                       </Button>
                       <Button
-                        type={themeSystem.styleMode === 'minimal' ? 'primary' : 'default'}
+                        type={canvasTheme.styleMode === 'minimal' ? 'primary' : 'default'}
                         onClick={() => handleStyleModeChange('minimal')}
                       >
                         极简
@@ -657,9 +627,12 @@ const Layout: React.FC = () => {
           <Form.Item
             name="title"
             label="名称"
-            rules={[{ required: true, whitespace: true, message: '请输入名称' }]}
+            rules={[
+              { required: true, whitespace: true, message: '请输入名称' },
+              { max: 30, message: '名称最多30个字符' },
+            ]}
           >
-            <Input placeholder="请输入名称" />
+            <Input placeholder="请输入名称" maxLength={30} showCount />
           </Form.Item>
         </Form>
       </Modal>
