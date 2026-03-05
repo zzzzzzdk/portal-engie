@@ -216,7 +216,7 @@ export interface AppState {
   removeFloatingModule: (id: string) => void;
   updateFloatingModule: (id: string, updates: Partial<Widget>) => void;
   updateFloatingModuleConfig: (id: string, config: Partial<FloatingModuleConfig>) => void;
-  updateFloatingModulePosition: (id: string, position: { x: number; y: number }) => void;
+  updateFloatingModulePosition: (id: string, position: { x: number; y: number }, positionRatio?: { x: number; y: number }) => void;
   updateFloatingModuleSize: (id: string, size: { width: number; height: number }) => void;
   toggleFloatingModuleExpanded: (id: string) => void;
   // 全局微应用方法
@@ -610,6 +610,10 @@ export interface FloatingModuleConfig extends WidgetConfig {
   position?: {
     x: number;      // X 坐标(像素)
     y: number;      // Y 坐标(像素)
+  };
+  positionRatio?: {
+    x: number;      // X 位置比例(0~1)，用于不同容器尺寸间自适应
+    y: number;      // Y 位置比例(0~1)
   };
   defaultPosition?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
 

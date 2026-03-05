@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
-import { Widget, MicroAppModule, FloatingModuleConfig } from '@/types';
+import { Widget, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
@@ -166,9 +166,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           sync: widget.config.sync !== false,
           alive: widget.config.alive !== false,
           eventRoutes: widget.config.eventRoutes || [],
-          icon: widget.config.icon || '',
+          icon: widget.config.iconSvg || widget.config.icon || '',
           forceIconOnly: widget.config.forceIconOnly || false,
-          iconSvg: widget.config.iconSvg || '',
           backgroundType: widget.config.backgroundType || 'color',
           backgroundColor: widget.config.backgroundColor,
           backgroundImage: widget.config.backgroundImage,
@@ -179,7 +178,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         };
         form.setFieldsValue(initialValues);
 
-        if ((!widget.config.icon || widget.config.icon.length === 0) && widget.config.systemId && widget.config.moduleId) {
+        if (!widget.config.icon && !widget.config.iconSvg && widget.config.systemId && widget.config.moduleId) {
           microAppConfigLoader
             .getModule(widget.config.systemId, widget.config.moduleId)
             .then(module => {
@@ -355,6 +354,51 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     try {
       const values = await form.validateFields();
 
+      // customForm: 校验字段名及 Select/Radio 选项
+      if (widget?.type === 'customForm' && values.fields) {
+        const formFields = values.fields as FormField[];
+        let fieldError = '';
+
+        // 校验字段名不能为空或重复
+        const nameCountMap: Record<string, number> = {};
+        for (const field of formFields) {
+          if (!field.name || !field.name.trim()) {
+            fieldError = `字段「${field.label}」的字段名不能为空`;
+            break;
+          }
+          nameCountMap[field.name] = (nameCountMap[field.name] || 0) + 1;
+        }
+        if (!fieldError) {
+          const dupName = Object.keys(nameCountMap).find(k => nameCountMap[k] > 1);
+          if (dupName) {
+            fieldError = `字段名「${dupName}」重复，请修改`;
+          }
+        }
+
+        // 校验 Select/Radio 选项的 value 不能为空或重复
+        if (!fieldError) {
+          for (const field of formFields) {
+            if (['select', 'radio'].includes(field.type) && field.options?.length) {
+              const hasEmpty = field.options.some((o: { label: string; value: string | number }) => !String(o.value).trim());
+              if (hasEmpty) {
+                fieldError = `字段「${field.label}」的选项值不能为空`;
+                break;
+              }
+              const vals = field.options.map((o: { label: string; value: string | number }) => String(o.value));
+              if (vals.length !== new Set(vals).size) {
+                fieldError = `字段「${field.label}」的选项值不能重复`;
+                break;
+              }
+            }
+          }
+        }
+
+        if (fieldError) {
+          message.warning(fieldError);
+          return;
+        }
+      }
+
       // 分组配置保存
       if (isGroup && group) {
         const {
@@ -455,6 +499,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           eventRoutes,
           icon: rawIcon,
           forceIconOnly,
+          // 背景配置
+          backgroundType,
+          backgroundColor,
+          backgroundImage,
+          backgroundGradient,
+          backgroundSize,
+          backgroundRepeat,
+          backgroundPosition,
+          headerColor,
           // 助手中心特定字段
           entries,
           ...restConfig
@@ -468,6 +521,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         const normalizedCollapsedBgColor = normalizeColorValue(collapsedBgColor);
         // 规范化标题颜色
         const normalizedTitleColor = normalizeColorValue(titleColor);
+        // 规范化背景色（保留 alpha 透明度）
+        const normalizedBgColor = normalizeColorValue(backgroundColor);
+        // 规范化头部颜色
+        const normalizedHeaderColor = normalizeColorValue(headerColor);
 
         updateFloatingModule(widget.id, { title }); // 更新 title
 
@@ -493,6 +550,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             theme,
             borderRadius,
             zIndex,
+            // 背景配置
+            backgroundType,
+            backgroundColor: normalizedBgColor,
+            backgroundImage,
+            backgroundGradient,
+            backgroundSize,
+            backgroundRepeat,
+            backgroundPosition,
+            headerColor: normalizedHeaderColor,
             // 折叠状态配置
             collapsedWidth,
             collapsedHeight,
@@ -558,6 +624,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             theme,
             borderRadius,
             zIndex,
+            // 背景配置
+            backgroundType,
+            backgroundColor: normalizedBgColor,
+            backgroundImage,
+            backgroundGradient,
+            backgroundSize,
+            backgroundRepeat,
+            backgroundPosition,
+            headerColor: normalizedHeaderColor,
             // 折叠状态配置
             collapsedWidth,
             collapsedHeight,

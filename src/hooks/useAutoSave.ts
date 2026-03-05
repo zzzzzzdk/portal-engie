@@ -95,6 +95,7 @@ export const useAutoSave = ({ enabled, onSaveStatusChange }: UseAutoSaveOptions)
         title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
         status: 0, // 始终保存为草稿
+        cover_url: '',
       });
 
       if (res.code !== 20000 || !res.data) {

@@ -388,6 +388,18 @@ const Layout: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: () => {
         resetDashboard();
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+        }
+        // 清除 URL 中的 editId 参数
+        const params = new URLSearchParams(searchParams);
+        if (params.has('editId')) {
+          params.delete('editId');
+          navigate({
+            pathname: location.pathname,
+            search: params.toString(),
+          }, { replace: true });
+        }
         message.success('已恢复为空白页面');
       },
     });

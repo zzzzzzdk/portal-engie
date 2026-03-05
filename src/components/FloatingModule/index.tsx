@@ -96,6 +96,42 @@ const clampPosition = (
   };
 };
 
+// 将绝对位置转换为比例值 (0~1)
+const positionToRatio = (
+  pos: Position,
+  size: Size,
+  viewport: Viewport,
+  padding = VIEWPORT_PADDING
+): { x: number; y: number } => {
+  const rangeX = Math.max(1, viewport.width - size.width - 2 * padding);
+  const rangeY = Math.max(1, viewport.height - size.height - 2 * padding);
+  return {
+    x: clamp((pos.x - padding) / rangeX, 0, 1),
+    y: clamp((pos.y - padding) / rangeY, 0, 1),
+  };
+};
+
+// 将比例值转换为绝对位置
+const ratioToPosition = (
+  ratio: { x: number; y: number },
+  size: Size,
+  viewport: Viewport,
+  padding = VIEWPORT_PADDING
+): Position => {
+  const rangeX = Math.max(0, viewport.width - size.width - 2 * padding);
+  const rangeY = Math.max(0, viewport.height - size.height - 2 * padding);
+  return {
+    x: padding + ratio.x * rangeX,
+    y: padding + ratio.y * rangeY,
+  };
+};
+
+// 保持中心不变地换算新位置（用于展开/收起尺寸切换）
+const keepCenterPosition = (pos: Position, currentSize: Size, targetSize: Size): Position => ({
+  x: pos.x + (currentSize.width - targetSize.width) / 2,
+  y: pos.y + (currentSize.height - targetSize.height) / 2,
+});
+
 // 计算从 currentSize 变换到 targetSize 后的新位置
 // 逻辑：尝试保持“重心”或相对象限位置不变
 const calculateSmartPosition = (
@@ -149,6 +185,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const [containerEl, setContainerEl] = useState<ContainerElement>(initialContainer);
   const [viewport, setViewport] = useState<Viewport>(initialViewport);
   const [containerOffset, setContainerOffset] = useState<ContainerOffset>(initialOffset);
+  const [isDragging, setIsDragging] = useState(false);
+  const [expandedMoved, setExpandedMoved] = useState(false);
 
   const config = widget.config as FloatingModuleConfig;
   const collapsedWidth = config.collapsedWidth || 60;
@@ -171,7 +209,12 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const sizeRef = useRef<Size>(initialSizeState);
 
   const [position, setPosition] = useState<Position>(() => {
-    // 如果有保存的位置，直接使用并限制在视口内
+    // 优先使用比例值，可在不同容器尺寸间自适应
+    if (config.positionRatio && initialViewport.width && initialViewport.height) {
+      return ratioToPosition(config.positionRatio, initialSizeState, initialViewport);
+    }
+
+    // 如果有保存的绝对位置，直接使用并限制在视口内
     if (config.position) {
       return clampPosition(config.position, initialSizeState, initialViewport);
     }
@@ -198,6 +241,10 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const saveSizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<Viewport>(initialViewport);
+  const lastCollapsedPosRef = useRef<Position | null>(null);
+  const lastExpandedPosRef = useRef<Position | null>(null);
+  const justDraggedRef = useRef(false);
+  const dragStartPosRef = useRef<Position | null>(null);
 
   useEffect(() => {
     sizeRef.current = size;
@@ -336,15 +383,31 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   useEffect(() => {
     if (typeof config.isExpanded === 'boolean' && config.isExpanded !== isExpanded) {
       setIsExpanded(config.isExpanded);
-      // 如果外部改变了展开状态，我们需要重新计算 size
       const newSize = config.isExpanded
         ? { width: config.width || 380, height: config.height || 400 }
         : { width: collapsedWidth, height: collapsedHeight };
       setSize(newSize);
-      // 同时也需要调整 position 以适应新 size
-      setPosition(prev => calculateSmartPosition(prev, size, newSize, viewport));
+      setPosition(prev => {
+        if (config.isExpanded) {
+          lastCollapsedPosRef.current = prev;
+          setExpandedMoved(false);
+          let expandedPos: Position;
+          if (lastExpandedPosRef.current) {
+            expandedPos = clampPosition(lastExpandedPosRef.current, newSize, viewport);
+          } else {
+            expandedPos = calculateSmartPosition(prev, size, newSize, viewport);
+          }
+          lastExpandedPosRef.current = expandedPos;
+          return expandedPos;
+        }
+        const folded = expandedMoved
+          ? clampPosition(prev, newSize, viewport)
+          : clampPosition(lastCollapsedPosRef.current || prev, newSize, viewport);
+        lastCollapsedPosRef.current = folded;
+        return folded;
+      });
     }
-  }, [config.isExpanded]);
+  }, [config.isExpanded, expandedMoved]);
 
   // Theme logic
   const actualTheme = useMemo(
@@ -358,11 +421,23 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     const bgType = config.backgroundType || 'color';
 
     if (bgType === 'color' && config.backgroundColor) {
-      // 处理 ColorPicker 返回的对象或字符串
+      // 处理 ColorPicker 返回的对象或字符串，优先 toRgbString 保留 alpha
       const bgColor = config.backgroundColor as any;
-      const color = typeof bgColor === 'object' && bgColor?.toHexString
-        ? bgColor.toHexString()
-        : bgColor;
+      let color: string;
+      if (typeof bgColor === 'string') {
+        color = bgColor;
+      } else if (typeof bgColor === 'object' && bgColor?.toRgbString) {
+        color = bgColor.toRgbString();
+      } else if (typeof bgColor === 'object' && bgColor?.toHexString) {
+        color = bgColor.toHexString();
+      } else if (typeof bgColor === 'object' && bgColor?.metaColor) {
+        const { r, g, b, a } = bgColor.metaColor;
+        color = a !== undefined && a < 1
+          ? `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`
+          : `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+      } else {
+        color = String(bgColor);
+      }
       style.backgroundColor = color;
     } else if (bgType === 'image' && config.backgroundImage) {
       style.backgroundImage = `url(${config.backgroundImage})`;
@@ -422,13 +497,15 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
   // Handlers
   const debouncedSavePosition = useCallback(
-    (pos: Position) => {
+    (pos: Position, currentSize?: Size) => {
       if (savePositionTimeoutRef.current) clearTimeout(savePositionTimeoutRef.current);
       savePositionTimeoutRef.current = setTimeout(() => {
-        updateFloatingModulePosition(widget.id, pos);
+        const sizeForRatio = currentSize || sizeRef.current;
+        const ratio = positionToRatio(pos, sizeForRatio, viewport);
+        updateFloatingModulePosition(widget.id, pos, ratio);
       }, 300);
     },
-    [widget.id, updateFloatingModulePosition]
+    [widget.id, updateFloatingModulePosition, viewport]
   );
 
   const debouncedSaveSize = useCallback(
@@ -442,16 +519,37 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   );
 
   const handleDrag: DraggableEventHandler = useCallback((_e, data) => {
-    // 实时更新本地状态，保证流畅
+    setPosition({ x: data.x, y: data.y });
+  }, []);
+
+  const handleDragStart: DraggableEventHandler = useCallback((_e, data) => {
+    setIsDragging(true);
+    dragStartPosRef.current = { x: data.x, y: data.y };
     setPosition({ x: data.x, y: data.y });
   }, []);
 
   const handleDragStop: DraggableEventHandler = useCallback((_e, data) => {
-    // 拖拽结束时，强制边界检查
     const finalPos = clampPosition({ x: data.x, y: data.y }, size, viewport);
     setPosition(finalPos);
+    setIsDragging(false);
+    // 只有鼠标实际移动了才标记为拖拽，防止原地点击被误判
+    const start = dragStartPosRef.current;
+    const didMove = start ? Math.abs(data.x - start.x) > 2 || Math.abs(data.y - start.y) > 2 : false;
+    dragStartPosRef.current = null;
+    if (didMove) {
+      justDraggedRef.current = true;
+      requestAnimationFrame(() => { justDraggedRef.current = false; });
+      if (isExpanded) {
+        lastExpandedPosRef.current = finalPos;
+        setExpandedMoved(true);
+      } else {
+        lastCollapsedPosRef.current = finalPos;
+        // 收起状态拖到新位置后，清除旧的展开位置，下次展开基于新位置计算
+        lastExpandedPosRef.current = null;
+      }
+    }
     debouncedSavePosition(finalPos);
-  }, [size, viewport, debouncedSavePosition]);
+  }, [size, viewport, debouncedSavePosition, isExpanded]);
 
   // 计算拖拽边界
   const dragBounds = useMemo(() => {
@@ -478,19 +576,34 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
     event?.stopPropagation();
     event?.preventDefault();
 
+    // 拖拽刚结束时的 click 不应触发展开
+    if (justDraggedRef.current) return;
     if (config.collapsible === false) return;
 
     const nextExpanded = !isExpanded;
     let nextSize: Size;
+    let nextPos: Position;
 
     if (nextExpanded) {
       nextSize = { width: config.width || 380, height: config.height || 400 };
+      lastCollapsedPosRef.current = position;
+      setExpandedMoved(false);
+      if (lastExpandedPosRef.current) {
+        // 有记忆的展开位置，直接恢复
+        nextPos = clampPosition(lastExpandedPosRef.current, nextSize, viewport);
+      } else {
+        // 无记忆位置（首次展开或收起后拖拽过），基于当前位置智能计算
+        nextPos = calculateSmartPosition(position, size, nextSize, viewport);
+      }
+      lastExpandedPosRef.current = nextPos;
     } else {
       nextSize = { width: collapsedWidth, height: collapsedHeight };
+      // 展开 -> 折叠：若展开期间移动过，用当前展开位；否则回到进入展开时的折叠位
+      nextPos = expandedMoved
+        ? clampPosition(position, nextSize, viewport)
+        : clampPosition(lastCollapsedPosRef.current || position, nextSize, viewport);
+      lastCollapsedPosRef.current = nextPos;
     }
-
-    // 智能计算新位置
-    const nextPos = calculateSmartPosition(position, size, nextSize, viewport);
 
     setIsExpanded(nextExpanded);
     setSize(nextSize);
@@ -498,7 +611,39 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
     toggleFloatingModuleExpanded(widget.id);
     debouncedSavePosition(nextPos);
-  }, [isExpanded, config.width, config.height, config.collapsible, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
+  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
+
+  const shellTransition = useMemo(
+    () => ({ type: 'spring', stiffness: 260, damping: 28, mass: 1.1 }),
+    [],
+  );
+
+  const shellAnimate = useMemo(
+    () => ({
+      width: size.width,
+      height: size.height,
+      borderRadius: config.borderRadius || 12,
+      boxShadow: isExpanded
+        ? '0 12px 48px rgba(0, 0, 0, 0.18)'
+        : '0 6px 24px rgba(0, 0, 0, 0.25)',
+      opacity: 1,
+      scale: 1,
+    }),
+    [config.borderRadius, isExpanded, size.height, size.width],
+  );
+
+  const shellVariants = {
+    expanded: {
+      width: size.width,
+      height: size.height,
+      borderRadius: config.borderRadius || 12,
+    },
+    collapsed: {
+      width: collapsedWidth,
+      height: collapsedHeight,
+      borderRadius: Math.min(collapsedWidth, collapsedHeight) / 2,
+    },
+  };
 
   const handleClose = useCallback((event?: React.MouseEvent) => {
     event?.stopPropagation();
@@ -558,6 +703,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
         nodeRef={nodeRef}
         disabled={!isDraggable}
         position={position}
+        onStart={handleDragStart}
         onDrag={handleDrag}
         onStop={handleDragStop}
         handle=".drag-handle"
@@ -585,85 +731,115 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
             resizeHandles={isResizable ? ['se'] : []}
           >
             {/* Content Wrapper */}
-            <div
-              className="floating-module-wrapper"
-              style={{ width: size.width, height: size.height }}
-            >
-              <AnimatePresence mode="wait">
-                {isExpanded ? (
-                  <motion.div
-                    key="expanded"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className={`floating-module expanded theme-${actualTheme} ${isResizable ? 'resizable' : ''}`}
-                    style={{ ...moduleStyle, position: 'relative', width: '100%', height: '100%' }}
-                  >
-                    {/* Header */}
-                    {config.showTitle !== false ? (
-                      <div className={`floating-module-header drag-handle ${hasCustomBackground ? 'custom-bg' : ''}`} style={headerStyle}>
-                        {isDraggable && <DragOutlined className="drag-icon" />}
-                        <span className="title" style={config.titleColor ? { color: config.titleColor } : undefined}>{widget.title}</span>
-                        <div className="actions" style={config.titleColor ? { color: config.titleColor } : undefined}>
-                          {isEditMode && (
-                            <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn config-btn">
-                              <SettingOutlined />
-                            </button>
-                          )}
+            <div className="floating-module-wrapper" style={{ width: size.width, height: size.height }}>
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key="floating-shell"
+                  layout={!isDragging}
+                  layoutId={`floating-shell-${widget.id}`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={shellAnimate}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={isDragging ? { duration: 0 } : shellTransition}
+                  className={`floating-module ${isExpanded ? 'expanded' : 'collapsed'} theme-${actualTheme} ${isResizable ? 'resizable' : ''}`}
+                  style={{
+                    ...moduleStyle,
+                    position: 'relative',
+                    width: '100%',
+                    height: '100%',
+                    cursor: isExpanded ? 'default' : 'pointer',
+                    ...(collapsedBgColor && !isExpanded ? { background: collapsedBgColor } : {}),
+                  }}
+                  variants={shellVariants}
+                  onClick={!isExpanded ? toggleExpand : undefined}
+                >
+                  {isExpanded && (config.showTitle !== false ? (
+                    <div
+                      className={`floating-module-header drag-handle ${hasCustomBackground ? 'custom-bg' : ''}`}
+                      style={headerStyle}
+                    >
+                      {isDraggable && <DragOutlined className="drag-icon" />}
+                      <span
+                        className="title"
+                        style={config.titleColor ? { color: config.titleColor } : undefined}
+                      >
+                        {widget.title}
+                      </span>
+                      <div
+                        className="actions"
+                        style={config.titleColor ? { color: config.titleColor } : undefined}
+                      >
+                        {isEditMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openConfigPanel({ type: 'floating', id: widget.id });
+                            }}
+                            className="action-btn config-btn"
+                          >
+                            <SettingOutlined />
+                          </button>
+                        )}
+                        {config.collapsible !== false && (
+                          <button onClick={toggleExpand} className="action-btn minimize-btn">
+                            <MinusOutlined />
+                          </button>
+                        )}
+                        {isEditMode ? (
+                          <Button onClick={handleDelete} className="action-btn delete-btn" danger>
+                            <DeleteOutlined />
+                          </Button>
+                        ) : (
+                          config.closable !== false && ''
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    isEditMode && (
+                      <div className="floating-module-header-transparent drag-handle">
+                        {isDraggable && <DragOutlined className="drag-icon-transparent" />}
+                        <div className="actions-transparent">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openConfigPanel({ type: 'floating', id: widget.id });
+                            }}
+                            className="action-btn-transparent"
+                          >
+                            <SettingOutlined />
+                          </button>
                           {config.collapsible !== false && (
-                            <button onClick={toggleExpand} className="action-btn minimize-btn">
+                            <button onClick={toggleExpand} className="action-btn-transparent">
                               <MinusOutlined />
                             </button>
                           )}
-                          {isEditMode ? (
-                            <Button onClick={handleDelete} className="action-btn delete-btn" danger><DeleteOutlined /></Button>
-                          ) : (
-                            config.closable !== false && (
-                              // <button onClick={handleClose} className="action-btn close-btn"><CloseOutlined /></button>
-                              ""
-                            )
-                          )}
+                          <button onClick={handleDelete} className="action-btn-transparent delete-btn">
+                            <CloseOutlined />
+                          </button>
                         </div>
                       </div>
-                    ) : (
-                      // Transparent Header for dragging when title is hidden
-                      isEditMode && (
-                        <div className="floating-module-header-transparent drag-handle">
-                          {isDraggable && <DragOutlined className="drag-icon-transparent" />}
-                          <div className="actions-transparent">
-                            <button onClick={(e) => { e.stopPropagation(); openConfigPanel({ type: 'floating', id: widget.id }); }} className="action-btn-transparent"><SettingOutlined /></button>
-                            {config.collapsible !== false && (
-                              <button onClick={toggleExpand} className="action-btn-transparent"><MinusOutlined /></button>
-                            )}
-                            <button onClick={handleDelete} className="action-btn-transparent delete-btn"><CloseOutlined /></button>
-                          </div>
-                        </div>
-                      )
-                    )}
+                    )
+                  ))}
 
-                    <div className="floating-module-content">
-                      <div className="drag-mask" />
-                      {renderContent}
-                    </div>
-                  </motion.div>
-                ) : (
                   <motion.div
-                    key="collapsed"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.2 }}
-                    className={`floating-module collapsed theme-${actualTheme} drag-handle`}
-                    style={{
-                      ...moduleStyle,
-                      position: 'relative',
-                      width: '100%',
-                      height: '100%',
-                      cursor: 'pointer',
-                      ...(collapsedBgColor ? { background: collapsedBgColor } : {}),
+                    layout={!isDragging}
+                    className="floating-module-content"
+                    animate={{
+                      opacity: isExpanded ? 1 : 0,
+                      height: isExpanded ? '100%' : 0,
                     }}
-                    onClick={toggleExpand}
+                    transition={isDragging ? { duration: 0 } : shellTransition}
+                    style={{ pointerEvents: isExpanded ? 'auto' : 'none' }}
+                  >
+                    <div className="drag-mask" />
+                    {renderContent}
+                  </motion.div>
+
+                  <motion.div
+                    layout={!isDragging}
+                    className="floating-module-collapsed-face drag-handle"
+                    animate={{ opacity: isExpanded ? 0 : 1, scale: isExpanded ? 0.9 : 1 }}
+                    transition={isDragging ? { duration: 0 } : shellTransition}
                   >
                     <IconRenderer
                       value={collapsedIcon as string}
@@ -672,7 +848,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                       fallbackText={widget.title}
                     />
                   </motion.div>
-                )}
+                </motion.div>
               </AnimatePresence>
             </div>
           </Resizable>

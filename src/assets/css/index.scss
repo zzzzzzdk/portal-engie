@@ -213,16 +213,16 @@ body {
       background: var(--card-background) !important;
       backdrop-filter: var(--card-backdrop-filter);
       -webkit-backdrop-filter: var(--card-backdrop-filter);
-      border-color: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(200, 200, 200, 0.6) !important;
       color: var(--widget-text-color);
 
       &::placeholder,
       .ant-input::placeholder {
-        color: rgba(255, 255, 255, 0.4);
+       color: rgba(200, 200, 200, 0.6) !important;
       }
 
       &:hover {
-        border-color: rgba(255, 255, 255, 0.3) !important;
+        border-color: rgba(200, 200, 200, 0.6) !important;
       }
 
       &:focus,

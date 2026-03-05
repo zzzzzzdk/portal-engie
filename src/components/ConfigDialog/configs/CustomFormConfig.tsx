@@ -2,7 +2,12 @@ import React from 'react';
 import { Form, Input, Select, Switch, Radio, Divider, Button, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import EventRouteConfig from '@/components/EventRouteConfig';
+import { MicroAppEventType } from '@/types';
 import { WidgetConfigProps } from './types';
+
+const FORM_SENDER_EVENTS = [
+  { id: 'form-submit', type: MicroAppEventType.DATA_SUBMIT, name: '表单提交' },
+];
 
 /**
  * 自定义表单组件配置 - 数据与交互 Tab
@@ -66,6 +71,7 @@ const CustomFormConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
             currentWidgetId={widget.id}
             currentSystemId={undefined}
             currentModuleId={undefined}
+            senderEvents={FORM_SENDER_EVENTS}
           />
         </Form.Item>
       )}

@@ -798,13 +798,13 @@ export const useStore = create<AppState>()(
         })),
 
       // 更新悬浮模块位置
-      updateFloatingModulePosition: (id: string, position: { x: number; y: number }) =>
+      updateFloatingModulePosition: (id: string, position: { x: number; y: number }, positionRatio?: { x: number; y: number }) =>
         set((state) => ({
           floatingModules: state.floatingModules.map(m =>
             m.id === id
               ? {
                 ...m,
-                config: { ...m.config, position } as FloatingModuleConfig
+                config: { ...m.config, position, ...(positionRatio ? { positionRatio } : {}) } as FloatingModuleConfig
               }
               : m
           ),

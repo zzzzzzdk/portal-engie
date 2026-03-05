@@ -2,7 +2,12 @@ import React from 'react';
 import { Form, Input, Select, Radio, Divider, Button, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import EventRouteConfig from '@/components/EventRouteConfig';
+import { MicroAppEventType } from '@/types';
 import { WidgetConfigProps } from './types';
+
+const SEARCH_SENDER_EVENTS = [
+  { id: 'search-submit', type: MicroAppEventType.DATA_SUBMIT, name: '搜索提交' },
+];
 
 /**
  * 搜索组件配置 - 数据交互
@@ -69,6 +74,7 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
             currentWidgetId={widget.id}
             currentSystemId={undefined}
             currentModuleId={undefined}
+            senderEvents={SEARCH_SENDER_EVENTS}
           />
         </Form.Item>
       )}

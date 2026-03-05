@@ -38,6 +38,19 @@ const IconPicker: React.FC<IconPickerProps> = ({
   const [urlInput, setUrlInput] = useState('');
   const [svgInput, setSvgInput] = useState('');
 
+  // Popover 打开时回填已有值
+  const handleOpenChange = useCallback((visible: boolean) => {
+    setOpen(visible);
+    if (visible && value) {
+      const type = getIconValueType(value);
+      if (type === 'svg') {
+        setSvgInput(value);
+      } else if (type === 'url') {
+        setUrlInput(value);
+      }
+    }
+  }, [value]);
+
   // 判断当前值的类型
   const valueType = useMemo(() => getIconValueType(value), [value]);
 
@@ -319,7 +332,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
       content={popoverContent}
       trigger="click"
       open={open && !disabled}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       placement="bottomLeft"
       overlayClassName="icon-picker-popover-overlay"
     >
