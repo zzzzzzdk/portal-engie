@@ -20,6 +20,7 @@ interface TopListItem {
  */
 interface TopListWidgetConfig extends WidgetConfig {
   apiEndpoint?: string;      // 数据接口地址
+  apiHeaders?: Record<string, string>;  // 请求头
   refreshInterval?: number;  // 刷新间隔(秒)
   listItems?: TopListItem[]; // 静态数据
   nameField?: string;        // 名称字段
@@ -92,7 +93,8 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
     try {
       if (apiEndpoint) {
         // 从接口获取数据
-        const response = await axios.get(apiEndpoint);
+        const headers = listConfig?.apiHeaders;
+        const response = await axios.get(apiEndpoint.trim(), headers ? { headers } : {});
         const data = response.data?.data || response.data?.list || response.data;
         if (Array.isArray(data)) {
           setListData(transformData(data));

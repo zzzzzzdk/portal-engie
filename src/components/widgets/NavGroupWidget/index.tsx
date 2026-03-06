@@ -11,6 +11,7 @@ import './index.scss'
  * 导航组组件配置
  */
 interface NavGroupWidgetConfig extends WidgetConfig {
+  apiHeaders?: Record<string, string>;  // 请求头
   groupTitle?: string;        // 导航组标题（可覆盖 widget title）
   layout?: 'flex' | 'grid' | 'list' | 'text' | 'tag';   // 布局模式
   columns?: number;           // 网格列数（grid 模式）
@@ -139,7 +140,8 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
     setError(null);
 
     try {
-      const response = await axios.get(apiEndpoint);
+      const headers = widgetConfig?.apiHeaders;
+      const response = await axios.get(apiEndpoint.trim(), headers ? { headers } : {});
       const data = response.data?.data || response.data;
 
       if (Array.isArray(data)) {

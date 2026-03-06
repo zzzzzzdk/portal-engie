@@ -452,7 +452,10 @@ const Layout: React.FC = () => {
       const timeStr = lastSaveTimeRef.current
         ? lastSaveTimeRef.current.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
         : '';
-      return <span className="auto-save-indicator saved"><CheckCircleOutlined /> 已自动保存 {timeStr}</span>;
+      return <span className="auto-save-indicator saved"><CheckCircleOutlined /> 
+      已自动保存 
+      {/* {timeStr} */}
+      </span>;
     }
     if (autoSaveStatus === 'error') {
       return <span className="auto-save-indicator error"><ExclamationCircleOutlined /> 自动保存失败</span>;

@@ -80,7 +80,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     setError(null);
     try {
       const response = await axios({
-        url: endpoint,
+        url: endpoint.trim(),
         method,
         params,
         headers,

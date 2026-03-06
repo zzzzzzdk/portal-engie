@@ -66,7 +66,6 @@ export interface WidgetConfig {
   navItems?: NavItem[];        // 头部导航静态数据
   navDataSource?: 'static' | 'api';  // 导航数据来源
   navApiEndpoint?: string;     // 导航接口地址
-  navGroupId?: string;         // 导航组 ID（拼接默认接口）
   navTextColor?: string;       // 导航文字颜色
   showNavMenu?: boolean;       // 是否显示导航区域
   [key: string]: any; // Allow custom properties for different widgets

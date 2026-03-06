@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse, Space } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
 import { useStore } from '@/store/useStore';
@@ -265,6 +265,35 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           form.setFieldsValue({
             dataSource: hasStaticItems ? 'static' : 'api',
             staticItems: widget.config.staticItems || [],
+          });
+        }
+
+        // headerBar 导航接口配置初始化
+        if (widget.type === 'headerBar') {
+          form.setFieldsValue({
+            navApiMethod: widget.config.navApiMethod || 'GET',
+            navApiHeadersList: widget.config.navApiHeaders
+              ? Object.entries(widget.config.navApiHeaders).map(([key, value]) => ({ key, value }))
+              : [],
+            navFieldMapping: widget.config.navFieldMapping || {},
+          });
+        }
+
+        // 通用接口请求头初始化（dataTable/topList/news/navGroup/chart/stats）
+        if (['chart', 'stats', 'dataTable', 'news', 'topList', 'navGroup'].includes(widget.type) && widget.config.apiHeaders) {
+          form.setFieldsValue({
+            apiHeadersList: Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value })),
+          });
+        }
+
+        // carousel 接口请求头初始化
+        if (widget.type === 'carousel' && widget.config.apiConfig?.headers) {
+          const headersList = Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value }));
+          form.setFieldsValue({
+            apiConfig: {
+              ...form.getFieldValue('apiConfig'),
+              headersList,
+            },
           });
         }
 
@@ -812,8 +841,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   textColor: normalizeColor(item.textColor),
                 }));
               }
-              // 清除 apiEndpoint
+              // 清除 apiEndpoint 和 apiHeaders
               normalizedRestConfig.apiEndpoint = undefined;
+              normalizedRestConfig.apiHeaders = undefined;
             } else {
               // 接口模式：清除 staticItems
               normalizedRestConfig.staticItems = undefined;
@@ -822,12 +852,26 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             const navSource = normalizedRestConfig.navDataSource || (normalizedRestConfig.navItems?.length ? 'static' : 'api');
             if (navSource === 'static') {
               normalizedRestConfig.navApiEndpoint = undefined;
-              normalizedRestConfig.navGroupId = undefined;
+              normalizedRestConfig.navApiMethod = undefined;
+              normalizedRestConfig.navApiHeaders = undefined;
+              normalizedRestConfig.navFieldMapping = undefined;
+              delete normalizedRestConfig.navApiHeadersList;
               if (!Array.isArray(normalizedRestConfig.navItems)) {
                 normalizedRestConfig.navItems = [];
               }
             } else {
               normalizedRestConfig.navItems = undefined;
+              // navApiHeadersList 数组转换为 navApiHeaders 对象
+              if (normalizedRestConfig.navApiHeadersList) {
+                const headers: Record<string, string> = {};
+                (normalizedRestConfig.navApiHeadersList as { key: string; value: string }[]).forEach(item => {
+                  if (item.key?.trim()) {
+                    headers[item.key.trim()] = item.value || '';
+                  }
+                });
+                normalizedRestConfig.navApiHeaders = Object.keys(headers).length > 0 ? headers : undefined;
+                delete normalizedRestConfig.navApiHeadersList;
+              }
             }
           }
 
@@ -858,6 +902,21 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               badgeColor: normalizeColorValue(slide.badgeColor),
               overlayColor: normalizeColorValue(slide.overlayColor),
             }));
+          }
+
+          // carousel apiConfig.headersList 数组转换为 headers 对象
+          if (widget.type === 'carousel' && normalizedRestConfig.apiConfig) {
+            const headersList = normalizedRestConfig.apiConfig.headersList;
+            if (headersList && Array.isArray(headersList)) {
+              const headers: Record<string, string> = {};
+              headersList.forEach((item: { key: string; value: string }) => {
+                if (item.key?.trim()) {
+                  headers[item.key.trim()] = item.value || '';
+                }
+              });
+              normalizedRestConfig.apiConfig.headers = Object.keys(headers).length > 0 ? headers : undefined;
+              delete normalizedRestConfig.apiConfig.headersList;
+            }
           }
 
           updateWidget(widget.id, {
@@ -1511,19 +1570,57 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             return (
               <>
                 <Form.Item
-                  name="navGroupId"
-                  label="导航组 ID"
-                  extra="填写后默认请求 /api/nav-group/{ID}"
-                >
-                  <Input placeholder="例如：main" />
-                </Form.Item>
-                <Form.Item
                   name="navApiEndpoint"
                   label="接口地址"
-                  extra="优先使用此地址，不填写则根据导航组 ID 拼接"
+                  rules={[{ required: true, message: '请输入接口地址' }]}
                 >
-                  <Input placeholder="/api/nav-group/main" />
+                  <Input placeholder="/api/nav-items" />
                 </Form.Item>
+                <div className="form-row-2">
+                  <Form.Item name="navApiMethod" label="请求方式">
+                    <Select placeholder="GET">
+                      <Select.Option value="GET">GET</Select.Option>
+                      <Select.Option value="POST">POST</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+                <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
+                  <Form.List name="navApiHeadersList">
+                    {(fields, { add, remove }) => (
+                      <>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                            <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
+                              <Input placeholder="Header Key" style={{ width: 160 }} />
+                            </Form.Item>
+                            <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
+                              <Input placeholder="Header Value" style={{ width: 200 }} />
+                            </Form.Item>
+                            <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                          </Space>
+                        ))}
+                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
+                          添加请求头
+                        </Button>
+                      </>
+                    )}
+                  </Form.List>
+                </Form.Item>
+                <Divider>响应字段映射</Divider>
+                <div className="empty-hint" style={{ marginBottom: 8 }}>
+                  接口返回数组或 {'{ data: [...] }'} 格式，下方配置接口字段与组件字段的映射关系，留空则使用默认值
+                </div>
+                <div className="form-row-3">
+                  <Form.Item name={['navFieldMapping', 'name']} label="名称字段">
+                    <Input placeholder="name" />
+                  </Form.Item>
+                  <Form.Item name={['navFieldMapping', 'url']} label="链接字段">
+                    <Input placeholder="url" />
+                  </Form.Item>
+                  <Form.Item name={['navFieldMapping', 'icon']} label="图标字段">
+                    <Input placeholder="icon" />
+                  </Form.Item>
+                </div>
               </>
             );
           }}
@@ -1561,19 +1658,43 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     return (
       <>
         {['chart', 'stats', 'dataTable', 'news', 'topList'].includes(widget.type) && (
-          <Form.Item
-            name="apiEndpoint"
-            label="数据接口"
-            extra={
-              widget.type === 'news'
-                ? '接口需返回数组或 { data/list } 格式，包含标题、摘要、链接、封面等字段'
-                : widget.type === 'topList'
-                  ? '接口需返回数组或 { data/list } 格式，包含名称、数值、变化、单位等字段'
-                  : undefined
-            }
-          >
-            <Input placeholder={apiPlaceholder} />
-          </Form.Item>
+          <>
+            <Form.Item
+              name="apiEndpoint"
+              label="数据接口"
+              extra={
+                widget.type === 'news'
+                  ? '接口需返回数组或 { data/list } 格式，包含标题、摘要、链接、封面等字段'
+                  : widget.type === 'topList'
+                    ? '接口需返回数组或 { data/list } 格式，包含名称、数值、变化、单位等字段'
+                    : undefined
+              }
+            >
+              <Input placeholder={apiPlaceholder} />
+            </Form.Item>
+            <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
+              <Form.List name="apiHeadersList">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                        <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
+                          <Input placeholder="Header Key" style={{ width: 160 }} />
+                        </Form.Item>
+                        <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
+                          <Input placeholder="Header Value" style={{ width: 200 }} />
+                        </Form.Item>
+                        <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                      </Space>
+                    ))}
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
+                      添加请求头
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </Form.Item>
+          </>
         )}
 
         {widget.type === 'stats' && (
@@ -1748,6 +1869,28 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     <>
                       <Form.Item name="apiEndpoint" label="数据接口">
                         <Input placeholder="/api/nav-items" />
+                      </Form.Item>
+                      <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
+                        <Form.List name="apiHeadersList">
+                          {(fields, { add, remove }) => (
+                            <>
+                              {fields.map(({ key, name, ...restField }) => (
+                                <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                  <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
+                                    <Input placeholder="Header Key" style={{ width: 160 }} />
+                                  </Form.Item>
+                                  <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
+                                    <Input placeholder="Header Value" style={{ width: 200 }} />
+                                  </Form.Item>
+                                  <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                                </Space>
+                              ))}
+                              <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
+                                添加请求头
+                              </Button>
+                            </>
+                          )}
+                        </Form.List>
                       </Form.Item>
                       <div className="empty-hint" style={{ marginTop: 8 }}>
                         接口应返回格式：{`{ code: 0, data: [{ url, icon, name, description?, iconBgColor?, iconColor?, textColor? }] }`}

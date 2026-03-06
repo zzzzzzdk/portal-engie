@@ -25,9 +25,17 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
   navItems?: HeaderNavItem[];
   navDataSource?: 'static' | 'api';
   navApiEndpoint?: string;
-  navGroupId?: string;
   navTextColor?: string;
   showNavMenu?: boolean;
+  // 接口请求配置
+  navApiMethod?: 'GET' | 'POST';
+  navApiHeaders?: Record<string, string>;
+  // 响应字段映射
+  navFieldMapping?: {
+    name?: string;   // 名称字段，默认 name
+    url?: string;    // 链接字段，默认 url
+    icon?: string;   // 图标字段，默认 icon
+  };
 }
 
 interface HeaderBarWidgetProps {
@@ -58,7 +66,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       <IconRenderer
         value={config.icon}
         size={24}
-        color="#1890ff"
+        color={config?.textColor ||"#1890ff"}
         style={{ marginRight: 8 }}
         fallbackText={config.headerTitle}
       />
@@ -180,9 +188,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         return;
       }
 
-      const endpoint =
-        headerConfig?.navApiEndpoint ||
-        (headerConfig?.navGroupId ? `/api/nav-group/${headerConfig.navGroupId}` : undefined);
+      const endpoint = headerConfig?.navApiEndpoint?.trim();
 
       if (!endpoint) {
         setNavItems([]);
@@ -191,12 +197,25 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
 
       setNavLoading(true);
       try {
-        const response = await axios.get(endpoint);
-        const payload = Array.isArray(response.data?.data)
+        const method = headerConfig?.navApiMethod || 'GET';
+        const headers = headerConfig?.navApiHeaders;
+        const response = await axios({ method, url: endpoint, ...(headers ? { headers } : {}) });
+        const rawPayload = Array.isArray(response.data?.data)
           ? response.data.data
           : Array.isArray(response.data)
             ? response.data
             : [];
+
+        // 字段映射
+        const mapping = headerConfig?.navFieldMapping;
+        const payload = (mapping && (mapping.name || mapping.url || mapping.icon))
+          ? rawPayload.map((item: any) => ({
+              ...item,
+              name: item[mapping.name || 'name'] ?? item.name,
+              url: item[mapping.url || 'url'] ?? item.url,
+              icon: item[mapping.icon || 'icon'] ?? item.icon,
+            }))
+          : rawPayload;
 
         if (isMounted) {
           setNavItems(payload as HeaderNavItem[]);
@@ -218,7 +237,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     return () => {
       isMounted = false;
     };
-  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navGroupId]);
+  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navApiMethod, headerConfig?.navApiHeaders, headerConfig?.navFieldMapping]);
 
   const handleNavClick: MenuProps['onClick'] = ({ key }) => {
     const target = navKeyMap[key];
