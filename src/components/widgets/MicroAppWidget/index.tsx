@@ -8,7 +8,7 @@ import { getWidgetDisplayMode } from '@/utils/widgetHelpers';
 import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
-import { useTheme } from '@/theme/useTheme';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import './index.scss';
 
 const { bus, preloadApp } = WujieReact;
@@ -19,7 +19,7 @@ interface MicroAppWidgetProps {
 }
 
 const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
-  const { themeMode, styleMode, styleTokens } = useTheme();
+  const { themeMode, styleMode, styleTokens } = useCanvasTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);
@@ -119,6 +119,32 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
     initMicroApp();
   };
 
+  // 加载超时检测：超过 15 秒未挂载则视为失败
+  useEffect(() => {
+    if (!loading || !moduleConfig) return;
+
+    const timer = setTimeout(() => {
+      setError('微应用加载超时，请检查应用地址是否可访问');
+      setLoading(false);
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [loading, moduleConfig]);
+
+  // 挂载前检测：body 内容异常（如 "undefined"）说明页面无法正常访问
+  const handleBeforeMount = (appWindow: Window) => {
+    try {
+      const bodyContent = appWindow.document?.body?.innerHTML?.trim();
+      if (bodyContent === 'undefined' || bodyContent === 'null') {
+        setError('微应用页面无法访问，请检查应用地址是否正确');
+        setLoading(false);
+      }
+    } catch (e) {
+      // ignore
+    }
+    lifecycles.beforeMount?.(appWindow);
+  };
+
   // 生命周期处理
   const handleAfterMount = (appWindow: Window) => {
     console.log(`[Wujie] ${appName} 挂载完成，关闭 Loading`);
@@ -193,7 +219,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
       {moduleConfig && (
         <div 
           className="nodrag" 
-          style={{ width: '100%', height: '100%', opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}
+          style={{ width: '100%', height: '100%', opacity: loading || error ? 0 : 1, transition: 'opacity 0.3s' }}
           onMouseDown={(e) => {
             // 阻止事件冒泡，防止触发 GridStack 拖拽
             e.stopPropagation();
@@ -221,6 +247,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
           // 绑定生命周期
           {...lifecycles}
           // 覆盖特定生命周期以控制 Loading
+          beforeMount={handleBeforeMount}
           afterMount={handleAfterMount}
           activated={handleActivated}
           loadError={handleLoadError}
@@ -228,10 +255,19 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
         </div>
       )}
       
-      {/* 如果渲染过程中出错（Wujie 内部错误），显示错误信息 */}
+      {/* 如果渲染过程中出错（Wujie 内部错误），全覆盖遮挡异常内容 */}
       {error && moduleConfig && (
-         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 101 }}>
-            <Result status="error" title="加载异常" subTitle={error} />
+         <div className="micro-app-widget-error">
+            <Result
+              status="warning"
+              title="微应用加载异常"
+              subTitle={error}
+              extra={
+                <Button type="primary" icon={<ReloadOutlined />} onClick={handleRetry}>
+                  重试
+                </Button>
+              }
+            />
          </div>
       )}
     </div>

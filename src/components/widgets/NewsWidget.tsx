@@ -21,6 +21,7 @@ interface NewsItem {
  */
 interface NewsWidgetConfig extends WidgetConfig {
   apiEndpoint?: string;      // 数据接口地址
+  apiHeaders?: Record<string, string>;  // 请求头
   refreshInterval?: number;  // 刷新间隔(秒)
   newsItems?: NewsItem[];    // 静态新闻数据
   titleField?: string;       // 标题字段
@@ -93,7 +94,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget }) => {
     try {
       if (apiEndpoint) {
         // 从接口获取数据
-        const response = await axios.get(apiEndpoint);
+        const headers = newsConfig?.apiHeaders;
+        const response = await axios.get(apiEndpoint.trim(), headers ? { headers } : {});
         const data = response.data?.data || response.data?.list || response.data;
         if (Array.isArray(data)) {
           setNewsData(transformData(data));

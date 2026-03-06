@@ -25,6 +25,13 @@ export default defineConfig({
     host: '0.0.0.0', // 或者 host: '0.0.0.0'，允许局域网访问
     port: 3002,
     proxy: {
+      // MinIO 文件管理后端 (localhost:8000)
+      '/minio-api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/minio-api/, '/api')
+      },
+      // portal-engine mock 服务 (localhost:4001)
       '/api': {
         target: 'http://localhost:4001/',
         changeOrigin: true,

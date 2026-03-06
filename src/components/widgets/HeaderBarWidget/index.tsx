@@ -5,7 +5,7 @@ import axios from 'axios';
 import IconRenderer from '@/components/IconRenderer';
 import { WidgetConfig, NavItem } from '@/types';
 import { useSystemStore } from '@/store/useSystemStore';
-import { useTheme } from '@/theme';
+import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import './index.scss';
 
 const { Text } = Typography;
@@ -25,9 +25,17 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
   navItems?: HeaderNavItem[];
   navDataSource?: 'static' | 'api';
   navApiEndpoint?: string;
-  navGroupId?: string;
   navTextColor?: string;
   showNavMenu?: boolean;
+  // 接口请求配置
+  navApiMethod?: 'GET' | 'POST';
+  navApiHeaders?: Record<string, string>;
+  // 响应字段映射
+  navFieldMapping?: {
+    name?: string;   // 名称字段，默认 name
+    url?: string;    // 链接字段，默认 url
+    icon?: string;   // 图标字段，默认 icon
+  };
 }
 
 interface HeaderBarWidgetProps {
@@ -37,7 +45,7 @@ interface HeaderBarWidgetProps {
 const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
   const { userInfo, sysConfig, logout } = useSystemStore();
   const { token } = theme.useToken();
-  const { themeMode, setMode } = useTheme();
+  const { themeMode, setCanvasThemeMode } = useCanvasTheme();
 
   // 换肤选项
   const themeOptions = [
@@ -58,7 +66,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       <IconRenderer
         value={config.icon}
         size={24}
-        color="#1890ff"
+        color={config?.textColor ||"#1890ff"}
         style={{ marginRight: 8 }}
         fallbackText={config.headerTitle}
       />
@@ -140,20 +148,23 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     onClick: handleMenuClick,
   };
 
+  const getNavKey = useCallback((item: HeaderNavItem, index: number) => {
+    return `nav-${index}-${item.id || item.url || item.path || item.name}`;
+  }, []);
+
   const navKeyMap = useMemo(() => {
     return navItems.reduce<Record<string, HeaderNavItem>>((map, item, index) => {
-      const key = item.id || item.url || item.path || item.name || `nav-${index}`;
-      map[key] = item;
+      map[getNavKey(item, index)] = item;
       return map;
     }, {});
-  }, [navItems]);
+  }, [navItems, getNavKey]);
 
   const navMenuItems = useMemo(() => {
     return navItems.map((item, index) => ({
-      key: (item.id || item.url || item.path || item.name) + `nav-${index}`,
+      key: getNavKey(item, index),
       label: item.name || '未命名',
     }));
-  }, [navItems]);
+  }, [navItems, getNavKey]);
 
   const alignment = headerConfig?.headerAlignment || 'left';
   const showUserProfile = config?.showUserProfile;
@@ -177,9 +188,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         return;
       }
 
-      const endpoint =
-        headerConfig?.navApiEndpoint ||
-        (headerConfig?.navGroupId ? `/api/nav-group/${headerConfig.navGroupId}` : undefined);
+      const endpoint = headerConfig?.navApiEndpoint?.trim();
 
       if (!endpoint) {
         setNavItems([]);
@@ -188,12 +197,25 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
 
       setNavLoading(true);
       try {
-        const response = await axios.get(endpoint);
-        const payload = Array.isArray(response.data?.data)
+        const method = headerConfig?.navApiMethod || 'GET';
+        const headers = headerConfig?.navApiHeaders;
+        const response = await axios({ method, url: endpoint, ...(headers ? { headers } : {}) });
+        const rawPayload = Array.isArray(response.data?.data)
           ? response.data.data
           : Array.isArray(response.data)
             ? response.data
             : [];
+
+        // 字段映射
+        const mapping = headerConfig?.navFieldMapping;
+        const payload = (mapping && (mapping.name || mapping.url || mapping.icon))
+          ? rawPayload.map((item: any) => ({
+              ...item,
+              name: item[mapping.name || 'name'] ?? item.name,
+              url: item[mapping.url || 'url'] ?? item.url,
+              icon: item[mapping.icon || 'icon'] ?? item.icon,
+            }))
+          : rawPayload;
 
         if (isMounted) {
           setNavItems(payload as HeaderNavItem[]);
@@ -215,7 +237,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     return () => {
       isMounted = false;
     };
-  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navGroupId]);
+  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navApiMethod, headerConfig?.navApiHeaders, headerConfig?.navFieldMapping]);
 
   const handleNavClick: MenuProps['onClick'] = ({ key }) => {
     const target = navKeyMap[key];
@@ -284,7 +306,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
             <div className="theme-switcher-section">
               <Radio.Group
                 options={themeOptions}
-                onChange={(e) => setMode(e.target.value)}
+                onChange={(e) => setCanvasThemeMode(e.target.value)}
                 value={themeMode}
                 optionType="button"
                 size="small"

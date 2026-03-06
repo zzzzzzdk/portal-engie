@@ -155,13 +155,20 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
                           <Input placeholder="/dashboard" />
                        </Form.Item>
 
+                       <Form.Item
+                          {...restField}
+                          name={[name, 'icon']}
+                          label="图标"
+                       >
+                          <IconPicker mode="simple" placeholder="选择图标" />
+                       </Form.Item>
                        <div className="form-row-2">
                           <Form.Item
                              {...restField}
-                             name={[name, 'icon']}
-                             label="图标"
+                             name={[name, 'iconBgColor']}
+                             label="图标背景色"
                           >
-                             <IconPicker mode="simple" placeholder="选择图标" />
+                             <ColorPicker showText allowClear />
                           </Form.Item>
                           <Form.Item
                              {...restField}
@@ -187,7 +194,7 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
             <Button
               type="dashed"
               onClick={() => {
-                 add({ title: '新链接', url: '', icon: 'LinkOutlined', iconColor: '#1890ff' });
+                 add({ title: '新链接', url: '', icon: 'LinkOutlined', iconBgColor: '#1890ff', iconColor: '#ffffff' });
                  setExpandedIndices(prev => [...prev, fields.length]);
               }}
               block

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Widget } from '@/types';
 import { useStore } from '@/store/useStore';
+import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
 import { Settings, Trash2, RefreshCw } from 'lucide-react';
 import { Button, Dropdown, Modal } from 'antd';
 import type { MenuProps } from 'antd';
@@ -52,15 +53,17 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       }, 600);
     };
 
+    const isRefreshable = REFRESHABLE_WIDGET_TYPES.has(widget.type);
+
     // 右键菜单配置
     const contextMenuItems: MenuProps['items'] = [
-      {
-        key: 'refresh',
+      ...(isRefreshable ? [{
+        key: 'refresh' as const,
         label: '刷新',
         icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
         onClick: handleRefresh,
         disabled: isRefreshing,
-      },
+      }] : []),
       {
         key: 'config',
         label: '设置',
@@ -200,17 +203,15 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
                 style={widget.config.titleColor ? { color: widget.config.titleColor } : undefined}
                 onMouseDown={(e) => e.stopPropagation()}
               >
-                {
-                  !!widget.config.refreshInterval ?
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                    />
-                    : ''
-                }
+                {isRefreshable && (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />}
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                  />
+                )}
                 <Button
                   type="text"
                   size="small"

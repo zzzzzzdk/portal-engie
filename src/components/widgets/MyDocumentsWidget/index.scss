@@ -1,0 +1,308 @@
+.my-documents-widget {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+
+  .my-documents-btn {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+/* File Manager Modal */
+.file-manager-modal {
+  .ant-modal-body {
+    overflow: hidden;
+  }
+}
+
+.file-manager {
+  overflow: hidden;
+}
+
+.file-manager-sider {
+  border-right: 1px solid var(--ant-color-border);
+  overflow-y: auto;
+}
+
+.sider-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ant-color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.bucket-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--ant-color-info-bg);
+  margin: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ant-color-border);
+}
+
+.bucket-info-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Content area */
+.file-manager-content {
+  display: flex;
+  flex-direction: column;
+  // background: #fff;
+}
+
+.content-toolbar {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--ant-color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.content-body {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+/* File List */
+.file-list {
+  height: 100%;
+}
+
+.file-list .back-button {
+  margin-bottom: 8px;
+}
+
+.file-name {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.file-name:hover {
+  color: #1890ff;
+}
+
+/* Preview Dialog */
+.preview-dialog .ant-modal-body {
+  padding: 0;
+}
+
+.preview-content {
+  min-height: 400px;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.preview-loading,
+.preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #999;
+}
+
+/* Image Preview */
+.image-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+/* Video Preview */
+.video-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000;
+}
+
+.video-preview video {
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+/* Audio Preview */
+.audio-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.audio-preview audio {
+  width: 100%;
+  max-width: 500px;
+}
+
+/* PDF Preview */
+.pdf-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+
+.pdf-container {
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+  max-height: 65vh;
+  margin-bottom: 16px;
+}
+
+.pdf-container canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pdf-pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Word Preview */
+.word-preview {
+  padding: 16px;
+  min-height: 400px;
+}
+
+.word-container {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.word-container .docx-wrapper {
+  background: #fff;
+  padding: 20px;
+}
+
+.word-container .docx-wrapper > section.docx {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 20px;
+  padding: 40px;
+  background: #fff;
+}
+
+/* Excel Preview */
+.excel-preview {
+  padding: 16px;
+}
+
+.excel-toolbar {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.excel-container {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.excel-container .ant-table {
+  font-size: 13px;
+}
+
+.excel-container .ant-table-cell {
+  padding: 4px 8px !important;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #999;
+}
+
+/* Monaco Editor Preview */
+.monaco-preview {
+  height: 70vh;
+}
+
+.monaco-toolbar {
+  height: auto;
+  padding-top: 10px;
+  text-align: center;
+  button {
+    width: 120px;
+    height: 28px;
+  }
+}
+
+.monaco-edit-hint {
+  font-size: 12px;
+  color: #faad14;
+}
+
+.monaco-preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+}
+
+.monaco-preview-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #999;
+}
+
+/* OnlyOffice Editor */
+.preview-content-office {
+  width: 100%;
+  height: 100%;
+}
+
+.onlyoffice-editor-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.onlyoffice-editor-container {
+  width: 100%;
+  height: 80vh;
+}
+
+.onlyoffice-editor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+}
+
+.onlyoffice-editor-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+}

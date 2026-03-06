@@ -4,8 +4,6 @@ import { useTheme } from '@/theme'
 import type { IBaseColors } from '@/theme'
 import type { Color } from 'antd/es/color-picker'
 import type { ThemePresetName } from '@/theme'
-import type { StyleMode } from '@/theme/tokens/semantic'
-// import './style.scss'
 
 interface IThemeCustomizerProps {
   open: boolean
@@ -77,12 +75,6 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
   const handlePresetChange = (presetName: ThemePresetName) => {
     theme.applyPreset(presetName, true)
     message.success(`已切换到${presetName}主题`)
-  }
-
-  // 切换显示风格
-  const handleStyleChange = (style: StyleMode) => {
-    theme.setStyle(style)
-    message.success(`已切换到${style === 'minimal' ? '极简' : '标准'}风格`)
   }
 
   // 导出主题
@@ -181,21 +173,9 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
                     紫色主题
                   </Button>
                 </Space>
-                <p style={{ marginTop: 16 }}>主题模式：</p>
-                <Space>
-                  <Button
-                    type={theme.themeMode === 'light' ? 'primary' : 'default'}
-                    onClick={() => theme.setMode('light')}
-                  >
-                    浅色模式
-                  </Button>
-                  <Button
-                    type={theme.themeMode === 'dark' ? 'primary' : 'default'}
-                    onClick={() => theme.setMode('dark')}
-                  >
-                    深色模式
-                  </Button>
-                </Space>
+                <p style={{ marginTop: 16, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                  深色/浅色模式和极简/标准风格请在画布工具栏切换
+                </p>
               </div>
             ),
           },
@@ -389,32 +369,6 @@ const ThemeCustomizer: React.FC<IThemeCustomizerProps> = ({ open, onClose }) => 
                   </Space>
                 </Form.Item>
               </Form>
-            ),
-          },
-          {
-            key: 'style',
-            label: '界面风格',
-            children: (
-              <div className="style-section">
-                <p>选择显示风格：</p>
-                <Space>
-                  <Button
-                    type={theme.styleMode === 'normal' ? 'primary' : 'default'}
-                    onClick={() => handleStyleChange('normal')}
-                  >
-                    标准风格
-                  </Button>
-                  <Button
-                    type={theme.styleMode === 'minimal' ? 'primary' : 'default'}
-                    onClick={() => handleStyleChange('minimal')}
-                  >
-                    极简风格
-                  </Button>
-                </Space>
-                <p style={{ marginTop: 8, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
-                  极简风格：半透明背景 + 毛玻璃效果，适合搭配深色/渐变背景
-                </p>
-              </div>
             ),
           },
         ]}

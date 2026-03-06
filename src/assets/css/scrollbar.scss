@@ -39,9 +39,10 @@
 }
 
 // ============================================
-// 深色主题滚动条
+// 深色主题滚动条（画布级作用域）
 // ============================================
-[data-theme="dark"] {
+.dashboard-container[data-theme="dark"],
+.dashboard-preview-container[data-theme="dark"] {
   * {
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 
@@ -126,7 +127,8 @@
   }
 }
 
-[data-theme="dark"] .scrollbar-hover {
+.dashboard-container[data-theme="dark"] .scrollbar-hover,
+.dashboard-preview-container[data-theme="dark"] .scrollbar-hover {
   &:hover::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.15);
   }
@@ -178,7 +180,8 @@
   }
 }
 
-[data-theme="dark"] .widget-content {
+.dashboard-container[data-theme="dark"] .widget-content,
+.dashboard-preview-container[data-theme="dark"] .widget-content {
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
 
@@ -219,18 +222,7 @@
   }
 }
 
-[data-theme="dark"] {
-  .ant-modal-body,
-  .ant-drawer-body {
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.2);
-      }
-    }
-  }
-}
+// 注：系统 UI（Modal/Drawer）固定浅色主题，不再需要深色适配
 
 // Dropdown 和 Select 下拉菜单
 .ant-dropdown,
@@ -251,17 +243,7 @@
   }
 }
 
-[data-theme="dark"] {
-  .ant-dropdown,
-  .ant-select-dropdown,
-  .ant-picker-dropdown {
-    * {
-      &::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
-      }
-    }
-  }
-}
+// 注：系统 UI（Dropdown/Select）固定浅色主题，不再需要深色适配
 
 // Table 表格滚动区域
 .ant-table-body,
@@ -283,7 +265,8 @@
   }
 }
 
-[data-theme="dark"] {
+.dashboard-container[data-theme="dark"],
+.dashboard-preview-container[data-theme="dark"] {
   .ant-table-body,
   .ant-table-content {
     &::-webkit-scrollbar-thumb {

@@ -110,6 +110,11 @@ body {
     padding: 0 !important; /* Maintain padding */
     overflow-y: auto;
   }
+
+  // 深色模式全屏背景色
+  &[data-theme="dark"].fullscreen {
+    background-color: #141414;
+  }
 }
 
 .ant-app {
@@ -119,9 +124,11 @@ body {
 
 // ============================================
 // 极简风格下 Ant Design 组件样式覆盖
-// 使用 ThemeProvider 注入的 --card-* 和 --widget-* CSS 变量
+// 使用 CanvasThemeProvider 注入的 --card-* 和 --widget-* CSS 变量
+// 作用域限定在画布容器内
 // ============================================
-:root[data-style="minimal"] {
+.dashboard-container[data-style="minimal"],
+.dashboard-preview-container[data-style="minimal"] {
   .widget-header {
     .widget-actions>button {
       // 使用 inherit 让按钮继承父元素颜色（支持 titleColor 内联样式覆盖）
@@ -206,16 +213,16 @@ body {
       background: var(--card-background) !important;
       backdrop-filter: var(--card-backdrop-filter);
       -webkit-backdrop-filter: var(--card-backdrop-filter);
-      border-color: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(200, 200, 200, 0.6) !important;
       color: var(--widget-text-color);
 
       &::placeholder,
       .ant-input::placeholder {
-        color: rgba(255, 255, 255, 0.4);
+       color: rgba(200, 200, 200, 0.6) !important;
       }
 
       &:hover {
-        border-color: rgba(255, 255, 255, 0.3) !important;
+        border-color: rgba(200, 200, 200, 0.6) !important;
       }
 
       &:focus,

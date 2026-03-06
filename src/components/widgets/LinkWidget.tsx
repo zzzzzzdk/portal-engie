@@ -12,6 +12,7 @@ interface LinkItem {
   title: string;          // 链接标题
   url: string;            // 跳转地址
   icon?: string;          // 图标名称
+  iconBgColor?: string;   // 图标背景色
   iconColor?: string;     // 图标颜色
   description?: string;   // 描述
   openInNew?: boolean;    // 是否新窗口打开
@@ -36,16 +37,20 @@ interface LinkWidgetProps {
 
 // 默认链接数据
 const DEFAULT_LINKS: LinkItem[] = [
-  { id: '1', title: '首页', url: '/', icon: 'HomeOutlined', iconColor: '#1890ff' },
-  { id: '2', title: '应用中心', url: '/apps', icon: 'AppstoreOutlined', iconColor: '#52c41a' },
-  { id: '3', title: '文档', url: '/docs', icon: 'FileOutlined', iconColor: '#faad14' },
-  { id: '4', title: '设置', url: '/settings', icon: 'SettingOutlined', iconColor: '#722ed1' },
+  { id: '1', title: '首页', url: '/', icon: 'HomeOutlined', iconBgColor: '#1890ff' },
+  { id: '2', title: '应用中心', url: '/apps', icon: 'AppstoreOutlined', iconBgColor: '#52c41a' },
+  { id: '3', title: '文档', url: '/docs', icon: 'FileOutlined', iconBgColor: '#faad14' },
+  { id: '4', title: '设置', url: '/settings', icon: 'SettingOutlined', iconBgColor: '#722ed1' },
 ];
 
 const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
   // 获取配置
   const linkConfig = config as LinkWidgetConfig;
-  const links = linkConfig?.links || DEFAULT_LINKS;
+  // 兼容旧数据：旧配置中 iconColor 实际是背景色，无 iconBgColor 字段
+  const links = (linkConfig?.links || DEFAULT_LINKS).map(link => {
+    if (link.iconBgColor) return link;
+    return { ...link, iconBgColor: link.iconColor, iconColor: undefined };
+  });
   const layout = linkConfig?.layout || 'button';
   const buttonShape = linkConfig?.buttonShape || 'circle';
   const buttonSize = linkConfig?.buttonSize || 'large';
@@ -84,8 +89,8 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
                   type="primary"
                   shape={buttonShape}
                   size={buttonSize}
-                  icon={getIcon(link.icon, 14, '#fff')}
-                  style={link.iconColor ? { backgroundColor: link.iconColor, borderColor: link.iconColor } : undefined}
+                  icon={getIcon(link.icon, 14, link.iconColor || '#fff')}
+                  style={link.iconBgColor ? { backgroundColor: link.iconBgColor, borderColor: link.iconBgColor } : undefined}
                   onClick={() => handleLinkClick(link)}
                 >
                   {link.title}
@@ -95,8 +100,8 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
                   type="primary"
                   shape="circle"
                   size={buttonSize}
-                  icon={getIcon(link.icon, 16, '#fff')}
-                  style={link.iconColor ? { backgroundColor: link.iconColor, borderColor: link.iconColor } : undefined}
+                  icon={getIcon(link.icon, 16, link.iconColor || '#fff')}
+                  style={link.iconBgColor ? { backgroundColor: link.iconBgColor, borderColor: link.iconBgColor } : undefined}
                   onClick={() => handleLinkClick(link)}
                 />
               )}
@@ -132,16 +137,16 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
                 width: '40px',
                 height: '40px',
                 borderRadius: '8px',
-                backgroundColor: link.iconColor || '#1890ff',
+                backgroundColor: link.iconBgColor || '#1890ff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff',
+                color: link.iconColor || '#fff',
                 fontSize: '18px',
                 marginRight: '12px',
               }}
             >
-              {getIcon(link.icon, 18, '#fff')}
+              {getIcon(link.icon, 18, link.iconColor || '#fff')}
             </div>
             <div style={{ flex: 1 }}>
               <Typography.Text strong>{link.title}</Typography.Text>
@@ -186,7 +191,7 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
           onClick={() => handleLinkClick(link)}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#f5f5f5';
-            e.currentTarget.style.borderColor = link.iconColor || '#1890ff';
+            e.currentTarget.style.borderColor = link.iconBgColor || '#1890ff';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
@@ -198,16 +203,16 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget }) => {
               width: '48px',
               height: '48px',
               borderRadius: '12px',
-              backgroundColor: link.iconColor || '#1890ff',
+              backgroundColor: link.iconBgColor || '#1890ff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
+              color: link.iconColor || '#fff',
               fontSize: '24px',
               marginBottom: '8px',
             }}
           >
-            {getIcon(link.icon, 24, '#fff')}
+            {getIcon(link.icon, 24, link.iconColor || '#fff')}
           </div>
           <Typography.Text strong ellipsis={{ tooltip: link.title }} style={{ textAlign: 'center' }}>
             {link.title}

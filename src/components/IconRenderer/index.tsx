@@ -12,6 +12,7 @@ import React, { useMemo } from 'react';
 import * as AntdIcons from '@ant-design/icons';
 import Icon from '@/components/Icon';
 import { ICONFONT_ICONS } from '@/components/IconPicker/iconData';
+import { sanitizeSvg } from '@/utils/sanitizeSvg';
 import { getIconValueType, getColorFromString } from './types';
 import type { IconRendererProps } from './types';
 import './index.scss';
@@ -47,7 +48,7 @@ const IconRenderer: React.FC<IconRendererProps> = ({
       <span
         className={`icon-renderer icon-renderer-svg ${className || ''}`}
         style={containerStyle}
-        dangerouslySetInnerHTML={{ __html: value! }}
+        dangerouslySetInnerHTML={{ __html: sanitizeSvg(value!) }}
       />
     );
   }

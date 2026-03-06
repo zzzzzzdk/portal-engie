@@ -9,6 +9,8 @@ import {
   Divider,
   ColorPicker,
   Upload,
+  Space,
+  message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { WidgetConfigProps } from './types';
@@ -97,7 +99,18 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                             </Form.Item>
                             <Upload
                               showUploadList={false}
+                              accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                               beforeUpload={async (file) => {
+                                const isImage = file.type.startsWith('image/');
+                                if (!isImage) {
+                                  message.error('只能上传图片文件');
+                                  return false;
+                                }
+                                const isLt10M = file.size / 1024 / 1024 < 10;
+                                if (!isLt10M) {
+                                  message.error('图片大小不能超过 10MB');
+                                  return false;
+                                }
                                 setUploadingIndex(key.toString());
                                 try {
                                   const res = await uploadImage(file);
@@ -187,6 +200,28 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   <Input placeholder="data.list" />
                 </Form.Item>
               </div>
+              <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
+                <Form.List name={['apiConfig', 'headersList']}>
+                  {(fields, { add, remove }) => (
+                    <>
+                      {fields.map(({ key, name, ...restField }) => (
+                        <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                          <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
+                            <Input placeholder="Header Key" style={{ width: 160 }} />
+                          </Form.Item>
+                          <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
+                            <Input placeholder="Header Value" style={{ width: 200 }} />
+                          </Form.Item>
+                          <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
+                        </Space>
+                      ))}
+                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
+                        添加请求头
+                      </Button>
+                    </>
+                  )}
+                </Form.List>
+              </Form.Item>
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'titleField']} label="标题字段">
                   <Input placeholder="title" />

@@ -26,7 +26,8 @@ export type WidgetType =
   | 'floatingModule'   // 悬浮模块
   | 'pageNavigator'    // 页面切换工具
   | 'iconNav'          // 图标导航组件
-  | 'navGroup';        // 导航组组件
+  | 'navGroup'         // 导航组组件
+  | 'myDocuments';     // 我的文档组件
 
 /**
  * 导航项数据结构（用于 NavGroupWidget 接口返回）
@@ -65,7 +66,6 @@ export interface WidgetConfig {
   navItems?: NavItem[];        // 头部导航静态数据
   navDataSource?: 'static' | 'api';  // 导航数据来源
   navApiEndpoint?: string;     // 导航接口地址
-  navGroupId?: string;         // 导航组 ID（拼接默认接口）
   navTextColor?: string;       // 导航文字颜色
   showNavMenu?: boolean;       // 是否显示导航区域
   [key: string]: any; // Allow custom properties for different widgets
@@ -137,6 +137,9 @@ export interface DashboardConfig {
   backgroundColor?: string;
   backgroundImage?: string;
   backgroundGradient?: string;
+  backgroundSize?: string;      // 背景图大小 (cover, contain, 100% 100%, auto)
+  backgroundRepeat?: string;    // 背景图重复 (no-repeat, repeat, repeat-x, repeat-y)
+  backgroundPosition?: string;  // 背景图位置 (center, top, bottom left, etc.)
   // 主题配置（发布时保存，预览时使用）
   themeMode?: 'light' | 'dark';
   themePreset?: string;               // 主题预设名称
@@ -160,6 +163,7 @@ export interface AppState {
   widgets: Widget[];
   groups: WidgetGroup[];
   isEditMode: boolean;
+  isDirty: boolean;        // 是否有未保存的变更
   isFullScreen: boolean;
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
@@ -180,6 +184,8 @@ export interface AppState {
   updateGroup: (id: string, updates: Partial<WidgetGroup>) => void;
   updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => void;
   setEditMode: (isEditMode: boolean) => void;
+  markDirty: () => void;
+  clearDirty: () => void;
   toggleFullScreen: () => void;
   openConfigPanel: (target: ConfigPanelTarget) => void;
   closeConfigPanel: () => void;
@@ -209,7 +215,7 @@ export interface AppState {
   removeFloatingModule: (id: string) => void;
   updateFloatingModule: (id: string, updates: Partial<Widget>) => void;
   updateFloatingModuleConfig: (id: string, config: Partial<FloatingModuleConfig>) => void;
-  updateFloatingModulePosition: (id: string, position: { x: number; y: number }) => void;
+  updateFloatingModulePosition: (id: string, position: { x: number; y: number }, positionRatio?: { x: number; y: number }) => void;
   updateFloatingModuleSize: (id: string, size: { width: number; height: number }) => void;
   toggleFloatingModuleExpanded: (id: string) => void;
   // 全局微应用方法
@@ -326,11 +332,11 @@ export interface CarouselWidgetConfig extends WidgetConfig {
 // Form builder types
 export interface FormField {
   id: string;
-  type: 'text' | 'number' | 'select' | 'date' | 'checkbox';
+  type: 'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'checkbox';
   label: string;
   name: string;
   required?: boolean;
-  options?: { label: string; value: string | number }[]; // For select
+  options?: { label: string; value: string | number }[]; // For select/radio
   defaultValue?: any;
 }
 
@@ -604,6 +610,10 @@ export interface FloatingModuleConfig extends WidgetConfig {
     x: number;      // X 坐标(像素)
     y: number;      // Y 坐标(像素)
   };
+  positionRatio?: {
+    x: number;      // X 位置比例(0~1)，用于不同容器尺寸间自适应
+    y: number;      // Y 位置比例(0~1)
+  };
   defaultPosition?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
 
   // 尺寸配置
@@ -638,3 +648,56 @@ export interface FloatingModuleConfig extends WidgetConfig {
 }
 
 export * from './widget-size';
+
+// ============================================
+// 文件管理相关类型定义（MinIO）
+// ============================================
+
+export interface BucketInfo {
+  name: string;
+  creation_date?: string;
+}
+
+export interface FileInfo {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size?: number;
+  last_modified?: string;
+  content_type?: string;
+  etag?: string;
+}
+
+export interface FileListResponse {
+  bucket: string;
+  prefix: string;
+  files: FileInfo[];
+  total: number;
+}
+
+export interface PreviewInfo {
+  url: string;
+  content_type: string;
+  file_name: string;
+  can_edit: boolean;
+  can_preview_office: boolean;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  file_path: string;
+  size: number;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  message: string;
+  deleted_count: number;
+}
+
+// OnlyOffice 编辑器配置响应
+export interface OnlyOfficeConfigResponse {
+  config: Record<string, any>;   // OnlyOffice DocEditor 配置对象
+  onlyoffice_url: string;        // OnlyOffice 服务地址
+}

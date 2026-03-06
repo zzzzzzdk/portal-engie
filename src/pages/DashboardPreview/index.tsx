@@ -21,10 +21,10 @@ import { PreviewDataProvider } from './PreviewDataContext';
 import PreviewWidgetAdapter from './PreviewWidgetAdapter';
 import PreviewGroupAdapter from './PreviewGroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
+import { CanvasThemeProvider } from '@/theme/CanvasThemeProvider';
+import { useConfigStore } from '@/store/useConfigStore';
 import clsx from 'clsx';
 import { useStore } from '@/store/useStore';
-import { useConfigStore } from '@/store/useConfigStore';
-import type { ThemePresetName } from '@/theme/tokens/presets';
 import 'gridstack/dist/gridstack.min.css';
 import '@/pages/DashboardGridStack/index.scss';
 import './index.scss';
@@ -39,6 +39,8 @@ interface PreviewInnerProps {
 const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
   const { gridStack } = useGridStackContext();
   const { floatingModules, dashboardConfig } = dashboardData;
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const isDark = dashboardConfig?.themeMode === 'dark';
 
   const densityPreset = GRID_DENSITY_PRESETS.standard;
   const [gridVisualMetrics, setGridVisualMetrics] = useState({
@@ -57,23 +59,23 @@ const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
     if (dashboardConfig) {
       if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
         style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
-        style.backgroundSize = 'cover';
-        style.backgroundPosition = 'center';
-        style.backgroundRepeat = 'no-repeat';
+        style.backgroundSize = dashboardConfig.backgroundSize || 'cover';
+        style.backgroundPosition = dashboardConfig.backgroundPosition || 'center';
+        style.backgroundRepeat = dashboardConfig.backgroundRepeat || 'no-repeat';
         style.backgroundAttachment = 'fixed';
       } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
         style.background = dashboardConfig.backgroundGradient;
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
       } else {
-        style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)';
+        style.backgroundColor = isDark ? '#141414' : 'var(--ant-color-bg-layout, #f5f5f5)';
       }
     } else {
-      style.backgroundColor = 'var(--ant-color-bg-layout, #f5f5f5)';
+      style.backgroundColor = isDark ? '#141414' : 'var(--ant-color-bg-layout, #f5f5f5)';
     }
 
     return style;
-  }, [gridVisualMetrics, dashboardConfig]);
+  }, [gridVisualMetrics, dashboardConfig, isDark]);
 
   // 禁用编辑模式
   useEffect(() => {
@@ -103,21 +105,23 @@ const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
   }, [gridStack]);
 
   return (
-    <div className={clsx('dashboard-preview-container')} style={backgroundStyle}>
-      <GridStackRenderProvider>
-        <GridStackRender
-          componentMap={{
-            PreviewWidgetAdapter: PreviewWidgetAdapter,
-            PreviewGroupAdapter: PreviewGroupAdapter,
-          }}
-        />
-      </GridStackRenderProvider>
+    <CanvasThemeProvider containerRef={canvasContainerRef} overrideConfig={dashboardConfig}>
+      <div ref={canvasContainerRef} className={clsx('dashboard-preview-container')} style={backgroundStyle}>
+        <GridStackRenderProvider>
+          <GridStackRender
+            componentMap={{
+              PreviewWidgetAdapter: PreviewWidgetAdapter,
+              PreviewGroupAdapter: PreviewGroupAdapter,
+            }}
+          />
+        </GridStackRenderProvider>
 
-      {/* 悬浮模块 - 预览模式 */}
-      {floatingModules?.map((module) => (
-        <FloatingModule key={module.id} widget={module}/>
-      ))}
-    </div>
+        {/* 悬浮模块 - 预览模式 */}
+        {floatingModules?.map((module) => (
+          <FloatingModule key={module.id} widget={module}/>
+        ))}
+      </div>
+    </CanvasThemeProvider>
   );
 };
 
@@ -132,16 +136,6 @@ const DashboardPreview: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<PublishedDashboard | null>(null);
 
-  // 保存原始主题配置，用于退出预览时恢复
-  const originalThemeRef = useRef<{
-    themeMode: 'light' | 'dark';
-    themePreset: ThemePresetName;
-    styleMode: 'normal' | 'minimal';
-    styleTokens: any;
-    baseColors: any;
-    customTokens: any;
-  } | null>(null);
-
   useEffect(() => {
     if (!id) {
       setError('缺少工作台 ID');
@@ -149,17 +143,6 @@ const DashboardPreview: React.FC = () => {
       return;
     }
     setEditMode(false)
-
-    // 保存当前主题配置
-    const currentState = useConfigStore.getState();
-    originalThemeRef.current = {
-      themeMode: currentState.themeMode,
-      themePreset: currentState.themePreset,
-      styleMode: currentState.styleMode,
-      styleTokens: currentState.styleTokens,
-      baseColors: currentState.baseColors,
-      customTokens: currentState.customTokens,
-    };
 
     const fetchDashboard = async () => {
       try {
@@ -173,30 +156,16 @@ const DashboardPreview: React.FC = () => {
           }
           const dashboardConfig = sanitizeDashboardConfig(snapshot.dashboardConfig || {});
 
-          // 先应用发布时保存的主题配置，确保子应用初始化时能获取正确的主题状态
-          // 使用 setState 一次性设置，避免 setStyleMode 的副作用覆盖 styleTokens
-          const themeUpdate: Record<string, unknown> = {};
-          if (dashboardConfig.themeMode) {
-            themeUpdate.themeMode = dashboardConfig.themeMode;
-          }
-          if (dashboardConfig.themePreset) {
-            themeUpdate.themePreset = dashboardConfig.themePreset;
-          }
-          if (dashboardConfig.styleMode) {
-            themeUpdate.styleMode = dashboardConfig.styleMode;
-          }
-          // styleTokens 需要验证结构完整性
-          if (dashboardConfig.styleTokens?.widget && dashboardConfig.styleTokens?.card) {
-            themeUpdate.styleTokens = dashboardConfig.styleTokens;
-          }
+          // 仅将全局配色（baseColors/customTokens）写入 ConfigStore
+          // themeMode/styleMode 由 CanvasThemeProvider 通过 overrideConfig 处理
+          const globalUpdate: Record<string, unknown> = {};
           if (dashboardConfig.baseColors) {
-            themeUpdate.baseColors = dashboardConfig.baseColors;
+            globalUpdate.baseColors = dashboardConfig.baseColors;
           }
-          if (Object.keys(themeUpdate).length > 0) {
-            useConfigStore.setState(themeUpdate);
+          if (Object.keys(globalUpdate).length > 0) {
+            useConfigStore.setState(globalUpdate);
           }
 
-          // 再设置工作台数据，触发组件渲染
           setDashboardData({
             id: res.data.id,
             title: res.data.title,
@@ -217,20 +186,6 @@ const DashboardPreview: React.FC = () => {
     };
 
     fetchDashboard();
-
-    // 组件卸载时恢复原始主题配置
-    return () => {
-      if (originalThemeRef.current) {
-        useConfigStore.setState({
-          themeMode: originalThemeRef.current.themeMode,
-          themePreset: originalThemeRef.current.themePreset,
-          styleMode: originalThemeRef.current.styleMode,
-          styleTokens: originalThemeRef.current.styleTokens,
-          baseColors: originalThemeRef.current.baseColors,
-          customTokens: originalThemeRef.current.customTokens,
-        });
-      }
-    };
   }, [id]);
 
   const buildGridOptions = useCallback((): GridStackOptions | null => {

@@ -16,6 +16,7 @@ import {
 import * as Icons from '@ant-design/icons';
 import Icon from '@/components/Icon';
 import { uploadImage } from '@/services';
+import { sanitizeSvg } from '@/utils/sanitizeSvg';
 import IconGrid from './IconGrid';
 import { findIconByName, ICONFONT_ICONS } from './iconData';
 import { getIconValueType } from './types';
@@ -36,6 +37,19 @@ const IconPicker: React.FC<IconPickerProps> = ({
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [svgInput, setSvgInput] = useState('');
+
+  // Popover 打开时回填已有值
+  const handleOpenChange = useCallback((visible: boolean) => {
+    setOpen(visible);
+    if (visible && value) {
+      const type = getIconValueType(value);
+      if (type === 'svg') {
+        setSvgInput(value);
+      } else if (type === 'url') {
+        setUrlInput(value);
+      }
+    }
+  }, [value]);
 
   // 判断当前值的类型
   const valueType = useMemo(() => getIconValueType(value), [value]);
@@ -68,7 +82,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
       return (
         <div
           className="icon-picker-svg-preview"
-          dangerouslySetInnerHTML={{ __html: value }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvg(value) }}
         />
       );
     }
@@ -190,7 +204,14 @@ const IconPicker: React.FC<IconPickerProps> = ({
       return;
     }
 
-    handleChange(trimmed);
+    // 净化 SVG，移除潜在的 XSS 攻击向量
+    const sanitized = sanitizeSvg(trimmed);
+    if (!sanitized) {
+      message.error('SVG 代码解析失败，请检查格式');
+      return;
+    }
+
+    handleChange(sanitized);
     setSvgInput('');
   }, [svgInput, handleChange]);
 
@@ -244,7 +265,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
           children: (
             <div className="icon-picker-upload-panel">
               <Upload
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.gif"
                 showUploadList={false}
                 beforeUpload={handleUpload}
               >
@@ -252,7 +273,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
                   {uploading ? '上传中...' : '点击上传图片'}
                 </Button>
               </Upload>
-              <p className="upload-hint">支持 jpg、png、gif、svg 格式，大小不超过 10MB</p>
+              <p className="upload-hint">支持 jpg、png、gif 格式，大小不超过 10MB</p>
             </div>
           ),
         });
@@ -311,7 +332,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
       content={popoverContent}
       trigger="click"
       open={open && !disabled}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       placement="bottomLeft"
       overlayClassName="icon-picker-popover-overlay"
     >

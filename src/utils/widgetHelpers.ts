@@ -63,6 +63,7 @@ const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> 
   pageNavigator: Icons.Layers,
   iconNav: Icons.Navigation,
   navGroup: Icons.Grid3x3,
+  myDocuments: Icons.FolderOpen,
 };
 
 /**
@@ -170,6 +171,7 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
     pageNavigator: { columns: 12, rows: 1 },
     iconNav: { columns: 2, rows: 2 },
     navGroup: { columns: 5, rows: 4 },
+    myDocuments: { columns: 2, rows: 2 },
   };
 
   return defaultSizes[type] || { columns: 4, rows: 3 };

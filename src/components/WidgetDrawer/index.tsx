@@ -21,6 +21,7 @@ import {
   CloseOutlined,
   DownOutlined,
   PictureOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import './index.scss';
 
@@ -73,6 +74,7 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'search', label: '搜索', icon: <SearchOutlined />, description: '搜索功能', gsW: 8, gsH: 4, gsMinW: 4, gsMinH: 2, draggable: true },
       { key: 'dataTable', label: '数据表格', icon: <TableOutlined />, description: '表格数据展示', gsW: 10, gsH: 8, gsMinW: 6, gsMinH: 4, draggable: true },
       { key: 'customForm', label: '自定义表单', icon: <FormOutlined />, description: '自定义表单', gsW: 8, gsH: 11, gsMinW: 4, gsMinH: 4, draggable: true },
+      { key: 'myDocuments', label: '我的文档', icon: <FolderOpenOutlined />, description: '文件管理', gsW: 2, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
     ]
   },
   {

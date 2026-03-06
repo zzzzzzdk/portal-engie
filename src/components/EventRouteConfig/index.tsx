@@ -12,6 +12,7 @@ interface EventRouteConfigComponentProps {
   currentWidgetId: string; // 当前微应用小部件ID
   currentSystemId?: string; // 当前微应用的systemId
   currentModuleId?: string; // 当前微应用的moduleId
+  senderEvents?: EmittableEvent[]; // 非微应用组件可直接传入发送事件列表
 }
 
 interface ReceiverApp {
@@ -31,9 +32,10 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
   currentWidgetId,
   currentSystemId,
   currentModuleId,
+  senderEvents,
 }) => {
   const { widgets } = useStore();
-  const [routes, setRoutes] = useState<EventRouteConfig[]>(value);
+  const routes = value; // 直接使用受控值，不维护内部状态
   const [receiverApps, setReceiverApps] = useState<ReceiverApp[]>([]);
   const [currentAppEvents, setCurrentAppEvents] = useState<EmittableEvent[]>([]);
   const [microAppMetadata, setMicroAppMetadata] = useState<any>(null);
@@ -51,8 +53,13 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
       });
   }, []);
 
-  // 从metadata中获取当前应用可以发送的事件
+  // 从metadata中获取当前应用可以发送的事件（非微应用组件直接使用 senderEvents）
   useEffect(() => {
+    if (senderEvents && senderEvents.length > 0) {
+      setCurrentAppEvents(senderEvents);
+      return;
+    }
+
     if (!microAppMetadata || !currentSystemId || !currentModuleId) {
       setCurrentAppEvents([]);
       return;
@@ -71,7 +78,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
     }
 
     setCurrentAppEvents(module.emittableEvents || []);
-  }, [microAppMetadata, currentSystemId, currentModuleId]);
+  }, [microAppMetadata, currentSystemId, currentModuleId, senderEvents]);
 
   // 从widgets中提取所有可作为接收方的微应用
   useEffect(() => {
@@ -121,21 +128,15 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
     setReceiverListenableEvents(eventMap);
   }, [microAppMetadata, receiverApps]);
 
-  // 同步value变化
-  useEffect(() => {
-    setRoutes(value);
-  }, [value]);
-
-  // 通知父组件更新
+  // 通知父组件更新（受控模式，由 Form 管理状态）
   const triggerChange = (newRoutes: EventRouteConfig[]) => {
-    setRoutes(newRoutes);
     onChange?.(newRoutes);
   };
 
   // 添加新路由
   const handleAddRoute = () => {
     if (currentAppEvents.length === 0) {
-      message.warning('当前微应用没有配置可发送的事件');
+      message.warning('当前组件没有配置可发送的事件');
       return;
     }
 
@@ -238,7 +239,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
                                disabled={!route.toAppId || !hasReceiverEvents}
                                onChange={val => handleUpdateRoute(index, { toEventType: val })}
                                options={receiverEvents.map(e => ({label: `${e.name} (${e.type})`, value: e.type}))}
-                               style={{width: 240}}
+                               className="action-select"
                                size="small"
                                allowClear
                             />
@@ -282,7 +283,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
           
           {currentAppEvents.length === 0 && (
             <div style={{color: '#faad14', fontSize: 12, marginTop: 8}}>
-              提示: 当前微应用没有配置可发送的事件
+              提示: 当前组件没有配置可发送的事件
             </div>
           )}
           {currentAppEvents.length > 0 && receiverApps.length === 0 && (

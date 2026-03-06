@@ -38,8 +38,9 @@
   }
 }
 
-// 暗色主题适配
-[data-theme='dark'] {
+// 暗色主题适配（画布级作用域）
+.dashboard-container[data-theme='dark'],
+.dashboard-preview-container[data-theme='dark'] {
   .icon-renderer {
     &-letter {
       // 暗色模式下保持原有颜色，无需调整

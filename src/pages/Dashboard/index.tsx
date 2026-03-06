@@ -18,6 +18,7 @@ import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
+import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
 import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import FloatingModule from '@/components/FloatingModule';
 import './index.scss';
@@ -77,6 +78,8 @@ const Dashboard: React.FC = () => {
         return <CustomFormWidget {...commonProps} />;
       case 'microApp':
         return <MicroAppWidget {...commonProps} />;
+      case 'myDocuments':
+        return <MyDocumentsWidget {...commonProps} />;
       default:
         return <div>{widget.type} Widget</div>;
     }
@@ -118,11 +121,11 @@ const Dashboard: React.FC = () => {
       >
         {sanitizedWidgets.map((widget) => (
           <div key={widget.id} data-grid={widget.layout}>
-            <WidgetErrorBoundary widgetId={widget.id} widgetType={widget.type}>
-              <WidgetWrapper widget={widget}>
+            <WidgetWrapper widget={widget}>
+              <WidgetErrorBoundary widgetId={widget.id} widgetType={widget.type}>
                 {renderWidgetContent(widget)}
-              </WidgetWrapper>
-            </WidgetErrorBoundary>
+              </WidgetErrorBoundary>
+            </WidgetWrapper>
           </div>
         ))}
       </ResponsiveReactGridLayout>

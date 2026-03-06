@@ -14,7 +14,17 @@ declare global {
     YISACONF?: any;
     cancelTokens?: any[];
     __APP_CONFIG__?: any;
+    DocsAPI?: {
+      DocEditor: new (id: string, config: Record<string, any>) => {
+        destroyEditor: () => void;
+      };
+    };
   }
+}
+
+declare module 'pdfjs-dist/build/pdf.worker.min.mjs?url' {
+  const url: string;
+  export default url;
 }
 
 export {};

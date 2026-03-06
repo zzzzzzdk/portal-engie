@@ -79,7 +79,8 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
   // 重试初始化
   const handleRetry = () => {
-    setRetryCount((prev) => prev + 1)
+    // setRetryCount((prev) => prev + 1)
+    window.location.reload()
   }
 
   // 公开页面直接渲染，不需要等待系统初始化
