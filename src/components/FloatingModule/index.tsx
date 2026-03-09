@@ -394,6 +394,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
           let expandedPos: Position;
           if (lastExpandedPosRef.current) {
             expandedPos = clampPosition(lastExpandedPosRef.current, newSize, viewport);
+          } else if (config.expandAnchor === 'top-left') {
+            expandedPos = clampPosition(prev, newSize, viewport);
           } else {
             expandedPos = calculateSmartPosition(prev, size, newSize, viewport);
           }
@@ -591,6 +593,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       if (lastExpandedPosRef.current) {
         // 有记忆的展开位置，直接恢复
         nextPos = clampPosition(lastExpandedPosRef.current, nextSize, viewport);
+      } else if (config.expandAnchor === 'top-left') {
+        // 基于左上角展开：保持当前位置不变，向右下方扩展，clamp 确保不超出视口
+        nextPos = clampPosition(position, nextSize, viewport);
       } else {
         // 无记忆位置（首次展开或收起后拖拽过），基于当前位置智能计算
         nextPos = calculateSmartPosition(position, size, nextSize, viewport);
@@ -611,7 +616,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
     toggleFloatingModuleExpanded(widget.id);
     debouncedSavePosition(nextPos);
-  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
+  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, config.expandAnchor, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
 
   const shellTransition = useMemo(
     () => ({ type: 'spring', stiffness: 260, damping: 28, mass: 1.1 }),

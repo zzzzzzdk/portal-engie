@@ -48,6 +48,8 @@ const Layout: React.FC = () => {
     closeConfigPanel,
     updateDashboardConfig,
     clearDirty,
+    pendingMicroAppDrop,
+    setPendingMicroAppDrop,
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
   const navigate = useNavigate();
@@ -108,6 +110,14 @@ const Layout: React.FC = () => {
       closeConfigPanel();
     }
   }, [isEditMode, closeConfigPanel])
+
+  // 响应拖放微应用到画布：打开微应用市场选择器
+  useEffect(() => {
+    if (pendingMicroAppDrop) {
+      setMicroAppMarketMode(pendingMicroAppDrop.mode);
+      setMicroAppMarketOpen(true);
+    }
+  }, [pendingMicroAppDrop])
 
   const handleAddWidget = (key: string) => {
     // 处理新建分组
@@ -243,8 +253,14 @@ const Layout: React.FC = () => {
   };
 
   const handleSelectMicroApp = (systemId: string, moduleId: string, module: MicroAppModule) => {
+    // 消费拖放暂存位置
+    const dropPos = pendingMicroAppDrop;
+    if (dropPos) {
+      setPendingMicroAppDrop(null);
+    }
+
     if (microAppMarketMode === 'floating') {
-      // 以悬浮模块形式添加
+      // 以悬浮模块形式添加（如果有拖放位置则使用）
       addFloatingModuleMicroApp(
         systemId,
         moduleId,
@@ -253,7 +269,9 @@ const Layout: React.FC = () => {
           width: 400,
           height: 400,
           icon: module.icon,
-          defaultPosition: 'bottom-right',
+          ...(dropPos
+            ? { position: { x: dropPos.x, y: dropPos.y }, isExpanded: false, expandAnchor: 'top-left' as const }
+            : { defaultPosition: 'bottom-right' as const }),
         }
       );
       message.success(`已添加悬浮模块: ${module.name}`);
@@ -266,8 +284,8 @@ const Layout: React.FC = () => {
       );
       message.success(`已添加全局微应用: ${module.name}`);
     } else {
-      // 以小部件形式添加到网格
-      addMicroAppWidget(systemId, moduleId, module);
+      // 以小部件形式添加到网格（如果有拖放位置则使用）
+      addMicroAppWidget(systemId, moduleId, module, dropPos ? { x: dropPos.x, y: dropPos.y } : undefined);
       message.success(`已添加微应用: ${module.name}`);
     }
   };
@@ -621,7 +639,7 @@ const Layout: React.FC = () => {
       {/* 微应用市场 */}
       <MicroAppMarket
         open={microAppMarketOpen}
-        onClose={() => setMicroAppMarketOpen(false)}
+        onClose={() => { setMicroAppMarketOpen(false); setPendingMicroAppDrop(null); }}
         onSelectModule={handleSelectMicroApp}
         mode={microAppMarketMode}
       />
