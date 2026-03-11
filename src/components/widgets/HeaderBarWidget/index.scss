@@ -115,10 +115,23 @@
     }
   }
 
+  &.alignment-left {
+    .nav-section {
+      justify-content: flex-start;
+    }
+
+    .header-nav-menu {
+      justify-content: flex-start !important;
+    }
+  }
+
   &.alignment-center {
-    .title-section {
+    .nav-section {
       justify-content: center;
-      flex: 0 0 auto;
+    }
+
+    .header-nav-menu {
+      justify-content: center !important;
     }
   }
 }

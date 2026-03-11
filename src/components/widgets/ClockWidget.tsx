@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { WidgetConfig } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 
 // 设置中文
 dayjs.locale('zh-cn');
@@ -14,7 +15,7 @@ const ClockWidget: React.FC<ClockWidgetProps> = ({ config }) => {
   const [time, setTime] = useState(dayjs());
 
   useEffect(() => {
-    const interval = config?.refreshInterval ? config.refreshInterval * 1000 : 1000;
+    const interval = config?.refreshInterval ? safeIntervalMs(config.refreshInterval) : 1000;
     const timer = setInterval(() => {
       setTime(dayjs());
     }, interval);

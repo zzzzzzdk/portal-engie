@@ -552,8 +552,9 @@ const MicroAppConfigPage: React.FC = () => {
                               e.preventDefault();
                               handleDeleteEvent(event.id);
                             }}
+                            title={`${event.name} (${event.type})`}
                           >
-                            {event.name} ({event.type})
+                            <span className="event-tag-text">{event.name} ({event.type})</span>
                           </Tag>
                         ))}
                       </div>
@@ -590,8 +591,9 @@ const MicroAppConfigPage: React.FC = () => {
                               e.preventDefault();
                               handleDeleteEvent(event.id);
                             }}
+                            title={`${event.name} (${event.type})`}
                           >
-                            {event.name} ({event.type})
+                            <span className="event-tag-text">{event.name} ({event.type})</span>
                           </Tag>
                         ))}
                       </div>
@@ -693,7 +695,7 @@ const MicroAppConfigPage: React.FC = () => {
           <Form.Item
             name="category"
             label="分类"
-            // rules={[{ required: true, message: '请输入分类' }]}
+          // rules={[{ required: true, message: '请输入分类' }]}
           >
             <Input placeholder="例如: 业务系统" />
           </Form.Item>
@@ -744,14 +746,8 @@ const MicroAppConfigPage: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="entry"
-            label={
-              <span>
-                入口地址
-                <Tooltip title="入口地址用于微前端运行时拉取资源，应指向部署目录或 remoteEntry.js 所在路径；上面的“微应用URL”仅用于门户内打开页面时的默认路由。">
-                  <QuestionCircleOutlined style={{ marginLeft: 4 }} />
-                </Tooltip>
-              </span>
-            }
+            label={"入口地址"}
+            tooltip="入口地址用于微前端运行时拉取资源，应指向部署目录或 remoteEntry.js 所在路径；上面的“微应用URL”仅用于门户内打开页面时的默认路由。"
             rules={[{ required: true, message: '请输入入口地址' }]}
           >
             <Input placeholder="例如: http://192.168.13.31:3001/" />

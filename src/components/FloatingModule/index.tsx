@@ -19,6 +19,7 @@ import { Resizable, ResizeCallbackData } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
@@ -443,10 +444,10 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       style.backgroundColor = color;
     } else if (bgType === 'image' && config.backgroundImage) {
       style.backgroundImage = `url(${config.backgroundImage})`;
-      style.backgroundSize = config.backgroundSize || 'cover';
+      style.backgroundSize = config.backgroundSize || 'auto';
       style.backgroundRepeat = config.backgroundRepeat || 'no-repeat';
       style.backgroundPosition = config.backgroundPosition || 'center';
-    } else if (bgType === 'gradient' && config.backgroundGradient) {
+    } else if (bgType === 'gradient' && config.backgroundGradient && isValidCssGradient(config.backgroundGradient)) {
       style.background = config.backgroundGradient;
     }
 

@@ -8,6 +8,7 @@ import type {
   CarouselWidgetConfig,
   Widget,
 } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import SwiperCarousel from '@/components/SwiperCarousel';
 import './index.scss';
 
@@ -118,7 +119,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     }
     const timer = setInterval(() => {
       fetchSlides();
-    }, carouselConfig.refreshInterval * 1000);
+    }, safeIntervalMs(carouselConfig.refreshInterval));
     return () => clearInterval(timer);
   }, [carouselConfig.refreshInterval, dataSourceType, fetchSlides]);
 

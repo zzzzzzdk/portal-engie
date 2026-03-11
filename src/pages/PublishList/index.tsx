@@ -386,6 +386,7 @@ const PublishList: React.FC = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={handleSearchKeyDown}
+            maxLength={20}
             allowClear
           />
           <Button onClick={handleSearch} loading={loading}>搜索</Button>

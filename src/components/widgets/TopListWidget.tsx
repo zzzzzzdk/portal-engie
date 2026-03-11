@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { List, Typography, Badge, Spin, Empty } from 'antd';
 import { WidgetConfig, Widget } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import axios from 'axios';
 
 /**
@@ -127,7 +128,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
 
     return () => {

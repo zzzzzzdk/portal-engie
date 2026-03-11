@@ -4,6 +4,7 @@ import { UserOutlined, LogoutOutlined, DownOutlined, SunOutlined, MoonOutlined, 
 import axios from 'axios';
 import IconRenderer from '@/components/IconRenderer';
 import { WidgetConfig, NavItem } from '@/types';
+import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import './index.scss';
@@ -30,6 +31,7 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
   // 接口请求配置
   navApiMethod?: 'GET' | 'POST';
   navApiHeaders?: Record<string, string>;
+  navApiBody?: string;  // POST 请求体（JSON 字符串）
   // 响应字段映射
   navFieldMapping?: {
     name?: string;   // 名称字段，默认 name
@@ -44,6 +46,7 @@ interface HeaderBarWidgetProps {
 
 const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
   const { userInfo, sysConfig, logout } = useSystemStore();
+  const { isEditMode } = useStore();
   const { token } = theme.useToken();
   const { themeMode, setCanvasThemeMode } = useCanvasTheme();
 
@@ -116,6 +119,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
   }, [logout, sysConfig?.login_url]);
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
+    if (isEditMode) return;
     if (e.key === 'logout') {
       handleLogout();
     }
@@ -163,8 +167,16 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     return navItems.map((item, index) => ({
       key: getNavKey(item, index),
       label: item.name || '未命名',
+      icon: item.icon ? (
+        <IconRenderer
+          value={item.icon}
+          size={16}
+          color={headerConfig?.navTextColor || headerConfig?.textColor || undefined}
+          fallbackText={item.name}
+        />
+      ) : undefined,
     }));
-  }, [navItems, getNavKey]);
+  }, [navItems, getNavKey, headerConfig?.navTextColor, headerConfig?.textColor]);
 
   const alignment = headerConfig?.headerAlignment || 'left';
   const showUserProfile = config?.showUserProfile;
@@ -199,7 +211,15 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       try {
         const method = headerConfig?.navApiMethod || 'GET';
         const headers = headerConfig?.navApiHeaders;
-        const response = await axios({ method, url: endpoint, ...(headers ? { headers } : {}) });
+        let data: any = undefined;
+        if (method === 'POST' && headerConfig?.navApiBody) {
+          try {
+            data = JSON.parse(headerConfig.navApiBody);
+          } catch {
+            console.warn('HeaderBarWidget: navApiBody JSON 解析失败，将作为空 body 发送');
+          }
+        }
+        const response = await axios({ method, url: endpoint, ...(headers ? { headers } : {}), ...(data !== undefined ? { data } : {}) });
         const rawPayload = Array.isArray(response.data?.data)
           ? response.data.data
           : Array.isArray(response.data)
@@ -237,9 +257,10 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     return () => {
       isMounted = false;
     };
-  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navApiMethod, headerConfig?.navApiHeaders, headerConfig?.navFieldMapping]);
+  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navApiMethod, headerConfig?.navApiHeaders, headerConfig?.navApiBody, headerConfig?.navFieldMapping]);
 
   const handleNavClick: MenuProps['onClick'] = ({ key }) => {
+    if (isEditMode) return;
     const target = navKeyMap[key];
     const targetUrl = target?.url || target?.path;
     if (!target || !targetUrl) {
@@ -306,17 +327,18 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
             <div className="theme-switcher-section">
               <Radio.Group
                 options={themeOptions}
-                onChange={(e) => setCanvasThemeMode(e.target.value)}
+                onChange={(e) => { if (!isEditMode) setCanvasThemeMode(e.target.value); }}
                 value={themeMode}
                 optionType="button"
                 size="small"
+                disabled={isEditMode}
               />
             </div>
           )}
 
           {showUserProfile && (
             <div className="user-profile-section">
-              <Dropdown menu={userMenuProps} trigger={['click']}>
+              <Dropdown menu={userMenuProps} trigger={['click']} disabled={isEditMode}>
                 <div className="user-profile-trigger" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Avatar
                     size="small"

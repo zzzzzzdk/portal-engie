@@ -58,7 +58,7 @@ router.get('/v1/micro_apps/list', async (req, res) => {
               {
                 id: 'db_evt_001',
                 type: 'data:submit:input-only',
-                name: '数据提交',
+                name: '数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交',
                 description: '提交融合数据到其他系统'
               }
             ]

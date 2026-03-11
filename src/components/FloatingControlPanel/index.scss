@@ -5,10 +5,16 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  // background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 4px 18px rgba(15, 18, 44, 0.15);
   border-radius: 12px;
   backdrop-filter: blur(10px);
+
+  // 深色模式
+  &.is-dark {
+    background: rgba(40, 40, 40, 0.92);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  }
 
   &__drag {
     color: #999;
@@ -71,6 +77,86 @@
     .full {
       min-width: auto;
       color: var(--ant-color-text);
+    }
+  }
+
+  &__style-toggle {
+    display: flex;
+    align-items: center;
+
+    .ant-btn {
+      min-width: 40px;
+    }
+  }
+
+  // 深色模式下的文字和按钮颜色适配
+  &.is-dark {
+    .floating-control-panel__mode {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .floating-control-panel__actions {
+      .ant-btn-default {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #fff;
+        }
+
+        &:disabled {
+          color: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.05);
+        }
+      }
+
+      .clear {
+        background-color: rgba(255, 77, 79, 0.15);
+        color: #ff7875;
+        border-color: transparent;
+
+        &:hover {
+          background-color: rgba(255, 77, 79, 0.25) !important;
+          color: #ff7875 !important;
+        }
+      }
+
+      .save {
+        background-color: rgba(22, 119, 255, 0.15);
+        color: #69b1ff;
+        border-color: rgba(22, 119, 255, 0.3);
+
+        &:hover {
+          background-color: rgba(22, 119, 255, 0.25) !important;
+          color: #69b1ff !important;
+        }
+      }
+
+      .full {
+        color: rgba(255, 255, 255, 0.85);
+
+        &:hover {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+
+    .floating-control-panel__style-toggle {
+      .ant-btn-default {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #fff;
+        }
+      }
     }
   }
 }

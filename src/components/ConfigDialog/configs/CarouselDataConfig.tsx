@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { WidgetConfigProps } from './types';
+import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import '../index.scss';
 import { uploadImage } from '@/services';
 
@@ -249,7 +250,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   <Input placeholder="badge" />
                 </Form.Item>
                 <Form.Item name="refreshInterval" label="刷新间隔(秒)">
-                  <InputNumber min={0} step={5} style={{ width: '100%' }} placeholder="0 表示不自动刷新" />
+                  <InputNumber min={0} max={MAX_REFRESH_INTERVAL} step={5} style={{ width: '100%' }} placeholder="0 表示不自动刷新" />
                 </Form.Item>
                 <div />
               </div>

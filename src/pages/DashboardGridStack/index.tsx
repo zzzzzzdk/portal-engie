@@ -15,6 +15,7 @@ import { CanvasThemeProvider } from '@/theme/CanvasThemeProvider';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
@@ -86,11 +87,11 @@ const DashboardInner: React.FC = () => {
     if (dashboardConfig) {
       if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
         style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
-        style.backgroundSize = dashboardConfig.backgroundSize || 'cover';
+        style.backgroundSize = dashboardConfig.backgroundSize || 'auto';
         style.backgroundPosition = dashboardConfig.backgroundPosition || 'center';
         style.backgroundRepeat = dashboardConfig.backgroundRepeat || 'no-repeat';
         style.backgroundAttachment = 'fixed';
-      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
+      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient && isValidCssGradient(dashboardConfig.backgroundGradient)) {
         style.background = dashboardConfig.backgroundGradient;
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Table, Tag, Spin, Empty, Typography } from 'antd';
 import { WidgetConfig, Widget } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import axios from 'axios';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -123,7 +124,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
 
     return () => {

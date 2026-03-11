@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse, Space } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
-import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
+import { REFRESHABLE_WIDGET_TYPES, MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import { uploadImage } from '@/services';
@@ -59,6 +59,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const navItemsValue = Form.useWatch('navItems', form);
   const statsItemsValue = Form.useWatch('statsItems', form);
   const [fileList, setFileList] = useState<any[]>([]);
+  const prevWidgetIdRef = useRef<string | null>(null);
   const [bgUploading, setBgUploading] = useState(false);
 
   // 计算 navGroup 导航项的默认样式（基于当前风格 Token）
@@ -103,8 +104,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
   useEffect(() => {
     if (isOpen) {
-      // 切换到不同组件时先重置表单，防止前一个组件的配置值残留
-      form.resetFields();
+      // 仅在切换到不同组件时重置表单，防止前一个组件的配置值残留
+      // 同一组件保存后不重置，避免 Form.List（如 navItems）因 resetFields 导致数据丢失
+      const currentId = isGroup ? group?.id : widget?.id;
+      if (currentId !== prevWidgetIdRef.current) {
+        form.resetFields();
+        prevWidgetIdRef.current = currentId || null;
+      }
 
       // 分组配置初始化
       if (isGroup && group) {
@@ -265,6 +271,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           form.setFieldsValue({
             dataSource: hasStaticItems ? 'static' : 'api',
             staticItems: widget.config.staticItems || [],
+            apiMethod: widget.config.apiMethod || 'GET',
+            apiBody: widget.config.apiBody || '',
           });
         }
 
@@ -272,6 +280,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         if (widget.type === 'headerBar') {
           form.setFieldsValue({
             navApiMethod: widget.config.navApiMethod || 'GET',
+            navApiBody: widget.config.navApiBody || '',
             navApiHeadersList: widget.config.navApiHeaders
               ? Object.entries(widget.config.navApiHeaders).map(([key, value]) => ({ key, value }))
               : [],
@@ -841,12 +850,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   textColor: normalizeColor(item.textColor),
                 }));
               }
-              // 清除 apiEndpoint 和 apiHeaders
+              // 清除 apiEndpoint、apiHeaders、apiMethod、apiBody
               normalizedRestConfig.apiEndpoint = undefined;
               normalizedRestConfig.apiHeaders = undefined;
+              normalizedRestConfig.apiMethod = undefined;
+              normalizedRestConfig.apiBody = undefined;
             } else {
               // 接口模式：清除 staticItems
               normalizedRestConfig.staticItems = undefined;
+              // 非 POST 时清除请求体
+              if (normalizedRestConfig.apiMethod !== 'POST') {
+                normalizedRestConfig.apiBody = undefined;
+              }
             }
           } else if (widget.type === 'headerBar') {
             const navSource = normalizedRestConfig.navDataSource || (normalizedRestConfig.navItems?.length ? 'static' : 'api');
@@ -854,6 +869,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               normalizedRestConfig.navApiEndpoint = undefined;
               normalizedRestConfig.navApiMethod = undefined;
               normalizedRestConfig.navApiHeaders = undefined;
+              normalizedRestConfig.navApiBody = undefined;
               normalizedRestConfig.navFieldMapping = undefined;
               delete normalizedRestConfig.navApiHeadersList;
               if (!Array.isArray(normalizedRestConfig.navItems)) {
@@ -861,6 +877,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               }
             } else {
               normalizedRestConfig.navItems = undefined;
+              // 非 POST 时清除请求体
+              if (normalizedRestConfig.navApiMethod !== 'POST') {
+                normalizedRestConfig.navApiBody = undefined;
+              }
               // navApiHeadersList 数组转换为 navApiHeaders 对象
               if (normalizedRestConfig.navApiHeadersList) {
                 const headers: Record<string, string> = {};
@@ -987,9 +1007,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         <Form.Item
           name="refreshInterval"
           label="刷新间隔 (秒)"
-          rules={[{ type: 'number', min: 0 }]}
+          rules={[{ type: 'number', min: 0, max: MAX_REFRESH_INTERVAL }]}
         >
-          <InputNumber />
+          <InputNumber min={0} max={MAX_REFRESH_INTERVAL} placeholder="0 表示不自动刷新" />
         </Form.Item>
       )}
 
@@ -1275,9 +1295,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                   form.setFieldsValue({
                     systemId: config.systemId,
                     moduleId: config.moduleId,
-                    icon: config.module?.icon || '',
-                    iconSvg: config.module?.iconSvg || '',
+                    icon: config.module?.iconSvg || config.module?.icon || '',
                     forceIconOnly: config.module?.forceIconOnly ?? form.getFieldValue('forceIconOnly') ?? false,
+                    // 切换系统/模块时清空事件路由，避免残留旧模块的配置
+                    eventRoutes: [],
                   });
                   form.validateFields(['microAppSelector']);
                 }}
@@ -1486,7 +1507,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
     return (
       <>
-        <Form.Item name="navDataSource" label="数据来源" initialValue="api">
+        <Form.Item name="navDataSource" label="数据来源">
           <Radio.Group>
             <Radio value="api">接口获取</Radio>
             <Radio value="static">手动配置</Radio>
@@ -1584,6 +1605,27 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     </Select>
                   </Form.Item>
                 </div>
+                <Form.Item noStyle shouldUpdate={(prev, cur) => prev.navApiMethod !== cur.navApiMethod}>
+                  {({ getFieldValue }) => {
+                    if (getFieldValue('navApiMethod') !== 'POST') return null;
+                    return (
+                      <Form.Item
+                        name="navApiBody"
+                        label="请求参数(JSON)"
+                        tooltip="POST 请求体，请输入合法的 JSON 格式"
+                        rules={[{
+                          validator: (_, value) => {
+                            if (!value) return Promise.resolve();
+                            try { JSON.parse(value); return Promise.resolve(); }
+                            catch { return Promise.reject(new Error('请输入合法的 JSON 格式')); }
+                          }
+                        }]}
+                      >
+                        <Input.TextArea rows={4} placeholder='{"key": "value"}' />
+                      </Form.Item>
+                    );
+                  }}
+                </Form.Item>
                 <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
                   <Form.List name="navApiHeadersList">
                     {(fields, { add, remove }) => (
@@ -1736,7 +1778,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                         </div>
                         <div className="form-row-3">
                           <Form.Item {...restField} name={[name, 'precision']} label="小数位数">
-                            <InputNumber min={0} max={6} style={{ width: '100%' }} />
+                            <InputNumber min={0} max={6} precision={0} style={{ width: '100%' }} />
                           </Form.Item>
                           <Form.Item {...restField} name={[name, 'suffix']} label="数值后缀">
                             <Input placeholder="例如：%" />
@@ -1869,6 +1911,35 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     <>
                       <Form.Item name="apiEndpoint" label="数据接口">
                         <Input placeholder="/api/nav-items" />
+                      </Form.Item>
+                      <div className="form-row-2">
+                        <Form.Item name="apiMethod" label="请求方式" initialValue="GET">
+                          <Select>
+                            <Select.Option value="GET">GET</Select.Option>
+                            <Select.Option value="POST">POST</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </div>
+                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.apiMethod !== cur.apiMethod}>
+                        {({ getFieldValue: getVal }) => {
+                          if (getVal('apiMethod') !== 'POST') return null;
+                          return (
+                            <Form.Item
+                              name="apiBody"
+                              label="请求参数(JSON)"
+                              tooltip="POST 请求体，请输入合法的 JSON 格式"
+                              rules={[{
+                                validator: (_, value) => {
+                                  if (!value) return Promise.resolve();
+                                  try { JSON.parse(value); return Promise.resolve(); }
+                                  catch { return Promise.reject(new Error('请输入合法的 JSON 格式')); }
+                                }
+                              }]}
+                            >
+                              <Input.TextArea rows={4} placeholder='{"key": "value"}' />
+                            </Form.Item>
+                          );
+                        }}
                       </Form.Item>
                       <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
                         <Form.List name="apiHeadersList">
@@ -2004,12 +2075,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         )}
 
         {widget.type === 'microApp' && (
-          <Form.Item name="eventRoutes" label="事件路由">
-            <EventRouteConfig
-              currentWidgetId={widget.id}
-              currentSystemId={widget.config.systemId}
-              currentModuleId={widget.config.moduleId}
-            />
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, curr) => prev.systemId !== curr.systemId || prev.moduleId !== curr.moduleId}
+          >
+            {({ getFieldValue }) => (
+              <Form.Item name="eventRoutes" label="事件路由">
+                <EventRouteConfig
+                  currentWidgetId={widget.id}
+                  currentSystemId={getFieldValue('systemId')}
+                  currentModuleId={getFieldValue('moduleId')}
+                />
+              </Form.Item>
+            )}
           </Form.Item>
         )}
 
@@ -2126,8 +2204,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         <Form.Item name="borderColor" label="边框颜色">
           <ColorPicker showText allowClear />
         </Form.Item>
-        <Form.Item name="borderRadius" label="圆角" rules={[{ type: 'number', min: 0 }]}>
-          <InputNumber style={{ width: '100%' }} suffix="px" />
+        <Form.Item name="borderRadius" label="圆角" rules={[{ type: 'number', min: 0, max: 100 }]}>
+          <InputNumber style={{ width: '100%' }} min={0} max={100} suffix="px" />
         </Form.Item>
       </div>
 

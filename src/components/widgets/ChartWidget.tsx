@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as echarts from 'echarts';
 import { Spin, Empty } from 'antd';
 import { WidgetConfig, Widget } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import axios from 'axios';
 
 /**
@@ -87,7 +88,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
 
     return () => {

@@ -264,7 +264,7 @@
   .form-row-2 {
      display: flex;
      gap: 16px;
-     margin-bottom: 20px;
+     margin-bottom: 16px;
 
      .ant-form-item {
         flex: 1;
@@ -286,6 +286,26 @@
      align-items: center;
      .ant-form-item { flex: 1; margin-bottom: 0; }
      .ant-form-item:last-child { flex: 0 0 auto; }
+  }
+
+  // Inline card for responsive breakpoints
+  .config-inline-card {
+    position: relative;
+    border-radius: 8px;
+    padding-top: 12px;
+    transition: all 0.3s;
+
+    &:hover {
+      border-color: var(--ant-color-primary-hover);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .config-inline-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 1;
+    }
   }
 
   @keyframes slideDown {
