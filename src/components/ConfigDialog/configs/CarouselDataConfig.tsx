@@ -197,7 +197,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item name={['apiConfig', 'listField']} label="列表字段路径">
+                <Form.Item name={['apiConfig', 'listField']} label="列表字段路径" tooltip="指定接口返回数据中数组所在的路径，如 data.list。不填则自动查找 data、list、rows、records 等常见字段">
                   <Input placeholder="data.list" />
                 </Form.Item>
               </div>
@@ -236,7 +236,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
               </div>
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'imageField']} label="图片字段">
-                  <Input placeholder="cover" />
+                  <Input placeholder="imageUrl" />
                 </Form.Item>
                 <Form.Item name={['apiConfig', 'mapping', 'linkField']} label="跳转字段">
                   <Input placeholder="link" />

@@ -87,7 +87,10 @@ const SwiperCarousel: React.FC<SwiperCarouselProps> = ({
   );
 
   return (
-    <div className={clsx('swiper-carousel', className)} ref={containerRef}>
+    <div
+      className={clsx('swiper-carousel', className)}
+      ref={containerRef}
+    >
       {slides.length > 0 && (
         <Swiper
           key={optionsKey}

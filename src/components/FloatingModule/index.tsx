@@ -49,19 +49,20 @@ const findFloatingContainer = (): ContainerElement => {
 };
 
 const getViewportSize = (container?: ContainerElement): Viewport => {
-  if (container) {
-    return {
-      width: container.clientWidth,
-      height: container.clientHeight,
-    };
-  }
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { width: 0, height: 0 };
   }
-  return {
-    width: window.innerWidth || document.documentElement?.clientWidth || 0,
-    height: window.innerHeight || document.documentElement?.clientHeight || 0,
-  };
+  const winW = window.innerWidth || document.documentElement?.clientWidth || 0;
+  const winH = window.innerHeight || document.documentElement?.clientHeight || 0;
+  if (container) {
+    const offset = getContainerOffset(container);
+    // 将容器尺寸限制在可见视口范围内，避免可滚动容器的 clientHeight 超出屏幕
+    return {
+      width: Math.min(container.clientWidth, winW - offset.left),
+      height: Math.min(container.clientHeight, winH - offset.top),
+    };
+  }
+  return { width: winW, height: winH };
 };
 
 const clamp = (value: number, min: number, max: number) => {
@@ -193,7 +194,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const collapsedWidth = config.collapsedWidth || 60;
   const collapsedHeight = config.collapsedHeight || 60;
   const collapsedIcon = config.collapsedIcon || config.icon;
-  const collapsedBgColor = config.collapsedBgColor;
+  const collapsedBgColor = config.collapsedBgColor || '#1677ff';
   const collapsedIconSize = config.collapsedIconSize || 28;
   const initialSizeState: Size =
     config.isExpanded === false
@@ -210,9 +211,13 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const sizeRef = useRef<Size>(initialSizeState);
 
   const [position, setPosition] = useState<Position>(() => {
-    // 优先使用比例值，可在不同容器尺寸间自适应
+    // 优先使用比例值（基于容器可见视口），还原为容器内坐标
     if (config.positionRatio && initialViewport.width && initialViewport.height) {
-      return ratioToPosition(config.positionRatio, initialSizeState, initialViewport);
+      return clampPosition(
+        ratioToPosition(config.positionRatio, initialSizeState, initialViewport),
+        initialSizeState,
+        initialViewport,
+      );
     }
 
     // 如果有保存的绝对位置，直接使用并限制在视口内
@@ -504,6 +509,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       if (savePositionTimeoutRef.current) clearTimeout(savePositionTimeoutRef.current);
       savePositionTimeoutRef.current = setTimeout(() => {
         const sizeForRatio = currentSize || sizeRef.current;
+        // 基于容器可见视口计算 ratio
         const ratio = positionToRatio(pos, sizeForRatio, viewport);
         updateFloatingModulePosition(widget.id, pos, ratio);
       }, 300);

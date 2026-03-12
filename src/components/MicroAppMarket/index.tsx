@@ -91,7 +91,7 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
 
     return (
       <Card
-        key={`${system.id}-${module.id}`}
+        key={`card-${system.id}-${module.id}`}
         hoverable
         className="module-card"
         onClick={() => handleModuleClick(system.id, module.id, module)}
@@ -117,10 +117,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
     );
   };
 
-  const renderSystemPanel = (system: MicroAppSystem) => {
+  const renderSystemPanel = (system: MicroAppSystem, systemIndex: number) => {
     return (
       <Panel
-        key={system.id}
+        key={`${system.id}-${systemIndex}`}
         header={
           <div className="system-header">
             <span className="system-name">{system.name}</span>
@@ -130,8 +130,8 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
         extra={system.description && <span className="system-desc">{system.description}</span>}
       >
         <Row gutter={[16, 16]}>
-          {system.modules.map((module) => (
-            <Col key={module.id} xs={24} sm={12} md={8} lg={6}>
+          {system.modules.map((module, moduleIndex) => (
+            <Col key={`${module.id}-${moduleIndex}`} xs={24} sm={12} md={8} lg={6}>
               {renderModuleCard(system, module)}
             </Col>
           ))}
@@ -176,10 +176,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
           <div key={category} className="category-section">
             <h3 className="category-title">{category}</h3>
             <Collapse
-              defaultActiveKey={filteredByCategory[category].map(s => s.id)}
+              defaultActiveKey={filteredByCategory[category].map((s, i) => `${s.id}-${i}`)}
               className="system-collapse"
             >
-              {filteredByCategory[category].map((system) => renderSystemPanel(system))}
+              {filteredByCategory[category].map((system, index) => renderSystemPanel(system, index))}
             </Collapse>
           </div>
         ))}

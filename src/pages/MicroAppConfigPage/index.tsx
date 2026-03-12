@@ -740,15 +740,21 @@ const MicroAppConfigPage: React.FC = () => {
           <Form.Item
             name="url"
             label="微应用URL"
-            rules={[{ required: true, message: '请输入微应用URL' }]}
+            rules={[
+              { required: true, message: '请输入微应用URL' },
+              { type: 'url', message: '请输入有效的URL地址' },
+            ]}
           >
             <Input placeholder="例如: http://192.168.13.31:3001/#/report" />
           </Form.Item>
           <Form.Item
             name="entry"
             label={"入口地址"}
-            tooltip="入口地址用于微前端运行时拉取资源，应指向部署目录或 remoteEntry.js 所在路径；上面的“微应用URL”仅用于门户内打开页面时的默认路由。"
-            rules={[{ required: true, message: '请输入入口地址' }]}
+            tooltip="入口地址用于微前端运行时拉取资源，应指向部署目录或 remoteEntry.js 所在路径；上面的「微应用URL」仅用于门户内打开页面时的默认路由。"
+            rules={[
+              { required: true, message: '请输入入口地址' },
+              { type: 'url', message: '请输入有效的URL地址' },
+            ]}
           >
             <Input placeholder="例如: http://192.168.13.31:3001/" />
           </Form.Item>

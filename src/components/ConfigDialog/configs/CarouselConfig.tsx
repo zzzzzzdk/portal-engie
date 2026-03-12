@@ -16,14 +16,9 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
           <InputNumber min={1} max={5} precision={0} />
         </Form.Item>
       </div>
-      <div className="form-row-2">
-        <Form.Item name="spaceBetween" label="间距(px)" initialValue={16}>
-          <InputNumber min={0} max={64} precision={0} />
-        </Form.Item>
-        <Form.Item name="aspectRatio" label="宽高比">
-          <InputNumber min={1} max={3} step={0.1} placeholder="自动" />
-        </Form.Item>
-      </div>
+      <Form.Item name="spaceBetween" label="间距(px)" initialValue={16}>
+        <InputNumber min={0} max={64} precision={0} />
+      </Form.Item>
       <div className="form-row-2">
         <Form.Item name="speed" label="切换时长(ms)" initialValue={600}>
           <InputNumber min={100} max={5000} step={100} precision={0} />
@@ -162,19 +157,20 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
                     {...restField}
                     name={[name, 'minWidth']}
                     label="屏宽 ≥(px)"
+                    tooltip="当浏览器宽度大于等于该值时，此断点生效"
                     rules={[{ required: true, message: '请输入屏幕宽度' }]}
                   >
                     <InputNumber min={320} step={100} precision={0}/>
                   </Form.Item>
-                  <Form.Item {...restField} name={[name, 'slidesPerView']} label="每屏数量">
+                  <Form.Item {...restField} name={[name, 'slidesPerView']} label="每屏数量" tooltip="同时可见的幻灯片数量">
                     <InputNumber min={1} max={5} precision={0}/>
                   </Form.Item>
                 </div>
                 <div className="form-row-2">
-                  <Form.Item {...restField} name={[name, 'slidesPerGroup']} label="步长">
+                  <Form.Item {...restField} name={[name, 'slidesPerGroup']} label="步长" tooltip="每次滑动切换的幻灯片数量，不填则默认为 1">
                     <InputNumber min={1} max={5} precision={0}/>
                   </Form.Item>
-                  <Form.Item {...restField} name={[name, 'spaceBetween']} label="间距(px)">
+                  <Form.Item {...restField} name={[name, 'spaceBetween']} label="间距(px)" tooltip="相邻幻灯片之间的间距，不填则使用全局间距设置">
                     <InputNumber min={0} max={64} precision={0}/>
                   </Form.Item>
                 </div>

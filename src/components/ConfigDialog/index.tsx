@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse, Space } from 'antd';
+import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Widget, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
 import { useStore } from '@/store/useStore';
@@ -232,6 +232,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           // navGroup 导航项样式颜色（使用风格 Token 默认值）
           itemBgColor: normalizeColorForForm(widget.config.itemBgColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemBgColor : undefined),
           itemTextColor: normalizeColorForForm(widget.config.itemTextColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemTextColor : undefined),
+          overlayColor: normalizeColorForForm(widget.config.overlayColor),
           displayMode: widget.config.displayMode || 'text',
           navDataSource: widget.config.navDataSource || (widget.config.navItems?.length ? 'static' : 'api'),
           navItems: widget.config.navItems || [],
@@ -371,7 +372,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           // 折叠状态配置
           collapsedWidth: widget.config.collapsedWidth || 60,
           collapsedHeight: widget.config.collapsedHeight || 60,
-          collapsedIcon: widget.config.collapsedIcon || widget.config.icon || '',
+          collapsedIcon: widget.config.collapsedIcon || widget.config.iconSvg || widget.config.icon || '',
           collapsedBgColor: normalizeColorValue(widget.config.collapsedBgColor, '#1677ff'),
           collapsedIconSize: widget.config.collapsedIconSize || 28,
         });
@@ -835,6 +836,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               normalizedRestConfig.backgroundColor,
               normalizedBgColor,
             );
+          }
+
+          if (normalizedRestConfig.overlayColor) {
+            normalizedRestConfig.overlayColor = normalizeColorValue(normalizedRestConfig.overlayColor);
           }
 
           // navGroup 特殊处理：数据来源和静态导航项
@@ -1631,15 +1636,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                     {(fields, { add, remove }) => (
                       <>
                         {fields.map(({ key, name, ...restField }) => (
-                          <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                          <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
                             <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
-                              <Input placeholder="Header Key" style={{ width: 160 }} />
+                              <Input placeholder="Header Key" />
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
-                              <Input placeholder="Header Value" style={{ width: 200 }} />
+                              <Input placeholder="Header Value" />
                             </Form.Item>
-                            <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
-                          </Space>
+                            <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', flexShrink: 0 }} />
+                          </div>
                         ))}
                         <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
                           添加请求头
@@ -1719,15 +1724,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                 {(fields, { add, remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }) => (
-                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                      <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
                         <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
-                          <Input placeholder="Header Key" style={{ width: 160 }} />
+                          <Input placeholder="Header Key" />
                         </Form.Item>
                         <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
-                          <Input placeholder="Header Value" style={{ width: 200 }} />
+                          <Input placeholder="Header Value" />
                         </Form.Item>
-                        <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
-                      </Space>
+                        <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', flexShrink: 0 }} />
+                      </div>
                     ))}
                     <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
                       添加请求头
@@ -1946,15 +1951,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                           {(fields, { add, remove }) => (
                             <>
                               {fields.map(({ key, name, ...restField }) => (
-                                <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
                                   <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
-                                    <Input placeholder="Header Key" style={{ width: 160 }} />
+                                    <Input placeholder="Header Key" />
                                   </Form.Item>
                                   <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
-                                    <Input placeholder="Header Value" style={{ width: 200 }} />
+                                    <Input placeholder="Header Value" />
                                   </Form.Item>
-                                  <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
-                                </Space>
+                                  <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', flexShrink: 0 }} />
+                                </div>
                               ))}
                               <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
                                 添加请求头

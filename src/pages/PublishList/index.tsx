@@ -299,7 +299,7 @@ const PublishList: React.FC = () => {
     if (!coverUrl) {
       return '';
     }
-    return coverUrl.startsWith('data:') ? coverUrl : `data:image/png;base64,${coverUrl}`;
+    return coverUrl;
   };
 
   const renderCards = () => {

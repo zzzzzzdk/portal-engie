@@ -324,7 +324,6 @@ export interface CarouselWidgetConfig extends WidgetConfig {
   navigation?: CarouselNavigationConfig;
   scrollbar?: CarouselScrollbarConfig;
   responsive?: CarouselBreakpointSetting[];
-  aspectRatio?: number;
   textAlign?: 'left' | 'center' | 'right';
   overlayStyle?: 'gradient' | 'solid' | 'none';
   overlayColor?: string;

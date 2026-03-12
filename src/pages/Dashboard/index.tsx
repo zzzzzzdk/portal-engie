@@ -19,6 +19,7 @@ import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
+import CarouselWidget from '@/components/widgets/CarouselWidget';
 import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import FloatingModule from '@/components/FloatingModule';
 import './index.scss';
@@ -54,7 +55,7 @@ const Dashboard: React.FC = () => {
   }));
 
   const renderWidgetContent = (widget: any) => {
-    const commonProps = { config: widget.config, widget };
+    const commonProps = { config: widget.config, widget, isEditMode };
     switch (widget.type) {
       case 'clock':
         return <ClockWidget {...commonProps} />;
@@ -80,6 +81,8 @@ const Dashboard: React.FC = () => {
         return <MicroAppWidget {...commonProps} />;
       case 'myDocuments':
         return <MyDocumentsWidget {...commonProps} />;
+      case 'carousel':
+        return <CarouselWidget {...commonProps} />;
       default:
         return <div>{widget.type} Widget</div>;
     }

@@ -6,7 +6,8 @@ const normalizeBase64 = (dataUrl: string) => {
   if (!dataUrl) {
     return '';
   }
-  return dataUrl.replace(/^data:image\/png;base64,/, '');
+  // 保留完整 data URL，以便直接用于 <img src>
+  return dataUrl;
 };
 
 export const captureDashboardCover = async (): Promise<string | null> => {
