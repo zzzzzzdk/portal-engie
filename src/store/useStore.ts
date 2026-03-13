@@ -716,6 +716,8 @@ export const useStore = create<AppState>()(
               url: module.url,
               entry: module.entry,
             },
+            icon: module.icon,
+            iconSvg: module.iconSvg,
             defaultPosition: 'bottom-right',
             width: 380,
             height: 400,
