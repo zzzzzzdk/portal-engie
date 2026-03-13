@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Spin, Empty, Tooltip, Typography, Tag } from 'antd';
 import { AppstoreOutlined } from '@ant-design/icons';
 import { WidgetConfig, Widget, NavItem } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import IconRenderer from '@/components/IconRenderer';
 import clsx from 'clsx';
 import axios from 'axios';
@@ -12,6 +13,8 @@ import './index.scss'
  */
 interface NavGroupWidgetConfig extends WidgetConfig {
   apiHeaders?: Record<string, string>;  // 请求头
+  apiMethod?: 'GET' | 'POST';          // 请求方式
+  apiBody?: string;                     // POST 请求体（JSON 字符串）
   groupTitle?: string;        // 导航组标题（可覆盖 widget title）
   layout?: 'flex' | 'grid' | 'list' | 'text' | 'tag';   // 布局模式
   columns?: number;           // 网格列数（grid 模式）
@@ -141,7 +144,21 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
 
     try {
       const headers = widgetConfig?.apiHeaders;
-      const response = await axios.get(apiEndpoint.trim(), headers ? { headers } : {});
+      const method = widgetConfig?.apiMethod || 'GET';
+      let requestBody: any = undefined;
+      if (method === 'POST' && widgetConfig?.apiBody) {
+        try {
+          requestBody = JSON.parse(widgetConfig.apiBody);
+        } catch {
+          console.warn('NavGroupWidget: apiBody JSON 解析失败，将作为空 body 发送');
+        }
+      }
+      const response = await axios({
+        method,
+        url: apiEndpoint.trim(),
+        ...(headers ? { headers } : {}),
+        ...(requestBody !== undefined ? { data: requestBody } : {}),
+      });
       const data = response.data?.data || response.data;
 
       if (Array.isArray(data)) {
@@ -169,7 +186,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget }) => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
     return () => {
       if (intervalRef.current) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { List, Avatar, Typography, Spin, Empty } from 'antd';
 import { WidgetConfig, Widget } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import axios from 'axios';
 
 /**
@@ -34,6 +35,7 @@ interface NewsWidgetConfig extends WidgetConfig {
 interface NewsWidgetProps {
   config?: NewsWidgetConfig;
   widget?: Widget;
+  isEditMode?: boolean;
 }
 
 // 默认新闻数据
@@ -56,7 +58,7 @@ const DEFAULT_NEWS: NewsItem[] = [
   },
 ];
 
-const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget }) => {
+const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) => {
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +130,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget }) => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
 
     return () => {
@@ -149,9 +151,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget }) => {
 
   // 点击新闻
   const handleNewsClick = (item: NewsItem) => {
-    if (item.url) {
-      console.log('打开新闻链接:', item.url);
-      // 内网环境不能直接跳转，仅输出日志
+    if (item.url && !isEditMode) {
+      window.open(item.url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -170,7 +171,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget }) => {
         dataSource={newsData}
         style={{ height: '100%', overflow: 'auto' }}
         renderItem={(item, index) => (
-          <List.Item style={{ cursor: item.url ? 'pointer' : 'default' }} onClick={() => handleNewsClick(item)}>
+          <List.Item style={{ cursor: item.url && !isEditMode ? 'pointer' : 'default' }} onClick={() => handleNewsClick(item)}>
             <List.Item.Meta
               avatar={
                 item.avatar ? (

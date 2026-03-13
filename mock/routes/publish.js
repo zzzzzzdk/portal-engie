@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const Mock = require('mockjs');
+const Random = Mock.Random;
 
 const mockDashboards = {};
 let seedsInitialized = false;
@@ -567,7 +569,7 @@ const ensureSeededDashboards = () => {
       createdAt: value.createdAt || value.publishedAt || now,
       updatedAt: value.updatedAt || value.publishedAt || now,
       publishedAt: value.publishedAt || null,
-      coverUrl: value.coverUrl || '',
+      cover_url: `http://192.168.5.47:3003/70${Random.integer(1, 8)}.jpg`,
     };
   });
   seedsInitialized = true;
@@ -589,7 +591,7 @@ const formatDashboardRecord = (dashboard, fallbackId) => {
     publishTime: dashboard.publishedAt || '',
     status: dashboard.status ?? 1,
     dashboardConfig: JSON.stringify(snapshot),
-    coverUrl: dashboard.coverUrl || '',
+    coverUrl: dashboard.cover_url || '',
   };
 };
 
@@ -643,7 +645,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       floatingModules: parsedSnapshot?.floatingModules || [],
       dashboardConfig: parsedSnapshot?.dashboardConfig || {},
       status: normalizedStatus,
-      coverUrl: cover_url || existingRecord?.coverUrl || '',
+      cover_url: cover_url || existingRecord?.cover_url || '',
       createdAt,
       updatedAt: now,
       publishedAt,
@@ -664,7 +666,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       publishTime: publishedAt,
       status: normalizedStatus,
       success: true,
-      cover_url: cover_url || existingRecord?.coverUrl || '',
+      cover_url: cover_url || existingRecord?.cover_url || '',
     };
   } catch (error) {
     req.json.code = 1;
@@ -709,7 +711,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
       publishTime,
       status: record.status ?? 0,
       componentCount: Array.isArray(record.widgets) ? record.widgets.length : 0,
-      coverUrl: record.coverUrl || '',
+      cover_url: record.cover_url || '',
       updatedAt,
     };
   });
@@ -738,7 +740,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
     publishTime: item.publishTime,
     status: item.status,
     componentCount: item.componentCount,
-    coverUrl: item.coverUrl,
+    cover_url: item.cover_url,
   }));
 
   req.json.code = 20000;

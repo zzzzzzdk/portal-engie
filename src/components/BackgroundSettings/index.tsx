@@ -26,6 +26,16 @@ export const GRADIENT_PRESETS = [
   'linear-gradient(to top, #30cfd0 0%, #330867 100%)',
 ];
 
+/**
+ * 验证 CSS 渐变值是否有效
+ * 必须以 linear-gradient/radial-gradient/conic-gradient/repeating- 开头
+ */
+export const isValidCssGradient = (value?: string): boolean => {
+  if (!value || !value.trim()) return false;
+  const trimmed = value.trim().toLowerCase();
+  return /^(linear|radial|conic|repeating-(linear|radial|conic))-gradient\(/.test(trimmed);
+};
+
 interface BackgroundSettingsProps {
   form: FormInstance;
   initialValues?: {
@@ -86,6 +96,8 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
             url: initialValues.backgroundImage,
           },
         ]);
+      } else {
+        setFileList([]);
       }
 
       // 如果未设置背景模糊且极简模式有默认值，显示主题默认值
@@ -264,7 +276,17 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({ form, initialVa
       ),
       children: (
         <>
-          <Form.Item name="backgroundGradient" label="CSS 渐变代码">
+          <Form.Item
+            name="backgroundGradient"
+            label="CSS 渐变代码"
+            rules={[{
+              validator: (_, value) => {
+                if (!value || !value.trim()) return Promise.resolve();
+                if (isValidCssGradient(value)) return Promise.resolve();
+                return Promise.reject(new Error('请输入有效的 CSS 渐变，如 linear-gradient(...)'));
+              },
+            }]}
+          >
             <Input.TextArea
               rows={2}
               placeholder="linear-gradient(to right, #ff0000, #0000ff)"

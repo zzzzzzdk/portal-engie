@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GridStack, GridStackOptions, GridStackWidget } from 'gridstack';
+import { GridStack, GridStackOptions, GridStackWidget, GridStackNode } from 'gridstack';
 import type { Layout } from 'react-grid-layout';
 import { useSearchParams } from 'react-router-dom';
 import { message } from 'antd';
@@ -15,12 +15,13 @@ import { CanvasThemeProvider } from '@/theme/CanvasThemeProvider';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
 import clsx from 'clsx';
-import { Widget, WidgetGroup, AppState, GRID_DENSITY_PRESETS, DashboardConfig } from '@/types';
+import { Widget, WidgetGroup, WidgetType, AppState, GRID_DENSITY_PRESETS, DashboardConfig } from '@/types';
 
 import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
@@ -42,11 +43,16 @@ const DashboardInner: React.FC = () => {
     isFullScreen,
     floatingModules,
     updateLayout,
+    addWidget,
+    createEmptyGroup,
+    addFloatingModuleLocal,
+    setPendingMicroAppDrop,
     dashboardConfig,
     gridDensity,
   } = useStore();
   const { isDark } = useCanvasTheme();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const densityPreset = GRID_DENSITY_PRESETS[gridDensity];
   const [gridVisualMetrics, setGridVisualMetrics] = useState({
@@ -81,11 +87,11 @@ const DashboardInner: React.FC = () => {
     if (dashboardConfig) {
       if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
         style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
-        style.backgroundSize = dashboardConfig.backgroundSize || 'cover';
+        style.backgroundSize = dashboardConfig.backgroundSize || 'auto';
         style.backgroundPosition = dashboardConfig.backgroundPosition || 'center';
         style.backgroundRepeat = dashboardConfig.backgroundRepeat || 'no-repeat';
         style.backgroundAttachment = 'fixed';
-      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
+      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient && isValidCssGradient(dashboardConfig.backgroundGradient)) {
         style.background = dashboardConfig.backgroundGradient;
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;
@@ -453,6 +459,133 @@ const DashboardInner: React.FC = () => {
     }
   }, [gridStack, isEditMode]);
 
+  // 注册侧边栏组件拖入画布（setupDragIn 是静态方法，每次 Drawer 打开时 DOM 重建需要重新注册）
+  useEffect(() => {
+    if (!gridStack || !isEditMode) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastItemCount = 0;
+
+    const register = () => {
+      const items = document.querySelectorAll('.widget-drag-item');
+      // 仅当元素数量发生变化时才重新注册（避免无效调用）
+      if (items.length > 0 && items.length !== lastItemCount) {
+        lastItemCount = items.length;
+        GridStack.setupDragIn('.widget-drag-item', {
+          appendTo: 'body',
+          helper: 'clone',
+        });
+      } else if (items.length === 0) {
+        lastItemCount = 0;
+      }
+    };
+
+    // 立即尝试注册一次
+    register();
+
+    // 监听 DOM 变化（WidgetDrawer 打开/关闭时），加防抖避免频繁触发
+    const observer = new MutationObserver(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(register, 100);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [gridStack, isEditMode]);
+
+  // 追踪鼠标实际位置，用于悬浮模块拖放定位（比网格坐标转像素更精确）
+  useEffect(() => {
+    if (!isEditMode) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, [isEditMode]);
+
+  // 监听外部元素拖入画布事件（dropped）
+  useEffect(() => {
+    if (!gridStack) return;
+
+    const handleDropped = (_event: Event, _prevNode: GridStackNode, newNode: GridStackNode) => {
+      if (!isEditMode) return;
+
+      // 从 newNode.content 读取 widget 类型（在 data-gs-widget JSON 中设置）
+      // newNode.el 是 GridStack 创建的 .grid-stack-item 包装元素，不携带原始属性
+      const widgetType = newNode.content as string | undefined;
+      // console.log(widgetType)
+      // 从网格中移除 GridStack 自动插入的临时节点
+      const el = newNode.el;
+      if (el) {
+        try {
+          const ownerGrid = el.gridstackNode?.grid || gridStack;
+          ownerGrid.removeWidget(el, true, false);
+        } catch {
+          // 忽略移除失败
+        }
+      }
+
+      if (!widgetType) return;
+
+      // 只传 x/y 位置，w/h 让 addWidget 使用 store 中各组件类型的默认尺寸
+      // 这样拖拽放置和点击添加的组件大小保持一致
+      const dropX = newNode.x ?? 0;
+      const dropY = newNode.y ?? 0;
+
+      // 分组
+      if (widgetType === 'create-group') {
+        createEmptyGroup();
+        return;
+      }
+
+      // 微应用：暂存拖放位置，由 Layout 打开市场选择器
+      if (widgetType === 'microApp') {
+        setPendingMicroAppDrop({ x: dropX, y: dropY, mode: 'widget' });
+        return;
+      }
+
+      // 悬浮模块：直接添加到鼠标释放位置（使用实际鼠标坐标，比网格坐标转换更精确）
+      if (widgetType.startsWith('floating-')) {
+        // 鼠标坐标是 viewport-relative (clientX/Y)，但 FloatingModule 使用 position:fixed
+        // 并以容器偏移为基准，所以需要减去容器偏移，避免位置偏移到右下方
+        const containerRect = canvasContainerRef.current?.getBoundingClientRect();
+        const pixelX = lastMousePosRef.current.x - (containerRect?.left || 0);
+        const pixelY = lastMousePosRef.current.y - (containerRect?.top || 0);
+
+        if (widgetType === 'floating-assistantHub') {
+          addFloatingModuleLocal(
+            'assistantHub',
+            '助手中心',
+            { entries: [], collapsedIcon: 'CustomerServiceOutlined' },
+            {
+              width: 720, height: 500,
+              collapsedWidth: 60, collapsedHeight: 60,
+              isExpanded: false,
+              expandAnchor: 'top-left',
+              position: { x: pixelX, y: pixelY },
+            }
+          );
+        } else if (widgetType === 'floating-microApp') {
+          // 悬浮微应用需要打开市场选择器
+          setPendingMicroAppDrop({ x: pixelX, y: pixelY, mode: 'floating' });
+        }
+        return;
+      }
+
+      // 普通组件：通过 store 创建 widget（带拖放位置）
+      addWidget(widgetType as WidgetType, { x: dropX, y: dropY });
+    };
+
+    gridStack.on('dropped', handleDropped as any);
+
+    return () => {
+      gridStack.off('dropped');
+    };
+  }, [gridStack, isEditMode, addWidget, createEmptyGroup, addFloatingModuleLocal, setPendingMicroAppDrop]);
+
   useEffect(() => {
     if (!gridStack) return;
     attachListenersToNestedGrids(gridStack, syncLayoutFromGrid);
@@ -528,7 +661,7 @@ const DashboardGridStack: React.FC = () => {
         handles: 'se',
       },
       // animate: true,
-      acceptWidgets: true,
+      acceptWidgets: (_el: Element) => true,
       children,
     };
   }, [widgets, groups, gridDensity]);
@@ -769,7 +902,7 @@ function createGroupGridWidget(
     }),
     // resizable: { handles: 'all' },
     subGridOpts: {
-      acceptWidgets: true,
+      acceptWidgets: (_el: Element) => true,
       // column: COLUMN_COUNT,
       column: 'auto',
       cellHeight: preset.cellHeight,

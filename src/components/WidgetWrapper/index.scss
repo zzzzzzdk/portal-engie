@@ -169,6 +169,13 @@
     }
   }
 
+  &.carousel {
+    .widget-content {
+      padding: 0;
+      overflow: hidden;
+    }
+  }
+
   &.myDocuments {
     background: transparent;
     box-shadow: none;

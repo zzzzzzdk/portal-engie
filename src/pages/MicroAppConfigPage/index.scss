@@ -151,6 +151,22 @@
     .ant-btn {
       border-radius: 8px;
     }
+
+    .ant-tag {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+
+      .event-tag-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ant-tag-close-icon {
+        flex-shrink: 0;
+      }
+    }
   }
 
   .event-tag {

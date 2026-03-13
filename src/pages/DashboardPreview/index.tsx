@@ -17,6 +17,7 @@ import {
 import { getPublishedDashboard, parseDashboardSnapshot, PublishedDashboard } from '@/services';
 import { Widget, WidgetGroup, GRID_DENSITY_PRESETS } from '@/types';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import { PreviewDataProvider } from './PreviewDataContext';
 import PreviewWidgetAdapter from './PreviewWidgetAdapter';
 import PreviewGroupAdapter from './PreviewGroupAdapter';
@@ -59,11 +60,11 @@ const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
     if (dashboardConfig) {
       if (dashboardConfig.backgroundType === 'image' && dashboardConfig.backgroundImage) {
         style.backgroundImage = `url(${dashboardConfig.backgroundImage})`;
-        style.backgroundSize = dashboardConfig.backgroundSize || 'cover';
+        style.backgroundSize = dashboardConfig.backgroundSize || 'auto';
         style.backgroundPosition = dashboardConfig.backgroundPosition || 'center';
         style.backgroundRepeat = dashboardConfig.backgroundRepeat || 'no-repeat';
         style.backgroundAttachment = 'fixed';
-      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient) {
+      } else if (dashboardConfig.backgroundType === 'gradient' && dashboardConfig.backgroundGradient && isValidCssGradient(dashboardConfig.backgroundGradient)) {
         style.background = dashboardConfig.backgroundGradient;
       } else if (dashboardConfig.backgroundType === 'color' && dashboardConfig.backgroundColor) {
         style.backgroundColor = dashboardConfig.backgroundColor;

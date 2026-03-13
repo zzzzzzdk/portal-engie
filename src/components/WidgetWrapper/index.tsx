@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Widget } from '@/types';
 import { useStore } from '@/store/useStore';
 import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import { Settings, Trash2, RefreshCw } from 'lucide-react';
 import { Button, Dropdown, Modal } from 'antd';
 import type { MenuProps } from 'antd';
@@ -107,11 +108,11 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       } = widget.config;
       // console.log(widget.config)
       if (backgroundType === 'image' && backgroundImage) {
-        newBackgroundStyle.background = `url(${backgroundImage})`;
-        newBackgroundStyle.backgroundSize = backgroundSize || 'cover';
+        newBackgroundStyle.backgroundImage = `url(${backgroundImage})`;
+        newBackgroundStyle.backgroundSize = backgroundSize || 'auto';
         newBackgroundStyle.backgroundPosition = backgroundPosition || 'center';
         newBackgroundStyle.backgroundRepeat = backgroundRepeat || 'no-repeat';
-      } else if (backgroundType === 'gradient' && backgroundGradient) {
+      } else if (backgroundType === 'gradient' && backgroundGradient && isValidCssGradient(backgroundGradient)) {
         newBackgroundStyle.background = backgroundGradient;
       } else if (backgroundType === 'color' && backgroundColor) {
         newBackgroundStyle.backgroundColor = backgroundColor;

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Image, Tag, Input } from 'antd';
+import { Modal, Collapse, Card, Row, Col, Empty, Spin, Alert, Tag, Input } from 'antd';
 import { AppstoreOutlined, SearchOutlined } from '@ant-design/icons';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
-import { sanitizeSvg } from '@/utils/sanitizeSvg';
+import IconRenderer from '@/components/IconRenderer';
 import type { MicroAppSystem, MicroAppModule } from '@/types';
 import './index.scss';
 
@@ -78,19 +78,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
   };
 
   const renderModuleCard = (system: MicroAppSystem, module: MicroAppModule) => {
-    const cover = module.iconSvg ? (
-      <div
-        className="module-thumbnail module-thumbnail--svg"
-        dangerouslySetInnerHTML={{ __html: sanitizeSvg(module.iconSvg) }}
-      />
-    ) : module.icon ? (
+    const iconValue = module.iconSvg || module.icon;
+    const cover = iconValue ? (
       <div className="module-thumbnail">
-        <Image
-          src={module.icon}
-          alt={module.name}
-          preview={false}
-          fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='14' fill='%23999'%3E????%3C/text%3E%3C/svg%3E"
-        />
+        <IconRenderer value={iconValue} size={48} />
       </div>
     ) : (
       <div className="module-thumbnail module-thumbnail--placeholder">
@@ -100,7 +91,7 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
 
     return (
       <Card
-        key={`${system.id}-${module.id}`}
+        key={`card-${system.id}-${module.id}`}
         hoverable
         className="module-card"
         onClick={() => handleModuleClick(system.id, module.id, module)}
@@ -126,10 +117,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
     );
   };
 
-  const renderSystemPanel = (system: MicroAppSystem) => {
+  const renderSystemPanel = (system: MicroAppSystem, systemIndex: number) => {
     return (
       <Panel
-        key={system.id}
+        key={`${system.id}-${systemIndex}`}
         header={
           <div className="system-header">
             <span className="system-name">{system.name}</span>
@@ -139,8 +130,8 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
         extra={system.description && <span className="system-desc">{system.description}</span>}
       >
         <Row gutter={[16, 16]}>
-          {system.modules.map((module) => (
-            <Col key={module.id} xs={24} sm={12} md={8} lg={6}>
+          {system.modules.map((module, moduleIndex) => (
+            <Col key={`${module.id}-${moduleIndex}`} xs={24} sm={12} md={8} lg={6}>
               {renderModuleCard(system, module)}
             </Col>
           ))}
@@ -185,10 +176,10 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
           <div key={category} className="category-section">
             <h3 className="category-title">{category}</h3>
             <Collapse
-              defaultActiveKey={filteredByCategory[category].map(s => s.id)}
+              defaultActiveKey={filteredByCategory[category].map((s, i) => `${s.id}-${i}`)}
               className="system-collapse"
             >
-              {filteredByCategory[category].map((system) => renderSystemPanel(system))}
+              {filteredByCategory[category].map((system, index) => renderSystemPanel(system, index))}
             </Collapse>
           </div>
         ))}

@@ -8,6 +8,7 @@
   justify-content: center;
   flex-shrink: 0;
   vertical-align: middle;
+  overflow: hidden;
 
   // SVG 代码渲染
   &-svg {

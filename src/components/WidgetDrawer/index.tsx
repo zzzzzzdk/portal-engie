@@ -66,7 +66,7 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'clock', label: '时钟', icon: <ClockCircleOutlined />, description: '实时时钟显示', gsW: 4, gsH: 6, gsMinW: 2, gsMinH: 3, draggable: true },
       { key: 'stats', label: '统计卡片', icon: <BarChartOutlined />, description: '数据统计展示', gsW: 10, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'chart', label: '图表', icon: <PieChartOutlined />, description: '可视化图表', gsW: 8, gsH: 9, gsMinW: 4, gsMinH: 4, draggable: true },
-      { key: 'carousel', label: '轮播图', icon: <PictureOutlined />, description: '图片轮播展示', gsW: 8, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
+      { key: 'carousel', label: '轮播图', icon: <PictureOutlined />, description: '图片轮播展示', gsW: 40, gsH: 12, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'link', label: '快捷链接', icon: <LinkOutlined />, description: '快速访问链接', gsW: 5, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
       { key: 'pageNavigator', label: '页面切换组', icon: <SwapOutlined />, description: '控制跳转页面', gsW: 12, gsH: 3, gsMinW: 6, gsMinH: 1, draggable: true },
       { key: 'news', label: '新闻动态', icon: <FileTextOutlined />, description: '新闻资讯列表', gsW: 6, gsH: 10, gsMinW: 4, gsMinH: 4, draggable: true },
@@ -74,7 +74,7 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'search', label: '搜索', icon: <SearchOutlined />, description: '搜索功能', gsW: 8, gsH: 4, gsMinW: 4, gsMinH: 2, draggable: true },
       { key: 'dataTable', label: '数据表格', icon: <TableOutlined />, description: '表格数据展示', gsW: 10, gsH: 8, gsMinW: 6, gsMinH: 4, draggable: true },
       { key: 'customForm', label: '自定义表单', icon: <FormOutlined />, description: '自定义表单', gsW: 8, gsH: 11, gsMinW: 4, gsMinH: 4, draggable: true },
-      { key: 'myDocuments', label: '我的文档', icon: <FolderOpenOutlined />, description: '文件管理', gsW: 2, gsH: 2, gsMinW: 1, gsMinH: 1, draggable: true },
+      { key: 'myDocuments', label: '我的文档', icon: <FolderOpenOutlined />, description: '文件管理', gsW: 4, gsH: 3, gsMinW: 1, gsMinH: 1, draggable: true },
     ]
   },
   {
@@ -162,7 +162,8 @@ const WidgetDrawer: React.FC<WidgetDrawerProps> = ({ open, onClose, onSelect }) 
                           h: item.gsH || 4,
                           minW: item.gsMinW || 1,
                           minH: item.gsMinH || 1,
-                          content: item.label,
+                          id: `sidebar-${item.key}`,
+                          content: item.key,
                         })
                         : undefined
                     }

@@ -172,8 +172,11 @@ export interface AppState {
   globalMicroApps: Widget[];  // 全局无边框微应用列表
   login: (userInfo?: UserInfo) => void;
   logout: () => void;
-  addWidget: (type: WidgetType) => void;
-  addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule) => void;
+  addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number }) => void;
+  addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule, position?: { x: number; y: number }) => void;
+  // 微应用拖放暂存（拖放微应用到画布后暂存位置和模式，等用户选择具体微应用后再创建）
+  pendingMicroAppDrop: { x: number; y: number; mode: 'widget' | 'floating' } | null;
+  setPendingMicroAppDrop: (pending: { x: number; y: number; mode: 'widget' | 'floating' } | null) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<Widget>) => void;
   refreshWidget: (id: string) => void;
@@ -321,7 +324,6 @@ export interface CarouselWidgetConfig extends WidgetConfig {
   navigation?: CarouselNavigationConfig;
   scrollbar?: CarouselScrollbarConfig;
   responsive?: CarouselBreakpointSetting[];
-  aspectRatio?: number;
   textAlign?: 'left' | 'center' | 'right';
   overlayStyle?: 'gradient' | 'solid' | 'none';
   overlayColor?: string;
@@ -637,6 +639,7 @@ export interface FloatingModuleConfig extends WidgetConfig {
   resizable?: boolean;      // 是否可调整大小
   collapsible?: boolean;    // 是否可折叠
   closable?: boolean;       // 是否可关闭
+  expandAnchor?: 'top-left' | 'smart';  // 展开锚点：top-left=基于左上角展开，smart=智能方向（默认）
 
   // 样式配置
   theme?: 'light' | 'dark' | 'auto' | 'custom';  // auto: 跟随主应用主题

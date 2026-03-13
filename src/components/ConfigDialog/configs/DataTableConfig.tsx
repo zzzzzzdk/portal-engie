@@ -64,7 +64,7 @@ const DataTableConfig: React.FC<WidgetConfigProps> = () => {
         </Form.Item>
       </div>
 
-      <Divider>列置</Divider>
+      <Divider>数据列配置</Divider>
 
       <Form.List name="columns">
         {(fields, { add, remove }) => (

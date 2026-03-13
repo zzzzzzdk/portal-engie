@@ -21,7 +21,7 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
       style.backgroundColor = config.backgroundColor;
     } else if (config.backgroundType === 'image' && config.backgroundImage) {
       style.backgroundImage = `url(${config.backgroundImage})`;
-      style.backgroundSize = config.backgroundSize || 'cover';
+      style.backgroundSize = config.backgroundSize || 'auto';
       style.backgroundRepeat = config.backgroundRepeat || 'no-repeat';
       style.backgroundPosition = config.backgroundPosition || 'center';
     } else if (config.backgroundType === 'gradient' && config.backgroundGradient) {

@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { Form, Input, Button, Select, Checkbox, DatePicker, InputNumber, Radio, message, Space } from 'antd';
+import dayjs from 'dayjs';
 import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, FormConfig, FormField, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
@@ -94,17 +95,25 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
 
   // 提交表单
   const onFinish = async (values: Record<string, any>) => {
+    // 将 dayjs 日期对象格式化为本地日期字符串，避免 UTC 时区偏移
+    const formattedValues = { ...values };
+    for (const key in formattedValues) {
+      if (dayjs.isDayjs(formattedValues[key])) {
+        formattedValues[key] = formattedValues[key].format('YYYY-MM-DD');
+      }
+    }
+
     try {
       if (submitMethod === 'api' && formConfig.apiEndpoint) {
         await axios({
           method: apiMethod,
           url: formConfig.apiEndpoint,
-          data: values,
+          data: formattedValues,
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         });
       }
       if (submitMethod === 'eventRoute') {
-        emitRoutes(eventRoutes, values);
+        emitRoutes(eventRoutes, formattedValues);
       }
       message.success(successMessage);
       if (successResetForm) form.resetFields();

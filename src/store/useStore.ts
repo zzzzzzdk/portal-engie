@@ -240,6 +240,7 @@ export const useStore = create<AppState>()(
       groups: [] as WidgetGroup[],
       isEditMode: true, // Default to edit mode for easier setup
       isDirty: false,   // 是否有未保存的变更
+      pendingMicroAppDrop: null as { x: number; y: number; mode: 'widget' | 'floating' } | null,
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
@@ -269,7 +270,7 @@ export const useStore = create<AppState>()(
         });
       },
 
-      addWidget: (type: WidgetType) => {
+      addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number }) => {
         const id = uuidv4();
         // 根据组件类型获取对应的默认布局配置
         let layoutConfig: { w: number; h: number; x: number; y: number; minW: number; minH: number };
@@ -297,11 +298,19 @@ export const useStore = create<AppState>()(
           layoutConfig = DEFAULT_LAYOUT;
         }
 
+        // 如果指定了拖放位置，使用该位置；否则自动放置到底部
+        if (position) {
+          layoutConfig.x = position.x;
+          layoutConfig.y = position.y;
+          if (position.w !== undefined) layoutConfig.w = position.w;
+          if (position.h !== undefined) layoutConfig.h = position.h;
+        }
+
         const newWidget: Widget = {
           id,
           type,
           title: type.charAt(0).toUpperCase() + type.slice(1),
-          layout: sanitizeLayout({ ...layoutConfig, i: id, y: Infinity }),
+          layout: sanitizeLayout({ ...layoutConfig, i: id, y: position ? layoutConfig.y : Infinity }),
           config: getDefaultConfig(type),
         };
 
@@ -310,7 +319,7 @@ export const useStore = create<AppState>()(
         }));
       },
 
-      addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule) => {
+      addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule, position?: { x: number; y: number }) => {
         const id = uuidv4();
         const defaultSize = module.defaultSize || { w: 6, h: 5 };
         const newWidget: Widget = {
@@ -319,8 +328,8 @@ export const useStore = create<AppState>()(
           title: module.name,
           layout: sanitizeLayout({
             i: id,
-            x: 0,
-            y: Infinity,
+            x: position?.x ?? 0,
+            y: position?.y ?? Infinity,
             w: defaultSize.w,
             h: defaultSize.h,
             minW: 1,
@@ -604,6 +613,7 @@ export const useStore = create<AppState>()(
       },
 
       setEditMode: (isEditMode: boolean) => set({ isEditMode }),
+      setPendingMicroAppDrop: (pending: { x: number; y: number; mode: 'widget' | 'floating' } | null) => set({ pendingMicroAppDrop: pending }),
       markDirty: () => set({ isDirty: true }),
       clearDirty: () => set({ isDirty: false }),
 
@@ -706,6 +716,8 @@ export const useStore = create<AppState>()(
               url: module.url,
               entry: module.entry,
             },
+            icon: module.icon,
+            iconSvg: module.iconSvg,
             defaultPosition: 'bottom-right',
             width: 380,
             height: 400,

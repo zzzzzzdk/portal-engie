@@ -149,11 +149,16 @@ const IconPicker: React.FC<IconPickerProps> = ({
 
   // 处理 URL 确认
   const handleUrlConfirm = useCallback(() => {
-    if (!urlInput.trim()) {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
       message.warning('请输入图标URL');
       return;
     }
-    handleChange(urlInput.trim());
+    if (!/^(https?:\/\/|data:image\/)/.test(trimmed)) {
+      message.warning('请输入有效的图标URL，需以 http://、https:// 或 data:image/ 开头');
+      return;
+    }
+    handleChange(trimmed);
     setUrlInput('');
   }, [urlInput, handleChange]);
 

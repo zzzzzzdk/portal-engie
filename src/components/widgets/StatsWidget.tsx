@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Statistic, Card, Row, Col, Spin, Empty } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import { WidgetConfig, Widget } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import axios from 'axios';
 
 /**
@@ -90,7 +91,7 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
     if (refreshInterval > 0) {
       intervalRef.current = setInterval(() => {
         loadData();
-      }, refreshInterval * 1000);
+      }, safeIntervalMs(refreshInterval));
     }
 
     return () => {

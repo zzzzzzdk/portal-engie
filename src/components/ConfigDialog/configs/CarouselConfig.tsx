@@ -8,23 +8,20 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
   return (
     <>
       <Divider>播放设置</Divider>
-      <div className="form-row-3">
+      <div className="form-row-2">
         <Form.Item name="slidesPerView" label="每屏数量" initialValue={1}>
-          <InputNumber min={1} max={5} style={{ width: '100%' }} />
+          <InputNumber min={1} max={5} precision={0} />
         </Form.Item>
         <Form.Item name="slidesPerGroup" label="滚动步长" initialValue={1}>
-          <InputNumber min={1} max={5} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="spaceBetween" label="卡片间距" initialValue={16}>
-          <InputNumber min={0} max={64} style={{ width: '100%' }} suffix="px" />
+          <InputNumber min={1} max={5} precision={0} />
         </Form.Item>
       </div>
-      <div className="form-row-3">
+      <Form.Item name="spaceBetween" label="间距(px)" initialValue={16}>
+        <InputNumber min={0} max={64} precision={0} />
+      </Form.Item>
+      <div className="form-row-2">
         <Form.Item name="speed" label="切换时长(ms)" initialValue={600}>
-          <InputNumber min={100} max={5000} step={100} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="aspectRatio" label="宽高比">
-          <InputNumber min={1} max={3} step={0.1} style={{ width: '100%' }} placeholder="自动适配" />
+          <InputNumber min={100} max={5000} step={100} precision={0} />
         </Form.Item>
         <Form.Item name="effect" label="动画效果" initialValue="slide">
           <Select
@@ -38,14 +35,11 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
           />
         </Form.Item>
       </div>
-      <div className="form-row-3">
+      <div className="form-row-2">
         <Form.Item name="loop" label="循环播放" valuePropName="checked" initialValue>
           <Switch />
         </Form.Item>
         <Form.Item name="centeredSlides" label="居中展示" valuePropName="checked">
-          <Switch />
-        </Form.Item>
-        <Form.Item name="autoHeight" label="自动高度" valuePropName="checked">
           <Switch />
         </Form.Item>
       </div>
@@ -68,26 +62,28 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
       <Form.Item noStyle shouldUpdate={(prev, curr) => prev?.autoplay?.enabled !== curr?.autoplay?.enabled}>
         {({ getFieldValue }) =>
           getFieldValue(['autoplay', 'enabled']) ? (
-            <div className="form-row-3">
-              <Form.Item name={['autoplay', 'delay']} label="间隔(ms)" initialValue={5000}>
-                <InputNumber min={1000} max={15000} step={500} style={{ width: '100%' }} />
+            <>
+              <Form.Item name={['autoplay', 'delay']} label="播放间隔(ms)" initialValue={5000}>
+                <InputNumber min={1000} max={15000} step={500} precision={0} />
               </Form.Item>
-              <Form.Item
-                name={['autoplay', 'pauseOnMouseEnter']}
-                label="悬停暂停"
-                valuePropName="checked"
-                initialValue
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item
-                name={['autoplay', 'disableOnInteraction']}
-                label="交互后停止"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-            </div>
+              <div className="form-row-2">
+                <Form.Item
+                  name={['autoplay', 'pauseOnMouseEnter']}
+                  label="悬停暂停"
+                  valuePropName="checked"
+                  initialValue
+                >
+                  <Switch />
+                </Form.Item>
+                <Form.Item
+                  name={['autoplay', 'disableOnInteraction']}
+                  label="交互后停止"
+                  valuePropName="checked"
+                >
+                  <Switch />
+                </Form.Item>
+              </div>
+            </>
           ) : null
         }
       </Form.Item>
@@ -156,23 +152,26 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
           <div className="config-list-container">
             {fields.map(({ key, name, ...restField }) => (
               <div key={key} className="config-inline-card">
-                <div className="form-row-4">
+                <div className="form-row-2">
                   <Form.Item
                     {...restField}
                     name={[name, 'minWidth']}
                     label="屏宽 ≥(px)"
+                    tooltip="当浏览器宽度大于等于该值时，此断点生效"
                     rules={[{ required: true, message: '请输入屏幕宽度' }]}
                   >
-                    <InputNumber min={320} step={100} style={{ width: '100%' }} />
+                    <InputNumber min={320} step={100} precision={0}/>
                   </Form.Item>
-                  <Form.Item {...restField} name={[name, 'slidesPerView']} label="每屏数量">
-                    <InputNumber min={1} max={5} style={{ width: '100%' }} />
+                  <Form.Item {...restField} name={[name, 'slidesPerView']} label="每屏数量" tooltip="同时可见的幻灯片数量">
+                    <InputNumber min={1} max={5} precision={0}/>
                   </Form.Item>
-                  <Form.Item {...restField} name={[name, 'slidesPerGroup']} label="步长">
-                    <InputNumber min={1} max={5} style={{ width: '100%' }} />
+                </div>
+                <div className="form-row-2">
+                  <Form.Item {...restField} name={[name, 'slidesPerGroup']} label="步长" tooltip="每次滑动切换的幻灯片数量，不填则默认为 1">
+                    <InputNumber min={1} max={5} precision={0}/>
                   </Form.Item>
-                  <Form.Item {...restField} name={[name, 'spaceBetween']} label="间距(px)">
-                    <InputNumber min={0} max={64} style={{ width: '100%' }} />
+                  <Form.Item {...restField} name={[name, 'spaceBetween']} label="间距(px)" tooltip="相邻幻灯片之间的间距，不填则使用全局间距设置">
+                    <InputNumber min={0} max={64} precision={0}/>
                   </Form.Item>
                 </div>
                 <div className="config-inline-actions">
@@ -182,9 +181,7 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
                     size="small"
                     icon={<DeleteOutlined />}
                     onClick={() => remove(name)}
-                  >
-                    删除
-                  </Button>
+                  />
                 </div>
               </div>
             ))}
@@ -201,7 +198,7 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
       </Form.List>
 
       <Divider>展示样式</Divider>
-      <div className="form-row-3">
+      <div className="form-row-2">
         <Form.Item name="textAlign" label="文本对齐" initialValue="left">
           <Select
             options={[
@@ -222,6 +219,8 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
             ]}
           />
         </Form.Item>
+      </div>
+      <div className="form-row-2">
         <Form.Item name="overlayStyle" label="遮罩样式" initialValue="gradient">
           <Select
             options={[
@@ -231,15 +230,13 @@ const CarouselConfig: React.FC<WidgetConfigProps> = () => {
             ]}
           />
         </Form.Item>
-      </div>
-      <div className="form-row-2">
         <Form.Item name="overlayColor" label="遮罩颜色">
           <ColorPicker showText allowClear />
         </Form.Item>
-        <Form.Item name="emptyMessage" label="空数据提示">
-          <Input placeholder="暂无轮播内容" />
-        </Form.Item>
       </div>
+      <Form.Item name="emptyMessage" label="空数据提示">
+        <Input placeholder="暂无轮播内容" />
+      </Form.Item>
     </>
   );
 };

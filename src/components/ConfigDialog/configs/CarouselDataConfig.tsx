@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { WidgetConfigProps } from './types';
+import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import '../index.scss';
 import { uploadImage } from '@/services';
 
@@ -196,7 +197,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item name={['apiConfig', 'listField']} label="列表字段路径">
+                <Form.Item name={['apiConfig', 'listField']} label="列表字段路径" tooltip="指定接口返回数据中数组所在的路径，如 data.list。不填则自动查找 data、list、rows、records 等常见字段">
                   <Input placeholder="data.list" />
                 </Form.Item>
               </div>
@@ -235,7 +236,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
               </div>
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'imageField']} label="图片字段">
-                  <Input placeholder="cover" />
+                  <Input placeholder="imageUrl" />
                 </Form.Item>
                 <Form.Item name={['apiConfig', 'mapping', 'linkField']} label="跳转字段">
                   <Input placeholder="link" />
@@ -249,7 +250,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   <Input placeholder="badge" />
                 </Form.Item>
                 <Form.Item name="refreshInterval" label="刷新间隔(秒)">
-                  <InputNumber min={0} step={5} style={{ width: '100%' }} placeholder="0 表示不自动刷新" />
+                  <InputNumber min={0} max={MAX_REFRESH_INTERVAL} step={5} style={{ width: '100%' }} placeholder="0 表示不自动刷新" />
                 </Form.Item>
                 <div />
               </div>

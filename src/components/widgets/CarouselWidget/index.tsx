@@ -8,6 +8,7 @@ import type {
   CarouselWidgetConfig,
   Widget,
 } from '@/types';
+import { safeIntervalMs } from '@/constants/dashboard';
 import SwiperCarousel from '@/components/SwiperCarousel';
 import './index.scss';
 
@@ -86,11 +87,26 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         headers,
         data: method.toUpperCase() === 'GET' ? undefined : body,
       });
-      const listSource =
-        (listField ? getValueByPath(response.data, listField) : null) ??
-        response.data?.data ??
-        response.data?.list ??
-        response.data;
+      const findList = (data: any): any[] | null => {
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object') {
+          if (Array.isArray(data.data)) return data.data;
+          if (Array.isArray(data.list)) return data.list;
+          if (Array.isArray(data.rows)) return data.rows;
+          if (Array.isArray(data.records)) return data.records;
+          // 递归一层：data.data 是对象时再查找
+          if (data.data && typeof data.data === 'object') {
+            const nested = data.data;
+            if (Array.isArray(nested.list)) return nested.list;
+            if (Array.isArray(nested.rows)) return nested.rows;
+            if (Array.isArray(nested.records)) return nested.records;
+          }
+        }
+        return null;
+      };
+      const listSource = listField
+        ? getValueByPath(response.data, listField)
+        : findList(response.data);
       const dataList = Array.isArray(listSource) ? listSource : [];
       const normalized = dataList.map((item, index) =>
         normalizeSlide(item, index, mapping),
@@ -118,7 +134,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     }
     const timer = setInterval(() => {
       fetchSlides();
-    }, carouselConfig.refreshInterval * 1000);
+    }, safeIntervalMs(carouselConfig.refreshInterval));
     return () => clearInterval(timer);
   }, [carouselConfig.refreshInterval, dataSourceType, fetchSlides]);
 
@@ -145,11 +161,11 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
       if (!item?.minWidth) {
         return acc;
       }
-      acc[item.minWidth] = {
-        slidesPerView: item.slidesPerView,
-        slidesPerGroup: item.slidesPerGroup,
-        spaceBetween: item.spaceBetween,
-      };
+      const bp: Record<string, any> = {};
+      if (item.slidesPerView != null) bp.slidesPerView = item.slidesPerView;
+      if (item.slidesPerGroup != null) bp.slidesPerGroup = item.slidesPerGroup;
+      if (item.spaceBetween != null) bp.spaceBetween = item.spaceBetween;
+      acc[item.minWidth] = bp;
       return acc;
     }, {});
   }, [carouselConfig.responsive]);
@@ -186,8 +202,6 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         : undefined,
       breakpoints: responsiveBreakpoints,
       watchSlidesProgress: true,
-      observer: true,
-      observeParents: true,
     }),
     [carouselConfig, responsiveBreakpoints],
   );
@@ -208,10 +222,8 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     [isEditMode, openLink],
   );
 
-  const aspectRatio = carouselConfig.aspectRatio;
   const accentColor = normalizeColor(carouselConfig.overlayColor, '#ffffff');
   const emptyHint = carouselConfig.emptyMessage || '暂无轮播内容';
-  const viewportStyle = aspectRatio ? { aspectRatio } : { height: '100%' };
 
   const renderSlide = useCallback(
     (slide: CarouselSlide) => {
@@ -296,7 +308,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     >
       <div
         className="carousel-widget__viewport"
-        style={viewportStyle}
+        style={{ height: '100%' }}
       >
         {hasSlides && (
           <SwiperCarousel

@@ -19,6 +19,7 @@ import { Resizable, ResizeCallbackData } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
+import { isValidCssGradient } from '@/components/BackgroundSettings';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
@@ -48,19 +49,20 @@ const findFloatingContainer = (): ContainerElement => {
 };
 
 const getViewportSize = (container?: ContainerElement): Viewport => {
-  if (container) {
-    return {
-      width: container.clientWidth,
-      height: container.clientHeight,
-    };
-  }
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { width: 0, height: 0 };
   }
-  return {
-    width: window.innerWidth || document.documentElement?.clientWidth || 0,
-    height: window.innerHeight || document.documentElement?.clientHeight || 0,
-  };
+  const winW = window.innerWidth || document.documentElement?.clientWidth || 0;
+  const winH = window.innerHeight || document.documentElement?.clientHeight || 0;
+  if (container) {
+    const offset = getContainerOffset(container);
+    // 将容器尺寸限制在可见视口范围内，避免可滚动容器的 clientHeight 超出屏幕
+    return {
+      width: Math.min(container.clientWidth, winW - offset.left),
+      height: Math.min(container.clientHeight, winH - offset.top),
+    };
+  }
+  return { width: winW, height: winH };
 };
 
 const clamp = (value: number, min: number, max: number) => {
@@ -192,7 +194,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const collapsedWidth = config.collapsedWidth || 60;
   const collapsedHeight = config.collapsedHeight || 60;
   const collapsedIcon = config.collapsedIcon || config.icon;
-  const collapsedBgColor = config.collapsedBgColor;
+  const collapsedBgColor = config.collapsedBgColor || '#1677ff';
   const collapsedIconSize = config.collapsedIconSize || 28;
   const initialSizeState: Size =
     config.isExpanded === false
@@ -209,9 +211,13 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const sizeRef = useRef<Size>(initialSizeState);
 
   const [position, setPosition] = useState<Position>(() => {
-    // 优先使用比例值，可在不同容器尺寸间自适应
+    // 优先使用比例值（基于容器可见视口），还原为容器内坐标
     if (config.positionRatio && initialViewport.width && initialViewport.height) {
-      return ratioToPosition(config.positionRatio, initialSizeState, initialViewport);
+      return clampPosition(
+        ratioToPosition(config.positionRatio, initialSizeState, initialViewport),
+        initialSizeState,
+        initialViewport,
+      );
     }
 
     // 如果有保存的绝对位置，直接使用并限制在视口内
@@ -394,6 +400,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
           let expandedPos: Position;
           if (lastExpandedPosRef.current) {
             expandedPos = clampPosition(lastExpandedPosRef.current, newSize, viewport);
+          } else if (config.expandAnchor === 'top-left') {
+            expandedPos = clampPosition(prev, newSize, viewport);
           } else {
             expandedPos = calculateSmartPosition(prev, size, newSize, viewport);
           }
@@ -441,10 +449,10 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       style.backgroundColor = color;
     } else if (bgType === 'image' && config.backgroundImage) {
       style.backgroundImage = `url(${config.backgroundImage})`;
-      style.backgroundSize = config.backgroundSize || 'cover';
+      style.backgroundSize = config.backgroundSize || 'auto';
       style.backgroundRepeat = config.backgroundRepeat || 'no-repeat';
       style.backgroundPosition = config.backgroundPosition || 'center';
-    } else if (bgType === 'gradient' && config.backgroundGradient) {
+    } else if (bgType === 'gradient' && config.backgroundGradient && isValidCssGradient(config.backgroundGradient)) {
       style.background = config.backgroundGradient;
     }
 
@@ -501,6 +509,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       if (savePositionTimeoutRef.current) clearTimeout(savePositionTimeoutRef.current);
       savePositionTimeoutRef.current = setTimeout(() => {
         const sizeForRatio = currentSize || sizeRef.current;
+        // 基于容器可见视口计算 ratio
         const ratio = positionToRatio(pos, sizeForRatio, viewport);
         updateFloatingModulePosition(widget.id, pos, ratio);
       }, 300);
@@ -591,6 +600,9 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
       if (lastExpandedPosRef.current) {
         // 有记忆的展开位置，直接恢复
         nextPos = clampPosition(lastExpandedPosRef.current, nextSize, viewport);
+      } else if (config.expandAnchor === 'top-left') {
+        // 基于左上角展开：保持当前位置不变，向右下方扩展，clamp 确保不超出视口
+        nextPos = clampPosition(position, nextSize, viewport);
       } else {
         // 无记忆位置（首次展开或收起后拖拽过），基于当前位置智能计算
         nextPos = calculateSmartPosition(position, size, nextSize, viewport);
@@ -611,7 +623,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
 
     toggleFloatingModuleExpanded(widget.id);
     debouncedSavePosition(nextPos);
-  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
+  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, config.expandAnchor, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
 
   const shellTransition = useMemo(
     () => ({ type: 'spring', stiffness: 260, damping: 28, mass: 1.1 }),
