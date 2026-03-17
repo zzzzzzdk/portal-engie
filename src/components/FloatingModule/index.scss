@@ -402,6 +402,18 @@
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+
+    .icon-renderer,
+    .icon-renderer *,
+    img,
+    svg {
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+    }
   }
 
   &.collapsed .floating-module-collapsed-face {
