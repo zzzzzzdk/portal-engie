@@ -101,7 +101,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       padding: 0 4px;
 
       .action-item {
@@ -109,6 +109,8 @@
         align-items: center;
         gap: 8px;
         min-width: 0;
+        flex: 1;
+        min-width: 100px;
 
         .label {
           font-size: 12px;
@@ -117,7 +119,8 @@
         }
 
         .action-select {
-          width: 240px;
+          flex: 1;
+          min-width: 80px;
           max-width: 100%;
 
           .ant-select-selection-item {
@@ -131,7 +134,8 @@
       .action-right {
          display: flex;
          align-items: center;
-         gap: 16px;
+         gap: 12px;
+         flex-shrink: 0;
       }
     }
   }

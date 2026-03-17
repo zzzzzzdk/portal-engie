@@ -36,6 +36,7 @@ interface SearchWidgetConfig extends WidgetConfig {
   apiEndpoint?: string;              // API 地址
   apiMethod?: 'GET' | 'POST';       // HTTP 方法
   apiHeaders?: Record<string, string>;
+  apiBody?: string;
 }
 
 interface SearchWidgetProps {
@@ -56,6 +57,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   const apiEndpoint = searchConfig?.apiEndpoint;
   const apiMethod = searchConfig?.apiMethod || 'GET';
   const apiHeaders = searchConfig?.apiHeaders;
+  const apiBody = searchConfig?.apiBody;
 
   // 简单搜索状态
   const [searchValue, setSearchValue] = useState('');
@@ -101,13 +103,34 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   }, [eventRoutes, widget?.id]);
 
   // 统一搜索处理
+  const buildApiPayload = useCallback((searchParams: Record<string, any>) => {
+    if (!apiBody?.trim()) {
+      return searchParams;
+    }
+
+    try {
+      const parsedBody = JSON.parse(apiBody);
+      if (parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)) {
+        return {
+          ...parsedBody,
+          ...searchParams,
+        };
+      }
+    } catch (error) {
+      console.warn('SearchWidget: apiBody JSON 解析失败，将仅发送搜索参数', error);
+    }
+
+    return searchParams;
+  }, [apiBody]);
+
   const handleSearchSubmit = useCallback(async (searchParams: Record<string, any>) => {
     if (submitMethod === 'api' && apiEndpoint) {
       try {
+        const requestPayload = buildApiPayload(searchParams);
         await axios({
           method: apiMethod,
           url: apiEndpoint,
-          ...(apiMethod === 'GET' ? { params: searchParams } : { data: searchParams }),
+          ...(apiMethod === 'GET' ? { params: searchParams } : { data: requestPayload }),
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         });
         message.success('搜索请求已发送');
@@ -118,7 +141,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     } else {
       emitSearchEvent(searchParams);
     }
-  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, emitSearchEvent]);
+  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiPayload, emitSearchEvent]);
 
   // 简单搜索
   const handleSimpleSearch = (value: string) => {

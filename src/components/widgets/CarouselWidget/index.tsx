@@ -62,6 +62,23 @@ const normalizeColor = (value?: any, fallback?: string) => {
   return fallback;
 };
 
+const resolveRequestBody = (rawBody?: Record<string, any> | string) => {
+  if (rawBody == null || rawBody === '') {
+    return undefined;
+  }
+
+  if (typeof rawBody === 'string') {
+    try {
+      return JSON.parse(rawBody);
+    } catch (error) {
+      console.warn('CarouselWidget: 请求体 JSON 解析失败，将忽略该配置', error);
+      return undefined;
+    }
+  }
+
+  return rawBody;
+};
+
 const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditMode }) => {
   const carouselConfig = config as CarouselWidgetConfig;
   const dataSourceType = carouselConfig.dataSourceType || 'static';
@@ -75,8 +92,9 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
       setRemoteSlides([]);
       return;
     }
-    const { endpoint, method = 'GET', params, headers, body, listField, mapping } =
+    const { endpoint, method = 'GET', params, headers, body, bodyParams, listField, mapping } =
       carouselConfig.apiConfig;
+    const requestBody = resolveRequestBody(body ?? bodyParams);
     setLoading(true);
     setError(null);
     try {
@@ -85,7 +103,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         method,
         params,
         headers,
-        data: method.toUpperCase() === 'GET' ? undefined : body,
+        data: method.toUpperCase() === 'GET' ? undefined : requestBody,
       });
       const findList = (data: any): any[] | null => {
         if (Array.isArray(data)) return data;

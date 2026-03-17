@@ -269,7 +269,8 @@ export interface CarouselApiConfig {
   method?: 'GET' | 'POST';
   params?: Record<string, any>;
   headers?: Record<string, string>;
-  body?: Record<string, any>;
+  body?: Record<string, any> | string;
+  bodyParams?: Record<string, any> | string;
   listField?: string;
   mapping?: CarouselApiMapping;
 }

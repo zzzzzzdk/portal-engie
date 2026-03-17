@@ -559,7 +559,7 @@ const DashboardInner: React.FC = () => {
           addFloatingModuleLocal(
             'assistantHub',
             '助手中心',
-            { entries: [], collapsedIcon: 'CustomerServiceOutlined' },
+            { entries: [] },
             {
               width: 720, height: 500,
               collapsedWidth: 60, collapsedHeight: 60,

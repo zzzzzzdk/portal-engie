@@ -88,7 +88,7 @@ npm run dev
 npm run mock
 ```
 
-应用将在 `http://localhost:3000` 运行，Mock API 在 `http://localhost:3001`。
+应用将在 `http://localhost:3002` 运行，Mock API 在 `http://localhost:4001`。
 
 ### 生产构建
 

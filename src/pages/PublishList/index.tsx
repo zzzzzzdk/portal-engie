@@ -10,10 +10,12 @@ import {
   AppstoreOutlined,
   BarsOutlined,
   ShareAltOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { getPublishList, deletePublishedDashboard, PublishListItem } from '@/services/dashboard';
+import { exportDashboardFromList } from '@/utils/exportHtml';
 import { useStore } from '@/store/useStore';
 import { useTableScroll } from '@/hooks/useTableScroll';
 import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
@@ -38,6 +40,7 @@ const PublishList: React.FC = () => {
   });
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const { resetDashboard, setEditMode } = useStore();
+  const [exportLoading, setExportLoading] = useState<string | null>(null);
 
   // 获取发布列表
   const fetchList = useCallback(async (page: number, page_size: number, keyword?: string) => {
@@ -121,6 +124,19 @@ const PublishList: React.FC = () => {
   // 预览
   const handlePreview = (record: PublishListItem) => {
     window.open(`${window.location.origin + window.location.pathname}#/preview/${record.id}`, '_blank');
+  };
+
+  // 导出
+  const handleExport = async (record: PublishListItem) => {
+    setExportLoading(record.id);
+    try {
+      await exportDashboardFromList(record.id, record.title ? record.title + '_' + record.id + '.html' : '工作台_' + record.id + '.html');
+    } catch (error: any) {
+      console.error('导出失败:', error);
+      message.error('导出失败: ' + (error.message || '未知错误'));
+    } finally {
+      setExportLoading(null);
+    }
   };
 
   // 复制访问地址（兼容非 HTTPS 环境）
@@ -252,7 +268,7 @@ const PublishList: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 240,
       fixed: 'right',
       render: (_: any, record: PublishListItem) => (
         <Space size="small">
@@ -262,6 +278,15 @@ const PublishList: React.FC = () => {
               size="small"
               icon={<EyeOutlined />}
               onClick={() => handlePreview(record)}
+            />
+          </Tooltip>
+          <Tooltip title="导出">
+            <Button
+              type="text"
+              size="small"
+              icon={<DownloadOutlined />}
+              loading={exportLoading === record.id}
+              onClick={() => handleExport(record)}
             />
           </Tooltip>
           <Tooltip title="编辑">
@@ -350,6 +375,9 @@ const PublishList: React.FC = () => {
                         </Tooltip>
                         <Tooltip title="预览">
                           <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
+                        </Tooltip>
+                        <Tooltip title="导出">
+                          <Button type="text" icon={<DownloadOutlined />} onClick={() => handleExport(item)} loading={exportLoading === item.id} />
                         </Tooltip>
                         <Tooltip title="编辑">
                           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />

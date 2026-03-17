@@ -56,7 +56,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
   const { styleTokens } = useCanvasTheme();
   const [form] = Form.useForm();
   const showNavMenuValue = Form.useWatch('showNavMenu', form);
-  const navItemsValue = Form.useWatch('navItems', form);
   const statsItemsValue = Form.useWatch('statsItems', form);
   const [fileList, setFileList] = useState<any[]>([]);
   const prevWidgetIdRef = useRef<string | null>(null);
@@ -297,12 +296,20 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         }
 
         // carousel 接口请求头初始化
-        if (widget.type === 'carousel' && widget.config.apiConfig?.headers) {
-          const headersList = Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value }));
+        if (widget.type === 'carousel' && widget.config.apiConfig) {
           form.setFieldsValue({
             apiConfig: {
               ...form.getFieldValue('apiConfig'),
-              headersList,
+              ...(widget.config.apiConfig.headers
+                ? {
+                    headersList: Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value })),
+                  }
+                : {}),
+              bodyParams: typeof (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams) === 'string'
+                ? (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams)
+                : (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams)
+                  ? JSON.stringify(widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams, null, 2)
+                  : '',
             },
           });
         }
@@ -344,6 +351,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           form.setFieldsValue({
             submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
             apiMethod: widget.config.apiMethod || 'GET',
+            apiBody: widget.config.apiBody || '',
             apiHeadersList: widget.config.apiHeaders
               ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
               : [],
@@ -372,7 +380,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
           // 折叠状态配置
           collapsedWidth: widget.config.collapsedWidth || 60,
           collapsedHeight: widget.config.collapsedHeight || 60,
-          collapsedIcon: widget.config.collapsedIcon || widget.config.iconSvg || widget.config.icon || '',
+          collapsedIcon: widget.config.collapsedIcon || '',
           collapsedBgColor: normalizeColorValue(widget.config.collapsedBgColor, '#1677ff'),
           collapsedIconSize: widget.config.collapsedIconSize || 28,
         });
@@ -941,6 +949,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
               });
               normalizedRestConfig.apiConfig.headers = Object.keys(headers).length > 0 ? headers : undefined;
               delete normalizedRestConfig.apiConfig.headersList;
+            }
+
+            if (normalizedRestConfig.apiConfig.method !== 'POST') {
+              normalizedRestConfig.apiConfig.body = undefined;
+              delete normalizedRestConfig.apiConfig.bodyParams;
+            } else if (typeof normalizedRestConfig.apiConfig.bodyParams === 'string') {
+              const bodyText = normalizedRestConfig.apiConfig.bodyParams.trim();
+              normalizedRestConfig.apiConfig.body = bodyText ? JSON.parse(bodyText) : undefined;
+              delete normalizedRestConfig.apiConfig.bodyParams;
+            } else if (normalizedRestConfig.apiConfig.bodyParams) {
+              normalizedRestConfig.apiConfig.body = normalizedRestConfig.apiConfig.bodyParams;
+              delete normalizedRestConfig.apiConfig.bodyParams;
             }
           }
 
@@ -1535,11 +1555,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                         expandIconPosition="end"
                       >
                         {fields.map(({ key, name, ...restField }, index) => {
-                          const navName = navItemsValue?.[name]?.name || `导航项 ${index + 1}`;
                           return (
                             <Collapse.Panel
                               key={key}
-                              header={navName}
+                              header={(
+                                <Form.Item
+                                  noStyle
+                                  shouldUpdate={(prev, cur) =>
+                                    prev.navItems?.[name]?.name !== cur.navItems?.[name]?.name
+                                  }
+                                >
+                                  {() => form.getFieldValue(['navItems', name, 'name']) || `导航项 ${index + 1}`}
+                                </Form.Item>
+                              )}
                               extra={
                                 <Button
                                   type="text"
@@ -2145,7 +2173,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       </div>
       <div className="form-row-3">
         <Form.Item label="折叠图标" name="collapsedIcon" tooltip="支持图标名称、图片URL、上传图片或SVG代码">
-          <IconPicker mode="full" placeholder="CustomerServiceOutlined" />
+          <IconPicker mode="full" placeholder="" />
         </Form.Item>
         <Form.Item label="图标大小" name="collapsedIconSize" rules={[{ type: 'number', min: 12 }]}>
           <InputNumber style={{ width: '100%' }} suffix="px" />

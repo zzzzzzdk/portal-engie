@@ -123,11 +123,11 @@ const MicroAppMarket: React.FC<MicroAppMarketProps> = ({ open, onClose, onSelect
         key={`${system.id}-${systemIndex}`}
         header={
           <div className="system-header">
-            <span className="system-name">{system.name}</span>
+            <span className="system-name" title={system.name}>{system.name}</span>
             <span className="system-count">({system.modules.length} 个模块)</span>
           </div>
         }
-        extra={system.description && <span className="system-desc">{system.description}</span>}
+        extra={system.description && <span className="system-desc" title={system.description}>{system.description}</span>}
       >
         <Row gutter={[16, 16]}>
           {system.modules.map((module, moduleIndex) => (
