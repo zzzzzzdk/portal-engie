@@ -193,7 +193,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
   const config = widget.config as FloatingModuleConfig;
   const collapsedWidth = config.collapsedWidth || 60;
   const collapsedHeight = config.collapsedHeight || 60;
-  const collapsedIcon = config.collapsedIcon || config.icon;
+  const collapsedIcon = config.collapsedIcon || config.iconSvg || config.icon;
   const collapsedBgColor = config.collapsedBgColor || '#1677ff';
   const collapsedIconSize = config.collapsedIconSize || 28;
   const initialSizeState: Size =

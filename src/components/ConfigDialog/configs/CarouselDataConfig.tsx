@@ -18,8 +18,22 @@ import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import '../index.scss';
 import { uploadImage } from '@/services';
 
+// 验证 JSON 格式
+const validateJson = (_: any, value: string) => {
+  if (!value) {
+    return Promise.resolve();
+  }
+  try {
+    JSON.parse(value);
+    return Promise.resolve();
+  } catch {
+    return Promise.reject('请输入合法的 JSON 格式');
+  }
+};
+
 const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
   const [uploadingIndex, setUploadingIndex] = useState<string | null>(null);
+  const apiMethod = Form.useWatch(['apiConfig', 'method'], form) || 'GET';
 
   return (
     <>
@@ -48,16 +62,6 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                           }}>
                             <span>轮播项 {name + 1}</span>
                             <div className="header-actions">
-                              {/* <Button
-                                type="text"
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.closest('.config-item-card')?.classList.toggle('expanded');
-                                }}
-                              >
-                                展开/收起
-                              </Button> */}
                               <Button
                                 type="text"
                                 danger
@@ -223,6 +227,20 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   )}
                 </Form.List>
               </Form.Item>
+              {apiMethod === 'POST' && (
+                <Form.Item
+                  name={['apiConfig', 'bodyParams']}
+                  label="请求参数(JSON)"
+                  tooltip="POST 请求体，请输入合法的 JSON 格式"
+                  rules={[{ validator: validateJson }]}
+                >
+                  <Input.TextArea
+                    rows={4}
+                    placeholder='{"key": "value"}'
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              )}
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'titleField']} label="标题字段">
                   <Input placeholder="title" />

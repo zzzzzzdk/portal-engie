@@ -208,7 +208,6 @@ const Layout: React.FC = () => {
         '助手中心',
         {
           entries: [],
-          collapsedIcon: 'CustomerServiceOutlined',
         },
         {
           defaultPosition: 'bottom-right',

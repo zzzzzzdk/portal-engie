@@ -74,6 +74,10 @@
               font-size: 15px;
               font-weight: 600;
               color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+              max-width: 200px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
             }
 
             .system-count {
@@ -83,9 +87,14 @@
           }
 
           .system-desc {
+            display: block;
             font-size: 12px;
             color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
             margin-left: 8px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
         }
 

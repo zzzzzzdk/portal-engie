@@ -9,12 +9,26 @@ const SEARCH_SENDER_EVENTS = [
   { id: 'search-submit', type: MicroAppEventType.DATA_SUBMIT, name: '搜索提交' },
 ];
 
+// 验证 JSON 格式
+const validateJson = (_: any, value: string) => {
+  if (!value) {
+    return Promise.resolve();
+  }
+  try {
+    JSON.parse(value);
+    return Promise.resolve();
+  } catch {
+    return Promise.reject('请输入合法的 JSON 格式');
+  }
+};
+
 /**
  * 搜索组件配置 - 数据交互
  */
 const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
   const form = Form.useFormInstance();
   const submitMethod = Form.useWatch('submitMethod', form) || 'eventRoute';
+  const apiMethod = Form.useWatch('apiMethod', form) || 'GET';
 
   return (
     <>
@@ -61,6 +75,20 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
               )}
             </Form.List>
           </Form.Item>
+          {apiMethod === 'POST' && (
+            <Form.Item
+              name="apiBody"
+              label="请求参数(JSON)"
+              tooltip="POST 请求体，请输入合法的 JSON 格式"
+              rules={[{ validator: validateJson }]}
+            >
+              <Input.TextArea
+                rows={4}
+                placeholder='{"key": "value"}'
+                style={{ fontFamily: 'monospace' }}
+              />
+            </Form.Item>
+          )}
         </>
       )}
 
