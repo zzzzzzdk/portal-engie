@@ -12,7 +12,7 @@ const ensureSeededDashboards = () => {
   }
   const seededDashboards = {
     canglan: {
-      id: 'f15a8606-3b1d-4a54-bc5b-4e60076338fe',
+      id: 'canglan',
       title: '苍澜测试',
       widgets: [
         {
@@ -925,5 +925,8 @@ router.get('/v1/dashboard/home/configuration-json', async (req, res) => {
 
   res.json(req.json);
 });
+
+// 将 mockDashboards 导出到全局，以便 export.js 可以访问
+global.mockDashboards = mockDashboards;
 
 module.exports = router;

@@ -68,7 +68,7 @@ Portal Engine 是一个**企业级可视化仪表盘平台**，用户可通过�
 
 | 环境 | 前端地址 | API地址 |
 |------|----------|---------|
-| 开发环境 | http://localhost:3000 | http://localhost:4001 |
+| 开发环境 | http://localhost:3002 | http://localhost:4001 |
 | 生产环境 | 根据部署配置 | 根据部署配置 |
 
 ---

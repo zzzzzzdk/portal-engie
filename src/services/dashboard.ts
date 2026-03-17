@@ -1,5 +1,6 @@
 // 工作台相关接口服务
 import ajax from '../utils/axios.config';
+import { getToken } from '@/utils/cookie';
 import type { Widget, WidgetGroup, DashboardConfig } from '@/types';
 
 // 工作台快照：统一打包 widgets/groups/floatingModules/page config
@@ -137,4 +138,78 @@ export const deletePublishedDashboard = (data: { id: string }) => {
     url: `/v1/dashboard/publish/delete`,
     data,
   });
+};
+
+/**
+ * 导出进度回调
+ */
+export type ExportProgressCallback = (info: {
+  phase: 'sending' | 'downloading' | 'done' | 'error';
+  message: string;
+}) => void;
+
+/**
+ * 导出已发布工作台（通过 dashboardId）
+ * 后端通过 /export/render 接口渲染页面并返回 ZIP 文件
+ */
+export const exportPublishedDashboard = async (
+  dashboardId: string,
+  onProgress?: ExportProgressCallback
+): Promise<void> => {
+  onProgress?.({ phase: 'sending', message: '正在发送到服务端渲染...' });
+
+  try {
+    const token = getToken();
+    const response = await fetch('/api/export/render', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': token } : {}),
+      },
+      body: JSON.stringify({ dashboardId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `请求失败: ${response.status}`);
+    }
+
+    // 下载 ZIP 文件
+    onProgress?.({ phase: 'downloading', message: '正在下载渲染结果...' });
+
+    const blob = await response.blob();
+
+    // 获取响应头中的统计信息
+    const duration = response.headers.get('X-Export-Duration');
+    const resourceCount = response.headers.get('X-Export-Resources');
+
+    // 从 dashboardId 推断标题（实际应该从后端返回）
+    const title = '工作台';
+
+    // 生成文件名
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const fileName = `${title}_导出_${timestamp}.zip`;
+
+    // 触发浏览器下载
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    onProgress?.({
+      phase: 'done',
+      message: `导出完成！耗时: ${duration || '?'}s, 资源数: ${resourceCount || '?'}`,
+    });
+  } catch (error: any) {
+    console.error('服务端导出失败:', error);
+    onProgress?.({
+      phase: 'error',
+      message: error.message || '服务端导出失败',
+    });
+    throw error;
+  }
 };
