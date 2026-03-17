@@ -852,6 +852,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
                     className="floating-module-collapsed-face drag-handle"
                     animate={{ opacity: isExpanded ? 0 : 1, scale: isExpanded ? 0.9 : 1 }}
                     transition={isDragging ? { duration: 0 } : shellTransition}
+                    onDragStart={(event) => event.preventDefault()}
                   >
                     <IconRenderer
                       value={collapsedIcon as string}
