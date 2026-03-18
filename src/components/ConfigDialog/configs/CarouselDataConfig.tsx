@@ -15,6 +15,7 @@ import {
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { WidgetConfigProps } from './types';
 import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
+import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import '../index.scss';
 import { uploadImage } from '@/services';
 
@@ -154,6 +155,31 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                                 <ColorPicker showText allowClear />
                               </Form.Item>
                             </div>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'systemId']}
+                              label="所属系统"
+                              dependencies={[
+                                ['slides', name, 'link'],
+                                ['slides', name, 'buttonLink'],
+                              ]}
+                              rules={[
+                                {
+                                  validator: async (_, value) => {
+                                    const slide = form.getFieldValue(['slides', name]) || {};
+                                    if (!slide.link && !slide.buttonLink) {
+                                      return Promise.resolve();
+                                    }
+                                    if (value) {
+                                      return Promise.resolve();
+                                    }
+                                    return Promise.reject(new Error('请选择所属系统'));
+                                  },
+                                },
+                              ]}
+                            >
+                              <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} allowClear />
+                            </Form.Item>
                             <Form.Item {...restField} name={[name, 'overlayColor']} label="遮罩颜色">
                               <ColorPicker showText allowClear />
                             </Form.Item>

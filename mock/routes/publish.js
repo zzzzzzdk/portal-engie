@@ -259,7 +259,7 @@ const ensureSeededDashboards = () => {
       publishedAt: '2026-01-19 16:58:02',
     },
     pub_1: {
-      id: 'bab6f5a9-cdf8-4bc0-bdf6-4c8fef36ef69',
+      id: 'pub_1',
       title: '沧澜门户（极简）',
       widgets: [
         {
@@ -483,40 +483,108 @@ const ensureSeededDashboards = () => {
       publishedAt: '2026-01-26 14:53:23',
     },
     pub_2: {
-      id: '',
+      id: 'pub_2',
       title: '22',
       widgets: [
         {
-          id: '86eac051-5285-48b5-8746-151616f31c1a',
-          type: 'microApp',
-          title: '表单',
-          layout: {
-            i: '86eac051-5285-48b5-8746-151616f31c1a',
-            x: 12,
-            y: 1,
-            w: 8,
-            h: 6,
-            minW: 1,
-            minH: 1,
+          "id": "882d2666-2a8d-4f77-97bd-927d3f748de7",
+          "type": "headerBar",
+          "title": "HeaderBar",
+          "layout": {
+            "w": 36,
+            "h": 2,
+            "x": 0,
+            "y": 0,
+            "minW": 1,
+            "minH": 1,
+            "i": "882d2666-2a8d-4f77-97bd-927d3f748de7"
           },
-          config: {
-            title: '表单',
-            showTitle: true,
-            refreshInterval: 60,
-            systemId: 'db_001',
-            moduleId: 'db_mod_001',
-            microAppUrl: 'http://localhost:8083/#/input-only',
-            microAppEntry: 'http://localhost:8083/#/input-only',
-            sync: true,
-            alive: true,
-            icon: 'http://192.168.13.31:8083/static/images/gongan.png',
-            forceIconOnly: false,
-            eventRoutes: [],
-            backgroundType: 'color',
-            backgroundColor: 'rgba(255,255,255,0.20)',
-            contentPadding: 44,
-          },
+          "config": {
+            "title": "导航栏",
+            "showTitle": false,
+            "headerTitle": "导航栏",
+            "fontFamily": "YouSheBiaoTiHei",
+            "backgroundType": "gradient",
+            "showNavMenu": false,
+            "navDataSource": "static",
+            "titleColor": "rgb(255,255,255)",
+            "backgroundColor": "#ffffff",
+            "backgroundGradient": "linear-gradient(to top, #30cfd0 0%, #330867 100%)",
+            "headerAlignment": "left",
+            "textColor": "rgb(255,255,255)"
+          }
         },
+        {
+          "id": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
+          "type": "microApp",
+          "title": "表单",
+          "layout": {
+            "i": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
+            "x": 0,
+            "y": 2,
+            "w": 36,
+            "h": 4,
+            "minW": 1,
+            "minH": 1
+          },
+          "config": {
+            "title": "表单",
+            "showTitle": true,
+            "refreshInterval": 60,
+            "systemId": "db_001",
+            "moduleId": "db_mod_001",
+            "microAppUrl": "http://localhost:8083/#/input-only",
+            "microAppEntry": "http://localhost:8083/#/input-only",
+            "sync": true,
+            "alive": true,
+            "icon": "http://192.168.13.31:8083/static/images/gongan.png"
+          }
+        },
+        {
+          "id": "19d9384c-48e4-49d4-a89f-49173cd5c28a",
+          "type": "dataTable",
+          "title": "DataTable",
+          "layout": {
+            "w": 8,
+            "h": 7,
+            "x": 0,
+            "y": 6,
+            "minW": 6,
+            "minH": 4,
+            "i": "19d9384c-48e4-49d4-a89f-49173cd5c28a"
+          },
+          "config": {
+            "title": "DataTable",
+            "showTitle": true,
+            "refreshInterval": 60
+          }
+        },
+        {
+          "id": "2433a113-03a1-4060-ae03-3ebb95471b84",
+          "type": "microApp",
+          "title": "结果页",
+          "layout": {
+            "i": "2433a113-03a1-4060-ae03-3ebb95471b84",
+            "x": 8,
+            "y": 6,
+            "w": 28,
+            "h": 11,
+            "minW": 1,
+            "minH": 1
+          },
+          "config": {
+            "title": "结果页",
+            "showTitle": true,
+            "refreshInterval": 60,
+            "systemId": "db_002",
+            "moduleId": "db_mod_002",
+            "microAppUrl": "http://192.168.13.31:8083/#/table-only",
+            "microAppEntry": "http://192.168.13.31:8083/",
+            "sync": true,
+            "alive": true,
+            "icon": "https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表"
+          }
+        }
       ],
       groups: [],
       floatingModules: [],
@@ -547,15 +615,15 @@ const ensureSeededDashboards = () => {
         },
       },
     },
-    pub_3: { id: '33',   publishedAt: '2026-01-01 16:58:02',},
-    pub_4: {  id: '44',  publishedAt: '2026-01-01 16:58:02',},
-    pub_5: {  id: '55',  publishedAt: '2026-01-01 16:58:02',},
-    pub_6: {  id: '66',  publishedAt: '2026-01-01 16:58:02',},
-    pub_7: {  id: '77',  publishedAt: '2026-01-01 16:58:02',},
-    pub_8: {  id: '88',  publishedAt: '2026-01-01 16:58:02',},
-    pub_9: {  id: '99',  publishedAt: '2026-01-01 16:58:02',},
-    pub_10: {  id: '10',  publishedAt: '2026-01-01 16:58:02',},
-    pub_11: {  id: '11',  publishedAt: '2026-01-01 16:58:02',},
+    pub_3: { id: '33', publishedAt: '2026-01-01 16:58:02', },
+    pub_4: { id: '44', publishedAt: '2026-01-01 16:58:02', },
+    pub_5: { id: '55', publishedAt: '2026-01-01 16:58:02', },
+    pub_6: { id: '66', publishedAt: '2026-01-01 16:58:02', },
+    pub_7: { id: '77', publishedAt: '2026-01-01 16:58:02', },
+    pub_8: { id: '88', publishedAt: '2026-01-01 16:58:02', },
+    pub_9: { id: '99', publishedAt: '2026-01-01 16:58:02', },
+    pub_10: { id: '10', publishedAt: '2026-01-01 16:58:02', },
+    pub_11: { id: '11', publishedAt: '2026-01-01 16:58:02', },
   };
 
   Object.entries(seededDashboards).forEach(([key, value]) => {
@@ -719,10 +787,10 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
   const keywordString = String(keyword || '').toLowerCase();
   const filteredData = keywordString
     ? allRecords.filter(
-        (item) =>
-          item.title.toLowerCase().includes(keywordString) ||
-          item.id.toLowerCase().includes(keywordString)
-      )
+      (item) =>
+        item.title.toLowerCase().includes(keywordString) ||
+        item.id.toLowerCase().includes(keywordString)
+    )
     : allRecords;
 
   const sortedData = filteredData.sort((a, b) => {
@@ -747,7 +815,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
   req.json.message = '获取成功';
   req.json.data = {
     list,
-    total:  100,
+    total: 100,
     page: currentPage,
     page_size: currentPageSize,
   };

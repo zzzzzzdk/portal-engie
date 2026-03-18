@@ -197,7 +197,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
           value={searchValue}
           onChange={e => setSearchValue(e.target.value)}
           enterButton={<Button type="primary" icon={<SearchOutlined />}>{buttonText}</Button>}
-          size="large"
           onSearch={handleSimpleSearch}
         />
       </div>

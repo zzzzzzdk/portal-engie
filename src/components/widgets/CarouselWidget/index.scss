@@ -49,6 +49,23 @@
   align-items: stretch;
   justify-content: center;
 
+  &.is-clickable {
+    cursor: pointer;
+  }
+
+  &.is-disabled {
+    cursor: default;
+
+    .carousel-slide__content {
+      opacity: 0.78;
+    }
+
+    .carousel-slide__media img {
+      transform: none;
+      filter: grayscale(0.2);
+    }
+  }
+
   &__media {
     position: absolute;
     inset: 0;
@@ -64,6 +81,10 @@
 
   &:hover img {
     transform: scale(1.05);
+  }
+
+  &.is-disabled:hover img {
+    transform: none;
   }
 
   &__overlay {
@@ -87,6 +108,22 @@
     justify-content: flex-end;
     gap: 12px;
     text-align: left;
+  }
+
+  &__lock {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 3;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
   }
 
   &__badge {

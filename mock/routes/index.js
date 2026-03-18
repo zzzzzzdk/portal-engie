@@ -64,6 +64,7 @@ router.get("/v1/common/get-sysconfig", function (req, res, next) {
     "sys_text": "沧澜门户-微前端",
     "api_host": "http://192.168.5.60:29081",
     "iamUrl": "http://192.168.11.12:80/main.html",
+    system_list: ['coe'],
     // "login_url": "http://192.168.11.12:80/#/login?apply=50a79e81-2b86-159c-2757-fd5b138bf333",
     // "logout_url": "http://192.168.11.12:80/#/logout?apply=50a79e81-2b86-159c-2757-fd5b138bf333",
     "editPasswordUrl": "http://192.168.11.12:80/#/personalcenter?type=1&model=1",

@@ -16,12 +16,14 @@ import AssistantHubConfig from '@/components/AssistantHubConfig';
 import IconPicker from '@/components/IconPicker';
 import { getIconValueType } from '@/components/IconPicker/types';
 import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
+import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import './index.scss';
 
 interface ConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
   widget: Widget;
+  onRegisterSaveHandler?: (handler: (() => Promise<boolean>) | null) => void;
 }
 
 const DEFAULT_STATS_ITEMS = [
@@ -51,7 +53,7 @@ const normalizeColorValue = (color: any, defaultColor?: string): string | undefi
   return defaultColor;
 };
 
-const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) => {
+const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, onRegisterSaveHandler }) => {
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules, groups, updateGroup, updateGroupConfig } = useStore();
   const { styleTokens } = useCanvasTheme();
   const [form] = Form.useForm();
@@ -397,7 +399,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
     }
   }, [isOpen, widget, form, isFloatingModule, isGroup, group, navGroupItemDefaults, styleTokens]);
 
-  const handleOk = async () => {
+  const handleOk = useCallback(async (): Promise<boolean> => {
     try {
       const values = await form.validateFields();
 
@@ -442,7 +444,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
 
         if (fieldError) {
           message.warning(fieldError);
-          return;
+          return false;
         }
       }
 
@@ -508,7 +510,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
         });
 
         message.success('配置保存成功');
-        return;
+        return true;
       }
 
       if (isFloatingModule) {
@@ -984,10 +986,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
       }
 
       message.success('配置保存成功');
+      return true;
     } catch (error) {
       console.error('Failed to save widget config:', error);
+      return false;
     }
-  };
+  }, [form, group, isGroup, isAssistantHub, isFloatingModule, message, navGroupItemDefaults.itemBgColor, navGroupItemDefaults.itemTextColor, syncModuleConfig, updateFloatingModule, updateFloatingModuleConfig, updateGroup, updateGroupConfig, updateWidget, widget]);
+
+  useEffect(() => {
+    onRegisterSaveHandler?.(handleOk);
+    return () => {
+      onRegisterSaveHandler?.(null);
+    };
+  }, [handleOk, onRegisterSaveHandler]);
 
   const renderBasicTab = () => (
     <>
@@ -1275,18 +1286,26 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                         >
                           <Input placeholder="如: /dashboard 或 https://example.com" />
                         </Form.Item>
-                        {/* 第三行：图标和打开方式 */}
-                        <div className="form-row-2" style={{ marginBottom: 0 }}>
+                        <div className="form-row-2" style={{ marginBottom: 12 }}>
                           <Form.Item {...restField} name={[name, 'icon']} label="图标" style={{ marginBottom: 0 }}>
                             <IconPicker mode="simple" />
                           </Form.Item>
-                          <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false} style={{ marginBottom: 0 }}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'systemId']}
+                            label="所属系统"
+                            rules={[{ required: true, message: '请选择所属系统' }]}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
+                          </Form.Item>
+                        </div>
+                        <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false} style={{ marginBottom: 0 }}>
                             <Select options={[
                               { label: '当前页', value: false },
                               { label: '新窗口', value: true },
                             ]} />
-                          </Form.Item>
-                        </div>
+                        </Form.Item>
                       </div>
                     </div>
                   ))}
@@ -1356,6 +1375,33 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
             </Form.Item>
             <Form.Item name="url" label="跳转链接">
               <Input placeholder="请输入跳转链接" />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.url !== cur.url}>
+              {({ getFieldValue }) => (
+                <Form.Item
+                  name="systemId"
+                  label="所属系统"
+                  rules={[
+                    {
+                      validator: async (_, value) => {
+                        if (!getFieldValue('url')) {
+                          return Promise.resolve();
+                        }
+                        if (value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error('请选择所属系统'));
+                      },
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="请选择所属系统"
+                    options={JUMP_SYSTEM_OPTIONS}
+                    allowClear
+                  />
+                </Form.Item>
+              )}
             </Form.Item>
             <div className="form-row-2">
               <Form.Item name="openInNew" label="新窗口打开" valuePropName="checked">
@@ -1558,6 +1604,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                           return (
                             <Collapse.Panel
                               key={key}
+                              forceRender
                               header={(
                                 <Form.Item
                                   noStyle
@@ -1598,6 +1645,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                                     rules={[{ required: true, message: '请输入跳转链接' }]}
                                   >
                                     <Input placeholder="/dashboard 或 https://example.com" />
+                                  </Form.Item>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'systemId']}
+                                    label="所属系统"
+                                    rules={[{ required: true, message: '请选择所属系统' }]}
+                                  >
+                                    <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                                   </Form.Item>
                                   <Form.Item
                                     {...restField}
@@ -2065,7 +2120,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                                     <ColorPicker showText allowClear />
                                   </Form.Item>
                                 </div>
-                                <div className="form-row-2" style={{ marginBottom: 0 }}>
+                                <div className="form-row-2" style={{ marginBottom: 8 }}>
                                   <Form.Item
                                     {...restField}
                                     name={[name, 'textColor']}
@@ -2076,17 +2131,26 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget }) 
                                   </Form.Item>
                                   <Form.Item
                                     {...restField}
-                                    name={[name, 'openInNew']}
-                                    label="打开方式"
-                                    initialValue={true}
+                                    name={[name, 'systemId']}
+                                    label="所属系统"
+                                    rules={[{ required: true, message: '请选择所属系统' }]}
                                     style={{ marginBottom: 0 }}
                                   >
-                                    <Select options={[
-                                      { label: '新窗口', value: true },
-                                      { label: '当前页', value: false },
-                                    ]} />
+                                    <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                                   </Form.Item>
                                 </div>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'openInNew']}
+                                  label="打开方式"
+                                  initialValue={true}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Select options={[
+                                    { label: '新窗口', value: true },
+                                    { label: '当前页', value: false },
+                                  ]} />
+                                </Form.Item>
                               </div>
                             </div>
                           ))}

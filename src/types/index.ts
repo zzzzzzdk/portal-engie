@@ -35,6 +35,7 @@ export type WidgetType =
 export interface NavItem {
   id?: string;
   url: string;
+  systemId?: string;
   icon?: string;
   name: string;
   description?: string;
@@ -241,6 +242,7 @@ export interface CarouselSlide {
   imageUrl?: string;
   thumbnailUrl?: string;
   link?: string;
+  systemId?: string;
   buttonText?: string;
   buttonLink?: string;
   buttonType?: 'primary' | 'default' | 'dashed' | 'link' | 'text';

@@ -69,6 +69,11 @@
             border-bottom-color: var(--header-nav-color, #222);
           }
         }
+
+        .ant-menu-item-disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
       }
     }
 

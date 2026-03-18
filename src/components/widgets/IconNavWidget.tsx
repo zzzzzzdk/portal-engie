@@ -1,70 +1,67 @@
-import React from 'react';
-import { Tooltip } from 'antd';
-import { LinkOutlined } from '@ant-design/icons';
-import { WidgetConfig, Widget } from '@/types';
-import IconRenderer from '@/components/IconRenderer';
+import React, { useMemo } from 'react'
+import { LinkOutlined, LockOutlined } from '@ant-design/icons'
+import IconRenderer from '@/components/IconRenderer'
+import { useSystemStore } from '@/store/useSystemStore'
+import type { Widget, WidgetConfig } from '@/types'
+import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
 
-/**
- * 图标导航组件配置
- */
 interface IconNavWidgetConfig extends WidgetConfig {
-  icon?: string;           // 图标（图标名/URL/SVG）
-  url?: string;            // 跳转链接
-  openInNew?: boolean;     // 是否新窗口打开
-  iconSize?: number;       // 图标大小（像素）
-  iconColor?: string;      // 图标颜色
-  hoverColor?: string;     // 悬停颜色
-  // tooltip?: string;        // 提示文本
+  icon?: string
+  url?: string
+  systemId?: string
+  openInNew?: boolean
+  iconSize?: number
+  iconColor?: string
+  hoverColor?: string
 }
 
 interface IconNavWidgetProps {
-  config?: IconNavWidgetConfig;
-  widget?: Widget;
-  isEditMode?: boolean;  // 是否为编辑模式
+  config?: IconNavWidgetConfig
+  widget?: Widget
+  isEditMode?: boolean
 }
 
-// 规范化颜色值
 const normalizeColor = (color: any, defaultColor: string): string => {
-  if (!color) return defaultColor;
-  if (typeof color === 'string') return color;
+  if (!color) return defaultColor
+  if (typeof color === 'string') return color
   if (typeof color === 'object' && color?.toHexString) {
-    return color.toHexString();
+    return color.toHexString()
   }
-  return defaultColor;
-};
+  return defaultColor
+}
 
 const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, isEditMode }) => {
-  const widgetConfig = config as IconNavWidgetConfig;
+  const sysConfig = useSystemStore(state => state.sysConfig)
+  const widgetConfig = config as IconNavWidgetConfig
 
-  const icon = widgetConfig?.icon || 'AppstoreOutlined';
-  const url = widgetConfig?.url || '';
-  const openInNew = widgetConfig?.openInNew ?? false;
-  const iconSize = widgetConfig?.iconSize || 48;
-  const iconColor = normalizeColor(widgetConfig?.iconColor, '#1890ff');
-  // const tooltip = widgetConfig?.tooltip || widgetConfig?.title || '点击跳转';
+  const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
 
-  // 点击处理（仅在非编辑模式下生效）
+  const icon = widgetConfig?.icon || 'AppstoreOutlined'
+  const url = widgetConfig?.url || ''
+  const openInNew = widgetConfig?.openInNew ?? false
+  const iconSize = widgetConfig?.iconSize || 48
+  const iconColor = normalizeColor(widgetConfig?.iconColor, '#1890ff')
+  const isAvailable = isSystemDeployed(deployedSystemSet, widgetConfig?.systemId)
+  const canJump = Boolean(url) && !isEditMode && isAvailable
+
   const handleClick = () => {
-    // 编辑模式下不响应点击
-    console.log(isEditMode)
-    if (isEditMode) {
-      return;
+    if (!canJump) {
+      return
     }
-    if (url) {
-      console.log('图标导航点击:', url);
-      if (openInNew) {
-        window.open(url, '_blank');
-      } else {
-        window.location.href = url;
-      }
-    }
-  };
 
-  // 渲染图标
+    if (openInNew) {
+      window.open(url, '_blank')
+      return
+    }
+
+    window.location.href = url
+  }
+
   const renderIcon = () => {
     if (!icon) {
-      return <LinkOutlined style={{ fontSize: iconSize, color: iconColor }} />;
+      return <LinkOutlined style={{ fontSize: iconSize, color: iconColor }} />
     }
+
     return (
       <IconRenderer
         value={icon}
@@ -73,8 +70,8 @@ const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, 
         fallbackText="Nav"
         fallbackColor={iconColor}
       />
-    );
-  };
+    )
+  }
 
   return (
     <div
@@ -86,34 +83,43 @@ const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, 
         justifyContent: 'center',
       }}
     >
-      {/* <Tooltip title={tooltip}> */}
-        <div
-          onClick={handleClick}
-          style={{
-            cursor: url && !isEditMode ? 'pointer' : 'default',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            // padding: 12,
-            borderRadius: 12,
-            transition: 'all 0.3s ease',
-          }}
-          // onMouseEnter={(e) => {
-          //   if (url && !isEditMode) {
-          //     e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
-          //     e.currentTarget.style.transform = 'scale(1.1)';
-          //   }
-          // }}
-          // onMouseLeave={(e) => {
-          //   e.currentTarget.style.backgroundColor = 'transparent';
-          //   e.currentTarget.style.transform = 'scale(1)';
-          // }}
-        >
-          {renderIcon()}
-        </div>
-      {/* </Tooltip> */}
+      <div
+        onClick={handleClick}
+        style={{
+          position: 'relative',
+          cursor: canJump ? 'pointer' : 'default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 12,
+          transition: 'all 0.3s ease',
+          opacity: isAvailable ? 1 : 0.6,
+        }}
+      >
+        {renderIcon()}
+        {!isAvailable && url && (
+          <span
+            style={{
+              position: 'absolute',
+              right: -4,
+              top: -4,
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: 'rgba(0, 0, 0, 0.65)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 0 2px #fff',
+            }}
+          >
+            <LockOutlined style={{ fontSize: 10 }} />
+          </span>
+        )}
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default IconNavWidget;
+export default IconNavWidget
