@@ -1,19 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppstoreOutlined, LockOutlined } from '@ant-design/icons'
 import { Empty, Spin, Tag, Tooltip, Typography } from 'antd'
-import axios from 'axios'
 import clsx from 'clsx'
 import IconRenderer from '@/components/IconRenderer'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { useSystemStore } from '@/store/useSystemStore'
 import type { NavItem, Widget, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { requestWidgetApi } from '@/utils/widgetApi'
+import { DEFAULT_NAV_GROUP_LIST_FIELD } from '@/utils/widgetApiDefaults'
 import './index.scss'
 
 interface NavGroupWidgetConfig extends WidgetConfig {
-  apiHeaders?: Record<string, string>
-  apiMethod?: 'GET' | 'POST'
-  apiBody?: string
   groupTitle?: string
   layout?: 'flex' | 'grid' | 'list' | 'text' | 'tag'
   columns?: number
@@ -76,9 +74,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件' },
 ]
 
-const getRandomGradient = (index: number): string => {
-  return ICON_BG_GRADIENT_PRESETS[index % ICON_BG_GRADIENT_PRESETS.length]
-}
+const getRandomGradient = (index: number) => ICON_BG_GRADIENT_PRESETS[index % ICON_BG_GRADIENT_PRESETS.length]
 
 const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditMode }) => {
   const sysConfig = useSystemStore(state => state.sysConfig)
@@ -133,32 +129,21 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
     setError(null)
 
     try {
-      const headers = widgetConfig?.apiHeaders
-      const method = widgetConfig?.apiMethod || 'GET'
-      let requestBody: any
-
-      if (method === 'POST' && widgetConfig?.apiBody) {
-        try {
-          requestBody = JSON.parse(widgetConfig.apiBody)
-        } catch {
-          console.warn('NavGroupWidget: apiBody JSON 解析失败，已忽略请求体')
-        }
-      }
-
-      const response = await axios({
-        method,
-        url: apiEndpoint.trim(),
-        ...(headers ? { headers } : {}),
-        ...(requestBody !== undefined ? { data: requestBody } : {}),
+      const result = await requestWidgetApi({
+        endpoint: apiEndpoint,
+        method: widgetConfig?.apiMethod,
+        headers: widgetConfig?.apiHeaders,
+        query: widgetConfig?.apiQuery,
+        body: widgetConfig?.apiBody,
+        dataField: widgetConfig?.apiDataField,
+        listField: widgetConfig?.apiListField || DEFAULT_NAV_GROUP_LIST_FIELD,
       })
-
-      const data = response.data?.data || response.data
-      if (Array.isArray(data)) {
-        setNavItems(data)
-      } else {
-        console.warn('NavGroupWidget: 接口返回数据格式不正确')
-        setNavItems([])
-      }
+      const sourceList = result.list.length
+        ? result.list
+        : Array.isArray(result.data)
+          ? result.data
+          : []
+      setNavItems(sourceList)
     } catch (err: any) {
       console.error('NavGroupWidget: 加载数据失败', err)
       setError(err.message || '数据加载失败')
@@ -166,7 +151,16 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
     } finally {
       setLoading(false)
     }
-  }, [apiEndpoint, staticItems, widgetConfig?.apiBody, widgetConfig?.apiHeaders, widgetConfig?.apiMethod])
+  }, [
+    apiEndpoint,
+    staticItems,
+    widgetConfig?.apiBody,
+    widgetConfig?.apiDataField,
+    widgetConfig?.apiHeaders,
+    widgetConfig?.apiListField,
+    widgetConfig?.apiMethod,
+    widgetConfig?.apiQuery,
+  ])
 
   useEffect(() => {
     loadData()

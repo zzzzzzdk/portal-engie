@@ -34,9 +34,9 @@ interface SearchWidgetConfig extends WidgetConfig {
   // 数据交互
   submitMethod?: 'api' | 'eventRoute';
   apiEndpoint?: string;              // API 地址
-  apiMethod?: 'GET' | 'POST';       // HTTP 方法
+  apiMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';       // HTTP 方法
   apiHeaders?: Record<string, string>;
-  apiBody?: string;
+  apiBody?: string | Record<string, any>;
 }
 
 interface SearchWidgetProps {
@@ -104,12 +104,12 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
 
   // 统一搜索处理
   const buildApiPayload = useCallback((searchParams: Record<string, any>) => {
-    if (!apiBody?.trim()) {
+    if (!apiBody) {
       return searchParams;
     }
 
     try {
-      const parsedBody = JSON.parse(apiBody);
+      const parsedBody = typeof apiBody === 'string' ? JSON.parse(apiBody) : apiBody;
       if (parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)) {
         return {
           ...parsedBody,

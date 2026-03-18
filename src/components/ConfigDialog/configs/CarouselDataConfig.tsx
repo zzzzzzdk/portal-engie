@@ -16,20 +16,41 @@ import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@
 import type { WidgetConfigProps } from './types';
 import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
+import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
+import {
+  DEFAULT_CAROUSEL_LIST_FIELD,
+  getWidgetApiEndpointPlaceholder,
+} from '@/utils/widgetApiDefaults';
 import '../index.scss';
 import { uploadImage } from '@/services';
 
-// 验证 JSON 格式
 const validateJson = (_: any, value: string) => {
   if (!value) {
     return Promise.resolve();
   }
+
   try {
     JSON.parse(value);
     return Promise.resolve();
   } catch {
     return Promise.reject('请输入合法的 JSON 格式');
   }
+};
+
+const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => {
+  if (!Array.isArray(headersList)) {
+    return undefined;
+  }
+
+  const headers = headersList.reduce<Record<string, string>>((result, item) => {
+    const key = item?.key?.trim();
+    if (key) {
+      result[key] = item.value || '';
+    }
+    return result;
+  }, {});
+
+  return Object.keys(headers).length ? headers : undefined;
 };
 
 const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
@@ -48,6 +69,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
       <Form.Item noStyle shouldUpdate={(prev, curr) => prev.dataSourceType !== curr.dataSourceType}>
         {({ getFieldValue }) => {
           const sourceType = getFieldValue('dataSourceType') || 'static';
+
           if (sourceType === 'static') {
             return (
               <>
@@ -57,10 +79,13 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                     <div className="config-list-container">
                       {fields.map(({ key, name, ...restField }) => (
                         <div key={key} className="config-item-card">
-                          <div className="card-header" onClick={(e) => {
-                            e.stopPropagation();
-                            e.currentTarget.parentElement?.classList.toggle('expanded');
-                          }}>
+                          <div
+                            className="card-header"
+                            onClick={event => {
+                              event.stopPropagation();
+                              event.currentTarget.parentElement?.classList.toggle('expanded');
+                            }}
+                          >
                             <span>轮播项 {name + 1}</span>
                             <div className="header-actions">
                               <Button
@@ -68,7 +93,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                                 danger
                                 size="small"
                                 icon={<DeleteOutlined />}
-                                onClick={(event) => {
+                                onClick={event => {
                                   event.stopPropagation();
                                   remove(name);
                                 }}
@@ -86,14 +111,14 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                             </Form.Item>
                             <div className="form-row-2">
                               <Form.Item {...restField} name={[name, 'subtitle']} label="副标题">
-                                <Input placeholder="副标题 (可选)" />
+                                <Input placeholder="副标题（可选）" />
                               </Form.Item>
                               <Form.Item {...restField} name={[name, 'badge']} label="角标文案">
                                 <Input placeholder="New" />
                               </Form.Item>
                             </div>
                             <Form.Item {...restField} name={[name, 'description']} label="描述">
-                              <Input.TextArea rows={2} placeholder="描述信息 (可选)" />
+                              <Input.TextArea rows={2} placeholder="描述信息（可选）" />
                             </Form.Item>
                             <Form.Item
                               {...restField}
@@ -106,17 +131,19 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                             <Upload
                               showUploadList={false}
                               accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
-                              beforeUpload={async (file) => {
+                              beforeUpload={async file => {
                                 const isImage = file.type.startsWith('image/');
                                 if (!isImage) {
                                   message.error('只能上传图片文件');
                                   return false;
                                 }
+
                                 const isLt10M = file.size / 1024 / 1024 < 10;
                                 if (!isLt10M) {
                                   message.error('图片大小不能超过 10MB');
                                   return false;
                                 }
+
                                 setUploadingIndex(key.toString());
                                 try {
                                   const res = await uploadImage(file);
@@ -131,7 +158,9 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                             >
                               <Button
                                 icon={
-                                  uploadingIndex === key.toString() ? <LoadingOutlined /> : <UploadOutlined />
+                                  uploadingIndex === key.toString()
+                                    ? <LoadingOutlined />
+                                    : <UploadOutlined />
                                 }
                                 loading={uploadingIndex === key.toString()}
                                 style={{ marginBottom: 12 }}
@@ -170,15 +199,21 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                                     if (!slide.link && !slide.buttonLink) {
                                       return Promise.resolve();
                                     }
+
                                     if (value) {
                                       return Promise.resolve();
                                     }
+
                                     return Promise.reject(new Error('请选择所属系统'));
                                   },
                                 },
                               ]}
                             >
-                              <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} allowClear />
+                              <Select
+                                placeholder="请选择所属系统"
+                                options={JUMP_SYSTEM_OPTIONS}
+                                allowClear
+                              />
                             </Form.Item>
                             <Form.Item {...restField} name={[name, 'overlayColor']} label="遮罩颜色">
                               <ColorPicker showText allowClear />
@@ -216,7 +251,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                 label="接口地址"
                 rules={[{ required: true, message: '请输入接口地址' }]}
               >
-                <Input placeholder="https://api.example.com/carousel" />
+                <Input placeholder={getWidgetApiEndpointPlaceholder('carousel')} />
               </Form.Item>
               <div className="form-row-2">
                 <Form.Item name={['apiConfig', 'method']} label="请求方式" initialValue="GET">
@@ -227,20 +262,34 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item name={['apiConfig', 'listField']} label="列表字段路径" tooltip="指定接口返回数据中数组所在的路径，如 data.list。不填则自动查找 data、list、rows、records 等常见字段">
-                  <Input placeholder="data.list" />
+                <Form.Item
+                  name={['apiConfig', 'listField']}
+                  label="列表字段路径"
+                  tooltip="默认按 data.carousel.items 取值；修改后按填写路径取值。"
+                >
+                  <Input placeholder={DEFAULT_CAROUSEL_LIST_FIELD} />
                 </Form.Item>
               </div>
-              <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
+              <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization、Content-Type 等">
                 <Form.List name={['apiConfig', 'headersList']}>
                   {(fields, { add, remove }) => (
                     <>
                       {fields.map(({ key, name, ...restField }) => (
                         <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                          <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'key']}
+                            noStyle
+                            rules={[{ required: true, message: '请输入 Key' }]}
+                          >
                             <Input placeholder="Header Key" style={{ width: 160 }} />
                           </Form.Item>
-                          <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'value']}
+                            noStyle
+                            rules={[{ required: true, message: '请输入 Value' }]}
+                          >
                             <Input placeholder="Header Value" style={{ width: 200 }} />
                           </Form.Item>
                           <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
@@ -253,20 +302,50 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   )}
                 </Form.List>
               </Form.Item>
+              {apiMethod === 'GET' && (
+                <Form.Item
+                  name={['apiConfig', 'queryParams']}
+                  label="Query 参数(JSON)"
+                  tooltip="GET 请求时会拼接到 URL query 中"
+                  rules={[{ validator: validateJson }]}
+                >
+                  <Input.TextArea
+                    rows={4}
+                    placeholder='{"scene": "portal"}'
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              )}
               {apiMethod === 'POST' && (
                 <Form.Item
                   name={['apiConfig', 'bodyParams']}
-                  label="请求参数(JSON)"
+                  label="Body 参数(JSON)"
                   tooltip="POST 请求体，请输入合法的 JSON 格式"
                   rules={[{ validator: validateJson }]}
                 >
                   <Input.TextArea
                     rows={4}
-                    placeholder='{"key": "value"}'
+                    placeholder='{"scene": "portal"}'
                     style={{ fontFamily: 'monospace' }}
                   />
                 </Form.Item>
               )}
+              <div style={{ marginBottom: 12 }}>
+                <WidgetApiDebugButton
+                  form={form}
+                  buildConfig={formValues => {
+                    const apiConfig = formValues.apiConfig || {};
+                    return {
+                      endpoint: apiConfig.endpoint,
+                      method: apiConfig.method || 'GET',
+                      headers: buildHeaders(apiConfig.headersList),
+                      query: apiConfig.queryParams ?? apiConfig.params,
+                      body: apiConfig.bodyParams ?? apiConfig.body,
+                      listField: apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
+                    };
+                  }}
+                />
+              </div>
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'titleField']} label="标题字段">
                   <Input placeholder="title" />
@@ -294,7 +373,13 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                   <Input placeholder="badge" />
                 </Form.Item>
                 <Form.Item name="refreshInterval" label="刷新间隔(秒)">
-                  <InputNumber min={0} max={MAX_REFRESH_INTERVAL} step={5} style={{ width: '100%' }} placeholder="0 表示不自动刷新" />
+                  <InputNumber
+                    min={0}
+                    max={MAX_REFRESH_INTERVAL}
+                    step={5}
+                    style={{ width: '100%' }}
+                    placeholder="0 表示不自动刷新"
+                  />
                 </Form.Item>
                 <div />
               </div>

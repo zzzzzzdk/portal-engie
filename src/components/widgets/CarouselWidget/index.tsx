@@ -1,31 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { LockOutlined } from '@ant-design/icons'
 import { Button, Empty, Spin, Tag } from 'antd'
-import axios from 'axios'
 import clsx from 'clsx'
 import SwiperCarousel from '@/components/SwiperCarousel'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { useSystemStore } from '@/store/useSystemStore'
-import type {
-  CarouselApiMapping,
-  CarouselSlide,
-  CarouselWidgetConfig,
-  Widget,
-} from '@/types'
+import type { CarouselApiMapping, CarouselSlide, CarouselWidgetConfig, Widget } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { getValueByPath, requestWidgetApi } from '@/utils/widgetApi'
+import { DEFAULT_CAROUSEL_LIST_FIELD } from '@/utils/widgetApiDefaults'
 import './index.scss'
 
 interface CarouselWidgetProps {
   config: CarouselWidgetConfig
   widget: Widget
   isEditMode?: boolean
-}
-
-const getValueByPath = (target: any, path?: string) => {
-  if (!path) {
-    return undefined
-  }
-  return path.split('.').reduce((acc, key) => (acc ? acc[key] : undefined), target)
 }
 
 const normalizeSlide = (
@@ -66,23 +55,6 @@ const normalizeColor = (value?: any, fallback?: string) => {
   return fallback
 }
 
-const resolveRequestBody = (rawBody?: Record<string, any> | string) => {
-  if (rawBody == null || rawBody === '') {
-    return undefined
-  }
-
-  if (typeof rawBody === 'string') {
-    try {
-      return JSON.parse(rawBody)
-    } catch (error) {
-      console.warn('CarouselWidget: 请求体 JSON 解析失败，已忽略该配置', error)
-      return undefined
-    }
-  }
-
-  return rawBody
-}
-
 const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditMode }) => {
   const sysConfig = useSystemStore(state => state.sysConfig)
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
@@ -100,43 +72,31 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
       return
     }
 
-    const { endpoint, method = 'GET', params, headers, body, bodyParams, listField, mapping } =
-      carouselConfig.apiConfig
-    const requestBody = resolveRequestBody(body ?? bodyParams)
     setLoading(true)
     setError(null)
 
     try {
-      const response = await axios({
-        url: endpoint.trim(),
-        method,
-        params,
-        headers,
-        data: method.toUpperCase() === 'GET' ? undefined : requestBody,
+      const result = await requestWidgetApi({
+        endpoint: carouselConfig.apiConfig.endpoint,
+        method: carouselConfig.apiConfig.method,
+        headers: carouselConfig.apiConfig.headers,
+        query: carouselConfig.apiConfig.queryParams ?? carouselConfig.apiConfig.params,
+        body: carouselConfig.apiConfig.body ?? carouselConfig.apiConfig.bodyParams,
+        listField: carouselConfig.apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
       })
 
-      const findList = (data: any): any[] | null => {
-        if (Array.isArray(data)) return data
-        if (data && typeof data === 'object') {
-          if (Array.isArray(data.data)) return data.data
-          if (Array.isArray(data.list)) return data.list
-          if (Array.isArray(data.rows)) return data.rows
-          if (Array.isArray(data.records)) return data.records
-          if (data.data && typeof data.data === 'object') {
-            const nested = data.data
-            if (Array.isArray(nested.list)) return nested.list
-            if (Array.isArray(nested.rows)) return nested.rows
-            if (Array.isArray(nested.records)) return nested.records
-          }
-        }
-        return null
-      }
-
-      const listSource = listField ? getValueByPath(response.data, listField) : findList(response.data)
-      const dataList = Array.isArray(listSource) ? listSource : []
-      const normalized = dataList.map((item, index) => normalizeSlide(item, index, mapping))
-      setRemoteSlides(normalized)
+      const sourceList = result.list.length
+        ? result.list
+        : Array.isArray(result.data)
+          ? result.data
+          : []
+      setRemoteSlides(
+        sourceList.map((item, index) =>
+          normalizeSlide(item, index, carouselConfig.apiConfig?.mapping),
+        ),
+      )
     } catch (err: any) {
+      setRemoteSlides([])
       setError(err?.message || '数据加载失败')
     } finally {
       setLoading(false)
@@ -173,10 +133,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
 
   const slides = useMemo(() => {
     if (dataSourceType === 'api') {
-      if (remoteSlides.length > 0) {
-        return remoteSlides
-      }
-      return configuredSlides
+      return remoteSlides
     }
     return configuredSlides
   }, [configuredSlides, dataSourceType, remoteSlides])
