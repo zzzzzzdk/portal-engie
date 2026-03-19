@@ -1,204 +1,285 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Tag, Spin, Empty, Typography } from 'antd';
-import { WidgetConfig, Widget } from '@/types';
-import { safeIntervalMs } from '@/constants/dashboard';
-import axios from 'axios';
-import type { ColumnsType } from 'antd/es/table';
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Table, Tag, Spin, Empty, Typography } from 'antd'
+import { WidgetConfig, Widget } from '@/types'
+import { safeIntervalMs } from '@/constants/dashboard'
+import { requestWidgetApi } from '@/utils/widgetApi'
+import { getWidgetDefaultFieldValue, getWidgetPaginationDefaults } from '@/utils/widgetApiDefaults'
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 
-/**
- * 列配置
- */
 interface ColumnConfig {
-  key: string;           // 字段key
-  title: string;         // 列标题
-  dataIndex: string;     // 数据字段
-  width?: number | string;  // 列宽
-  align?: 'left' | 'center' | 'right';  // 对齐方式
-  type?: 'text' | 'number' | 'tag' | 'date' | 'status';  // 列类型
-  tagColorMap?: Record<string, string>;  // tag颜色映射
-  statusConfig?: { success: string[]; error: string[]; warning: string[] };  // 状态配置
-  ellipsis?: boolean;    // 是否超长省略
-  fixed?: 'left' | 'right';  // 固定列
-  sorter?: boolean;      // 是否可排序
+  key: string
+  title: string
+  dataIndex: string
+  width?: number | string
+  align?: 'left' | 'center' | 'right'
+  type?: 'text' | 'number' | 'tag' | 'date' | 'status'
+  tagColorMap?: Record<string, string>
+  statusConfig?: { success: string[]; error: string[]; warning: string[] }
+  ellipsis?: boolean
+  fixed?: 'left' | 'right'
+  sorter?: boolean
 }
 
-/**
- * 数据表格组件配置
- */
 interface DataTableWidgetConfig extends WidgetConfig {
-  apiEndpoint?: string;      // 数据接口地址
-  apiHeaders?: Record<string, string>;  // 请求头
-  refreshInterval?: number;  // 刷新间隔(秒)
-  columns?: ColumnConfig[];  // 列配置
-  tableData?: any[];         // 静态数据
-  rowKey?: string;           // 行key字段
-  pagination?: boolean | { pageSize?: number; showTotal?: boolean };  // 分页配置
-  scrollY?: number;          // 表格纵向滚动高度
-  scrollX?: number | string; // 表格横向滚动宽度
-  bordered?: boolean;        // 是否显示边框
-  size?: 'small' | 'middle' | 'large';  // 表格尺寸
-  showHeader?: boolean;      // 是否显示表头
+  columns?: ColumnConfig[]
+  tableData?: any[]
+  rowKey?: string
+  pagination?: boolean | { pageSize?: number; showTotal?: boolean }
+  scrollY?: number
+  scrollX?: number | string
+  bordered?: boolean
+  size?: 'small' | 'middle' | 'large'
+  showHeader?: boolean
 }
 
 interface DataTableWidgetProps {
-  config?: DataTableWidgetConfig;
-  widget?: Widget;
+  config?: DataTableWidgetConfig
+  widget?: Widget
 }
 
-// 默认列配置
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { key: 'name', title: '姓名', dataIndex: 'name' },
-  { key: 'age', title: '年龄', dataIndex: 'age', type: 'number' },
-  { key: 'status', title: '状态', dataIndex: 'status', type: 'tag' },
-];
+  { key: 'name', title: '\u59d3\u540d', dataIndex: 'name' },
+  { key: 'age', title: '\u5e74\u9f84', dataIndex: 'age', type: 'number' },
+  { key: 'status', title: '\u72b6\u6001', dataIndex: 'status', type: 'tag' },
+]
 
-// 默认数据
 const DEFAULT_DATA = [
-  { key: '1', name: '张三', age: 32, status: '在线' },
-  { key: '2', name: '李四', age: 42, status: '离线' },
-  { key: '3', name: '王五', age: 28, status: '在线' },
-];
+  { key: '1', name: '\u5f20\u4e09', age: 32, status: '\u5728\u7ebf' },
+  { key: '2', name: '\u674e\u56db', age: 42, status: '\u79bb\u7ebf' },
+  { key: '3', name: '\u738b\u4e94', age: 28, status: '\u5728\u7ebf' },
+]
 
 const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
-  const [tableData, setTableData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [tableData, setTableData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pageState, setPageState] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+    serverSide: false,
+  })
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pageStateRef = useRef(pageState)
 
-  // 获取配置
-  const tableConfig = config as DataTableWidgetConfig;
-  const apiEndpoint = tableConfig?.apiEndpoint;
-  const refreshInterval = tableConfig?.refreshInterval || 0;
-  const columnsConfig = tableConfig?.columns || DEFAULT_COLUMNS;
-  const staticData = tableConfig?.tableData;
-  const rowKey = tableConfig?.rowKey || 'key';
-  const paginationConfig = tableConfig?.pagination;
-  const scrollY = tableConfig?.scrollY || 240;
-  const scrollX = tableConfig?.scrollX;
-  const bordered = tableConfig?.bordered ?? false;
-  const size = tableConfig?.size || 'small';
-  const showTableHeader = tableConfig?.showHeader ?? true;
+  const tableConfig = config as DataTableWidgetConfig
+  const apiEndpoint = tableConfig?.apiEndpoint
+  const refreshInterval = tableConfig?.refreshInterval || 0
+  const columnsConfig = tableConfig?.columns || DEFAULT_COLUMNS
+  const staticData = tableConfig?.tableData
+  const rowKey = tableConfig?.rowKey || 'key'
+  const legacyPaginationConfig = tableConfig?.pagination
+  const paginationMode =
+    tableConfig?.paginationMode || (legacyPaginationConfig ? 'pagination' : 'none')
+  const paginationConfig = tableConfig?.paginationConfig || {}
+  const defaultListField = getWidgetDefaultFieldValue('dataTable')
+  const defaultPagination = getWidgetPaginationDefaults('dataTable')
+  const scrollY = tableConfig?.scrollY || 240
+  const scrollX = tableConfig?.scrollX
+  const bordered = tableConfig?.bordered ?? false
+  const size = tableConfig?.size || 'small'
+  const showTableHeader = tableConfig?.showHeader ?? true
 
-  // 加载数据
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (apiEndpoint) {
-        // 从接口获取数据
-        const headers = tableConfig?.apiHeaders;
-        const response = await axios.get(apiEndpoint.trim(), headers ? { headers } : {});
-        const data = response.data?.data || response.data?.list || response.data;
-        if (Array.isArray(data)) {
-          setTableData(data.map((item, index) => ({
-            ...item,
-            [rowKey]: item[rowKey] || `row-${index}`,
-          })));
-        } else {
-          setTableData([]);
-        }
-      } else if (staticData && staticData.length > 0) {
-        // 使用静态配置数据
-        setTableData(staticData);
-      } else {
-        // 使用默认数据
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setTableData(DEFAULT_DATA);
-      }
-    } catch (err: any) {
-      console.error('加载表格数据失败:', err);
-      setError(err.message || '数据加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [apiEndpoint, staticData, rowKey]);
-
-  // 初始加载
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    pageStateRef.current = pageState
+  }, [pageState])
 
-  // 设置轮询
+  useEffect(() => {
+    const defaultPageSize =
+      paginationConfig.pageSize ||
+      (typeof legacyPaginationConfig === 'object' ? legacyPaginationConfig.pageSize : undefined) ||
+      10
+
+    setPageState(prev => ({
+      ...prev,
+      current: paginationConfig.page || 1,
+      pageSize: defaultPageSize,
+    }))
+  }, [legacyPaginationConfig, paginationConfig.page, paginationConfig.pageSize])
+
+  const loadData = useCallback(
+    async (nextPageState = pageStateRef.current) => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        if (apiEndpoint) {
+          const result = await requestWidgetApi(
+            {
+              endpoint: apiEndpoint,
+              method: tableConfig?.apiMethod,
+              headers: tableConfig?.apiHeaders,
+              query: tableConfig?.apiQuery,
+              body: tableConfig?.apiBody,
+              dataField: tableConfig?.apiDataField,
+              listField: tableConfig?.apiListField || defaultListField,
+              pagination:
+                paginationMode === 'pagination'
+                  ? {
+                      mode: 'pagination',
+                      pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
+                      pageSizeParam:
+                        paginationConfig.pageSizeParam || defaultPagination?.pageSizeParam,
+                      totalField: paginationConfig.totalField || defaultPagination?.totalField,
+                      currentField:
+                        paginationConfig.currentField || defaultPagination?.currentField,
+                      pageSizeField:
+                        paginationConfig.pageSizeField || defaultPagination?.pageSizeField,
+                    }
+                  : undefined,
+            },
+            paginationMode === 'pagination'
+              ? { current: nextPageState.current, pageSize: nextPageState.pageSize }
+              : undefined,
+          )
+
+          const sourceList = result.list.length
+            ? result.list
+            : Array.isArray(result.data)
+              ? result.data
+              : []
+          const normalizedList = sourceList.map((item, index) => ({
+            ...item,
+            [rowKey]: item?.[rowKey] || `row-${index}`,
+          }))
+
+          setTableData(normalizedList)
+
+          if (paginationMode === 'pagination') {
+            setPageState({
+              current: result.pagination.current || nextPageState.current,
+              pageSize: result.pagination.pageSize || nextPageState.pageSize,
+              total: result.pagination.total || normalizedList.length,
+              serverSide: result.pagination.serverSide,
+            })
+          }
+        } else if (staticData && staticData.length > 0) {
+          setTableData(staticData)
+          if (paginationMode === 'pagination') {
+            setPageState(prev => ({
+              ...prev,
+              total: staticData.length,
+              serverSide: false,
+            }))
+          }
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 300))
+          setTableData(DEFAULT_DATA)
+          if (paginationMode === 'pagination') {
+            setPageState(prev => ({
+              ...prev,
+              total: DEFAULT_DATA.length,
+              serverSide: false,
+            }))
+          }
+        }
+      } catch (err: any) {
+        console.error('\u52a0\u8f7d\u8868\u683c\u6570\u636e\u5931\u8d25:', err)
+        setError(err.message || '\u6570\u636e\u52a0\u8f7d\u5931\u8d25')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      apiEndpoint,
+      paginationConfig.currentField,
+      paginationConfig.pageParam,
+      paginationConfig.pageSizeField,
+      paginationConfig.pageSizeParam,
+      paginationConfig.totalField,
+      paginationMode,
+      rowKey,
+      staticData,
+      defaultListField,
+      defaultPagination?.currentField,
+      defaultPagination?.pageParam,
+      defaultPagination?.pageSizeField,
+      defaultPagination?.pageSizeParam,
+      defaultPagination?.totalField,
+      tableConfig?.apiBody,
+      tableConfig?.apiDataField,
+      tableConfig?.apiHeaders,
+      tableConfig?.apiListField,
+      tableConfig?.apiMethod,
+      tableConfig?.apiQuery,
+    ],
+  )
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   useEffect(() => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
-        loadData();
-      }, safeIntervalMs(refreshInterval));
+        loadData()
+      }, safeIntervalMs(refreshInterval))
     }
 
     return () => {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
-    };
-  }, [refreshInterval, apiEndpoint, loadData]);
+    }
+  }, [refreshInterval, apiEndpoint, loadData])
 
-  // 响应刷新操作
   useEffect(() => {
     if (widget?.refreshCount && widget.refreshCount > 0) {
-      console.log('刷新表格组件数据...');
-      loadData();
+      loadData()
     }
-  }, [widget?.refreshCount, loadData]);
+  }, [widget?.refreshCount, loadData])
 
-  // 渲染列内容
-  const renderColumnContent = (colConfig: ColumnConfig, value: any, _record: any) => {
+  const renderColumnContent = (colConfig: ColumnConfig, value: any) => {
     switch (colConfig.type) {
       case 'tag':
         if (Array.isArray(value)) {
           return (
             <>
               {value.map((tag: string, index: number) => {
-                const color = colConfig.tagColorMap?.[tag] || (tag.length > 5 ? 'geekblue' : 'green');
+                const color = colConfig.tagColorMap?.[tag] || (tag.length > 5 ? 'geekblue' : 'green')
                 return (
                   <Tag color={color} key={`${tag}-${index}`}>
                     {tag}
                   </Tag>
-                );
+                )
               })}
             </>
-          );
+          )
         }
-        const tagColor = colConfig.tagColorMap?.[value] || 'blue';
-        return <Tag color={tagColor}>{value}</Tag>;
+        return <Tag color={colConfig.tagColorMap?.[value] || 'blue'}>{value}</Tag>
 
-      case 'status':
-        const { success = [], error: err = [], warning = [] } = colConfig.statusConfig || {};
-        let statusColor = 'default';
-        if (success.includes(value)) statusColor = 'success';
-        else if (err.includes(value)) statusColor = 'error';
-        else if (warning.includes(value)) statusColor = 'warning';
-        return <Tag color={statusColor}>{value}</Tag>;
+      case 'status': {
+        const { success = [], error: err = [], warning = [] } = colConfig.statusConfig || {}
+        let statusColor = 'default'
+        if (success.includes(value)) statusColor = 'success'
+        else if (err.includes(value)) statusColor = 'error'
+        else if (warning.includes(value)) statusColor = 'warning'
+        return <Tag color={statusColor}>{value}</Tag>
+      }
 
       case 'number':
-        return typeof value === 'number' ? value.toLocaleString() : value;
+        return typeof value === 'number' ? value.toLocaleString() : value
 
       case 'date':
         if (value) {
           try {
-            return new Date(value).toLocaleDateString('zh-CN');
+            return new Date(value).toLocaleDateString('zh-CN')
           } catch {
-            return value;
+            return value
           }
         }
-        return '-';
+        return '-'
 
       case 'text':
       default:
         if (colConfig.ellipsis) {
-          return (
-            <Typography.Text ellipsis={{ tooltip: value }}>
-              {value ?? '-'}
-            </Typography.Text>
-          );
+          return <Typography.Text ellipsis={{ tooltip: value }}>{value ?? '-'}</Typography.Text>
         }
-        return value ?? '-';
+        return value ?? '-'
     }
-  };
+  }
 
-  // 生成 Ant Design Table 列配置
   const generateColumns = useCallback((): ColumnsType<any> => {
     return columnsConfig.map(col => ({
       key: col.key,
@@ -208,37 +289,56 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       align: col.align,
       ellipsis: col.ellipsis,
       fixed: col.fixed,
-      sorter: col.sorter ? (a: any, b: any) => {
-        const aVal = a[col.dataIndex];
-        const bVal = b[col.dataIndex];
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return aVal - bVal;
-        }
-        return String(aVal || '').localeCompare(String(bVal || ''));
-      } : undefined,
-      render: (value: any, record: any) => renderColumnContent(col, value, record),
-    }));
-  }, [columnsConfig]);
+      sorter: col.sorter
+        ? (a: any, b: any) => {
+            const aVal = a[col.dataIndex]
+            const bVal = b[col.dataIndex]
+            if (typeof aVal === 'number' && typeof bVal === 'number') {
+              return aVal - bVal
+            }
+            return String(aVal || '').localeCompare(String(bVal || ''))
+          }
+        : undefined,
+      render: (value: any) => renderColumnContent(col, value),
+    }))
+  }, [columnsConfig])
 
-  // 分页配置
-  const getPagination = () => {
-    if (paginationConfig === false) return false;
-    if (paginationConfig === true) return { pageSize: 10 };
-    if (typeof paginationConfig === 'object') {
-      return {
-        pageSize: paginationConfig.pageSize || 10,
-        showTotal: paginationConfig.showTotal ? (total: number) => `共 ${total} 条` : undefined,
-      };
+  const getPagination = (): false | TablePaginationConfig => {
+    if (paginationMode !== 'pagination') {
+      return false
     }
-    return false;
-  };
+
+    const showTotal =
+      paginationConfig.showTotal ??
+      (typeof legacyPaginationConfig === 'object' ? legacyPaginationConfig.showTotal : false)
+
+    return {
+      current: pageState.current,
+      pageSize: pageState.pageSize,
+      total: pageState.total,
+      showSizeChanger: true,
+      showTotal: showTotal ? total => `\u5171 ${total} \u6761` : undefined,
+      onChange: (current, pageSize) => {
+        const next = {
+          current,
+          pageSize: pageSize || pageState.pageSize,
+          total: pageState.total,
+          serverSide: pageState.serverSide,
+        }
+        setPageState(next)
+        if (pageState.serverSide && apiEndpoint) {
+          loadData(next)
+        }
+      },
+    }
+  }
 
   if (error) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Empty description={error} />
       </div>
-    );
+    )
   }
 
   return (
@@ -254,7 +354,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
         scroll={{ y: scrollY, x: scrollX }}
       />
     </Spin>
-  );
-};
+  )
+}
 
-export default DataTableWidget;
+export default DataTableWidget

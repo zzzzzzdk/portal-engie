@@ -122,6 +122,13 @@ body {
   height: 100%;
 }
 
+.ant-table-pagination.ant-pagination {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0 !important;
+  margin-top: 10px !important;
+}
+
 // ============================================
 // 极简风格下 Ant Design 组件样式覆盖
 // 使用 CanvasThemeProvider 注入的 --card-* 和 --widget-* CSS 变量
@@ -130,7 +137,7 @@ body {
 .dashboard-container[data-style="minimal"],
 .dashboard-preview-container[data-style="minimal"] {
   .widget-header {
-    .widget-actions>button {
+    .widget-actions > button {
       // 使用 inherit 让按钮继承父元素颜色（支持 titleColor 内联样式覆盖）
       // 如果没有内联样式，则通过 CSS 继承链获取 --widget-text-color
       color: inherit;
@@ -218,7 +225,7 @@ body {
 
       &::placeholder,
       .ant-input::placeholder {
-       color: rgba(200, 200, 200, 0.6) !important;
+        color: rgba(200, 200, 200, 0.6) !important;
       }
 
       &:hover {

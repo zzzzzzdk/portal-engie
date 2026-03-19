@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
@@ -68,6 +68,7 @@ const Layout: React.FC = () => {
   const [publishAction, setPublishAction] = useState<'publish' | 'draft'>('publish')
   const [publishLoading, setPublishLoading] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle')
+  const configDialogSaveRef = useRef<(() => Promise<boolean>) | null>(null)
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
   const draftLoading = publishLoading && publishAction === 'draft'
   const publishButtonLoading = publishLoading && publishAction === 'publish'
@@ -304,9 +305,19 @@ const Layout: React.FC = () => {
     openPublishModal('publish');
   };
 
+  const handleRegisterConfigSave = useCallback((handler: (() => Promise<boolean>) | null) => {
+    configDialogSaveRef.current = handler;
+  }, []);
+
   const handlePublishSubmit = async () => {
     let currentAction: 'publish' | 'draft' = publishAction;
     try {
+      if (configDialogSaveRef.current) {
+        const configSaved = await configDialogSaveRef.current();
+        if (!configSaved) {
+          return;
+        }
+      }
       const values = await publishForm.validateFields();
       const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
       // 画布级主题配置已在 dashboardConfig 中（themeMode/styleMode），全局配色从 ConfigStore 取
@@ -625,6 +636,7 @@ const Layout: React.FC = () => {
                   isOpen={!!configPanelWidget}
                   onClose={closeConfigPanel}
                   widget={configPanelWidget}
+                  onRegisterSaveHandler={handleRegisterConfigSave}
                 />
               )}
             </div>

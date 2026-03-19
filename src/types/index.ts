@@ -35,6 +35,7 @@ export type WidgetType =
 export interface NavItem {
   id?: string;
   url: string;
+  systemId?: string;
   icon?: string;
   name: string;
   description?: string;
@@ -52,6 +53,23 @@ export interface WidgetConfig {
   contentPadding?: number; // 内容区域内边距（像素）
   refreshInterval?: number; // in seconds
   apiEndpoint?: string;
+  apiMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+  apiHeaders?: Record<string, string>;
+  apiQuery?: Record<string, any> | string;
+  apiBody?: Record<string, any> | string;
+  apiDataField?: string;
+  apiListField?: string;
+  paginationMode?: 'none' | 'pagination';
+  paginationConfig?: {
+    page?: number;
+    pageSize?: number;
+    pageParam?: string;
+    pageSizeParam?: string;
+    totalField?: string;
+    currentField?: string;
+    pageSizeField?: string;
+    showTotal?: boolean;
+  };
   forceIconOnly?: boolean;
   iconSvg?: string;
   // 背景配置
@@ -241,6 +259,7 @@ export interface CarouselSlide {
   imageUrl?: string;
   thumbnailUrl?: string;
   link?: string;
+  systemId?: string;
   buttonText?: string;
   buttonLink?: string;
   buttonType?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
@@ -268,7 +287,9 @@ export interface CarouselApiConfig {
   endpoint: string;
   method?: 'GET' | 'POST';
   params?: Record<string, any>;
+  queryParams?: Record<string, any> | string;
   headers?: Record<string, string>;
+  dataField?: string;
   body?: Record<string, any> | string;
   bodyParams?: Record<string, any> | string;
   listField?: string;

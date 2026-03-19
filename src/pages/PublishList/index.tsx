@@ -280,7 +280,7 @@ const PublishList: React.FC = () => {
               onClick={() => handlePreview(record)}
             />
           </Tooltip>
-          {/* <Tooltip title="导出">
+          <Tooltip title="导出">
             <Button
               type="text"
               size="small"
@@ -288,7 +288,7 @@ const PublishList: React.FC = () => {
               loading={exportLoading === record.id}
               onClick={() => handleExport(record)}
             />
-          </Tooltip> */}
+          </Tooltip>
           <Tooltip title="编辑">
             <Button
               type="text"
@@ -376,9 +376,9 @@ const PublishList: React.FC = () => {
                         <Tooltip title="预览">
                           <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
                         </Tooltip>
-                        {/* <Tooltip title="导出">
+                        <Tooltip title="导出">
                           <Button type="text" icon={<DownloadOutlined />} onClick={() => handleExport(item)} loading={exportLoading === item.id} />
-                        </Tooltip> */}
+                        </Tooltip>
                         <Tooltip title="编辑">
                           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />
                         </Tooltip>

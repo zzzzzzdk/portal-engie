@@ -4,6 +4,7 @@ import { PlusOutlined, DeleteOutlined, RightOutlined, DownOutlined } from '@ant-
 import { WidgetConfigProps } from './types';
 import IconRenderer from '@/components/IconRenderer';
 import IconPicker from '@/components/IconPicker';
+import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import '../index.scss';
 
 /**
@@ -153,6 +154,15 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
                           rules={[{ required: true, message: '请输入链接地址' }]}
                        >
                           <Input placeholder="/dashboard" />
+                       </Form.Item>
+
+                       <Form.Item
+                          {...restField}
+                          name={[name, 'systemId']}
+                          label="所属系统"
+                          rules={[{ required: true, message: '请选择所属系统' }]}
+                       >
+                          <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                        </Form.Item>
 
                        <Form.Item

@@ -1,29 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { Button, Empty, Spin, Tag } from 'antd';
-import clsx from 'clsx';
-import type {
-  CarouselApiMapping,
-  CarouselSlide,
-  CarouselWidgetConfig,
-  Widget,
-} from '@/types';
-import { safeIntervalMs } from '@/constants/dashboard';
-import SwiperCarousel from '@/components/SwiperCarousel';
-import './index.scss';
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { LockOutlined } from '@ant-design/icons'
+import { Button, Empty, Spin, Tag } from 'antd'
+import clsx from 'clsx'
+import SwiperCarousel from '@/components/SwiperCarousel'
+import { safeIntervalMs } from '@/constants/dashboard'
+import { useSystemStore } from '@/store/useSystemStore'
+import type { CarouselApiMapping, CarouselSlide, CarouselWidgetConfig, Widget } from '@/types'
+import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { getValueByPath, requestWidgetApi } from '@/utils/widgetApi'
+import { DEFAULT_CAROUSEL_LIST_FIELD } from '@/utils/widgetApiDefaults'
+import './index.scss'
 
 interface CarouselWidgetProps {
-  config: CarouselWidgetConfig;
-  widget: Widget;
-  isEditMode?: boolean;
+  config: CarouselWidgetConfig
+  widget: Widget
+  isEditMode?: boolean
 }
-
-const getValueByPath = (target: any, path?: string) => {
-  if (!path) {
-    return undefined;
-  }
-  return path.split('.').reduce((acc, key) => (acc ? acc[key] : undefined), target);
-};
 
 const normalizeSlide = (
   item: any,
@@ -31,7 +23,7 @@ const normalizeSlide = (
   mapping?: CarouselApiMapping,
 ): CarouselSlide => {
   const mapValue = (field?: string, fallbackKey?: string) =>
-    getValueByPath(item, field) ?? (fallbackKey ? item?.[fallbackKey] : undefined);
+    getValueByPath(item, field) ?? (fallbackKey ? item?.[fallbackKey] : undefined)
 
   return {
     id: mapValue(mapping?.idField) ?? item?.id ?? `slide-${index}`,
@@ -41,152 +33,126 @@ const normalizeSlide = (
     imageUrl: mapValue(mapping?.imageField, 'imageUrl'),
     thumbnailUrl: mapValue(mapping?.thumbnailField, 'thumbnailUrl'),
     link: mapValue(mapping?.linkField, 'link'),
+    systemId: item?.systemId,
     buttonText: mapValue(mapping?.buttonTextField, 'buttonText'),
     badge: mapValue(mapping?.badgeField, 'badge'),
-  };
-};
+  }
+}
 
 const normalizeColor = (value?: any, fallback?: string) => {
-  if (!value) return fallback;
-  if (typeof value === 'string') return value;
+  if (!value) return fallback
+  if (typeof value === 'string') return value
   if (typeof value === 'object' && value.toRgbString) {
-    return value.toRgbString();
+    return value.toRgbString()
   }
   if (typeof value === 'object' && value.toHexString) {
-    return value.toHexString();
+    return value.toHexString()
   }
   if (typeof value === 'object' && value.metaColor) {
-    const { r, g, b, a } = value.metaColor;
-    return `rgba(${r}, ${g}, ${b}, ${a ?? 1})`;
+    const { r, g, b, a } = value.metaColor
+    return `rgba(${r}, ${g}, ${b}, ${a ?? 1})`
   }
-  return fallback;
-};
-
-const resolveRequestBody = (rawBody?: Record<string, any> | string) => {
-  if (rawBody == null || rawBody === '') {
-    return undefined;
-  }
-
-  if (typeof rawBody === 'string') {
-    try {
-      return JSON.parse(rawBody);
-    } catch (error) {
-      console.warn('CarouselWidget: 请求体 JSON 解析失败，将忽略该配置', error);
-      return undefined;
-    }
-  }
-
-  return rawBody;
-};
+  return fallback
+}
 
 const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditMode }) => {
-  const carouselConfig = config as CarouselWidgetConfig;
-  const dataSourceType = carouselConfig.dataSourceType || 'static';
-  const configuredSlides = carouselConfig.slides || [];
-  const [remoteSlides, setRemoteSlides] = useState<CarouselSlide[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const sysConfig = useSystemStore(state => state.sysConfig)
+  const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
+
+  const carouselConfig = config as CarouselWidgetConfig
+  const dataSourceType = carouselConfig.dataSourceType || 'static'
+  const configuredSlides = carouselConfig.slides || []
+  const [remoteSlides, setRemoteSlides] = useState<CarouselSlide[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchSlides = useCallback(async () => {
     if (dataSourceType !== 'api' || !carouselConfig.apiConfig?.endpoint) {
-      setRemoteSlides([]);
-      return;
+      setRemoteSlides([])
+      return
     }
-    const { endpoint, method = 'GET', params, headers, body, bodyParams, listField, mapping } =
-      carouselConfig.apiConfig;
-    const requestBody = resolveRequestBody(body ?? bodyParams);
-    setLoading(true);
-    setError(null);
+
+    setLoading(true)
+    setError(null)
+
     try {
-      const response = await axios({
-        url: endpoint.trim(),
-        method,
-        params,
-        headers,
-        data: method.toUpperCase() === 'GET' ? undefined : requestBody,
-      });
-      const findList = (data: any): any[] | null => {
-        if (Array.isArray(data)) return data;
-        if (data && typeof data === 'object') {
-          if (Array.isArray(data.data)) return data.data;
-          if (Array.isArray(data.list)) return data.list;
-          if (Array.isArray(data.rows)) return data.rows;
-          if (Array.isArray(data.records)) return data.records;
-          // 递归一层：data.data 是对象时再查找
-          if (data.data && typeof data.data === 'object') {
-            const nested = data.data;
-            if (Array.isArray(nested.list)) return nested.list;
-            if (Array.isArray(nested.rows)) return nested.rows;
-            if (Array.isArray(nested.records)) return nested.records;
-          }
-        }
-        return null;
-      };
-      const listSource = listField
-        ? getValueByPath(response.data, listField)
-        : findList(response.data);
-      const dataList = Array.isArray(listSource) ? listSource : [];
-      const normalized = dataList.map((item, index) =>
-        normalizeSlide(item, index, mapping),
-      );
-      setRemoteSlides(normalized);
+      const result = await requestWidgetApi({
+        endpoint: carouselConfig.apiConfig.endpoint,
+        method: carouselConfig.apiConfig.method,
+        headers: carouselConfig.apiConfig.headers,
+        query: carouselConfig.apiConfig.queryParams ?? carouselConfig.apiConfig.params,
+        body: carouselConfig.apiConfig.body ?? carouselConfig.apiConfig.bodyParams,
+        listField: carouselConfig.apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
+      })
+
+      const sourceList = result.list.length
+        ? result.list
+        : Array.isArray(result.data)
+          ? result.data
+          : []
+      setRemoteSlides(
+        sourceList.map((item, index) =>
+          normalizeSlide(item, index, carouselConfig.apiConfig?.mapping),
+        ),
+      )
     } catch (err: any) {
-      setError(err?.message || '数据加载失败');
+      setRemoteSlides([])
+      setError(err?.message || '数据加载失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [carouselConfig.apiConfig, dataSourceType]);
+  }, [carouselConfig.apiConfig, dataSourceType])
 
   useEffect(() => {
     if (dataSourceType === 'api' && carouselConfig.apiConfig?.endpoint) {
-      fetchSlides();
+      fetchSlides()
     }
-  }, [fetchSlides, dataSourceType, carouselConfig.apiConfig?.endpoint]);
+  }, [carouselConfig.apiConfig?.endpoint, dataSourceType, fetchSlides])
 
   useEffect(() => {
     if (dataSourceType !== 'api') {
-      return;
+      return
     }
     if (!carouselConfig.refreshInterval || carouselConfig.refreshInterval <= 0) {
-      return;
+      return
     }
+
     const timer = setInterval(() => {
-      fetchSlides();
-    }, safeIntervalMs(carouselConfig.refreshInterval));
-    return () => clearInterval(timer);
-  }, [carouselConfig.refreshInterval, dataSourceType, fetchSlides]);
+      fetchSlides()
+    }, safeIntervalMs(carouselConfig.refreshInterval))
+
+    return () => clearInterval(timer)
+  }, [carouselConfig.refreshInterval, dataSourceType, fetchSlides])
 
   useEffect(() => {
-    if (!widget?.refreshCount) return;
+    if (!widget?.refreshCount) return
     if (dataSourceType === 'api') {
-      fetchSlides();
+      fetchSlides()
     }
-  }, [widget?.refreshCount, dataSourceType, fetchSlides]);
+  }, [widget?.refreshCount, dataSourceType, fetchSlides])
 
   const slides = useMemo(() => {
     if (dataSourceType === 'api') {
-      if (remoteSlides.length > 0) {
-        return remoteSlides;
-      }
-      return configuredSlides;
+      return remoteSlides
     }
-    return configuredSlides;
-  }, [configuredSlides, dataSourceType, remoteSlides]);
+    return configuredSlides
+  }, [configuredSlides, dataSourceType, remoteSlides])
 
   const responsiveBreakpoints = useMemo(() => {
-    if (!Array.isArray(carouselConfig.responsive)) return undefined;
+    if (!Array.isArray(carouselConfig.responsive)) return undefined
+
     return carouselConfig.responsive.reduce<Record<number, any>>((acc, item) => {
       if (!item?.minWidth) {
-        return acc;
+        return acc
       }
-      const bp: Record<string, any> = {};
-      if (item.slidesPerView != null) bp.slidesPerView = item.slidesPerView;
-      if (item.slidesPerGroup != null) bp.slidesPerGroup = item.slidesPerGroup;
-      if (item.spaceBetween != null) bp.spaceBetween = item.spaceBetween;
-      acc[item.minWidth] = bp;
-      return acc;
-    }, {});
-  }, [carouselConfig.responsive]);
+      const bp: Record<string, any> = {}
+      if (item.slidesPerView != null) bp.slidesPerView = item.slidesPerView
+      if (item.slidesPerGroup != null) bp.slidesPerGroup = item.slidesPerGroup
+      if (item.spaceBetween != null) bp.spaceBetween = item.spaceBetween
+      acc[item.minWidth] = bp
+      return acc
+    }, {})
+  }, [carouselConfig.responsive])
 
   const swiperOptions = useMemo(
     () => ({
@@ -222,40 +188,52 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
       watchSlidesProgress: true,
     }),
     [carouselConfig, responsiveBreakpoints],
-  );
+  )
 
-  const openLink = useCallback((link?: string) => {
-    if (!link) return;
-    const target = link.startsWith('http') ? '_blank' : '_self';
-    window.open(link, target);
-  }, []);
+  const openLink = useCallback(
+    (link?: string, systemId?: string) => {
+      if (!link || isEditMode || !isSystemDeployed(deployedSystemSet, systemId)) {
+        return
+      }
+
+      const target = link.startsWith('http') ? '_blank' : '_self'
+      window.open(link, target)
+    },
+    [deployedSystemSet, isEditMode],
+  )
 
   const handleSlideClick = useCallback(
     (slide: CarouselSlide) => {
-      if (isEditMode) return;
-      if (slide.link) {
-        openLink(slide.link);
+      if (!slide.link || !isSystemDeployed(deployedSystemSet, slide.systemId)) {
+        return
       }
+      openLink(slide.link, slide.systemId)
     },
-    [isEditMode, openLink],
-  );
+    [deployedSystemSet, openLink],
+  )
 
-  const accentColor = normalizeColor(carouselConfig.overlayColor, '#ffffff');
-  const emptyHint = carouselConfig.emptyMessage || '暂无轮播内容';
+  const accentColor = normalizeColor(carouselConfig.overlayColor, '#ffffff')
+  const emptyHint = carouselConfig.emptyMessage || '暂无轮播内容'
 
   const renderSlide = useCallback(
     (slide: CarouselSlide) => {
-      const overlayStyle = slide.overlay ?? carouselConfig.overlayStyle ?? 'gradient';
+      const overlayStyle = slide.overlay ?? carouselConfig.overlayStyle ?? 'gradient'
       const overlayColor = normalizeColor(
         slide.overlayColor ?? carouselConfig.overlayColor,
         'rgba(0, 0, 0, 0.45)',
-      );
-      const textAlign = slide.contentAlign ?? carouselConfig.textAlign ?? 'left';
-      const hasMedia = Boolean(slide.imageUrl);
+      )
+      const textAlign = slide.contentAlign ?? carouselConfig.textAlign ?? 'left'
+      const hasMedia = Boolean(slide.imageUrl)
+      const hasAction = Boolean(slide.link || slide.buttonLink)
+      const isAvailable = hasAction ? isSystemDeployed(deployedSystemSet, slide.systemId) : true
+      const canClickSlide = Boolean(slide.link) && !isEditMode && isAvailable
 
       return (
         <div
-          className={clsx('carousel-slide', `align-${textAlign}`)}
+          className={clsx('carousel-slide', `align-${textAlign}`, {
+            'is-clickable': canClickSlide,
+            'is-disabled': !isAvailable,
+          })}
           onClick={() => handleSlideClick(slide)}
         >
           {hasMedia && (
@@ -282,6 +260,12 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
             </>
           )}
 
+          {!isAvailable && hasAction && (
+            <span className="carousel-slide__lock">
+              <LockOutlined />
+            </span>
+          )}
+
           <div className="carousel-slide__content">
             {slide.badge && (
               <Tag color={slide.badgeColor || 'blue'} className="carousel-slide__badge">
@@ -290,17 +274,16 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
             )}
             {slide.subtitle && <div className="carousel-slide__subtitle">{slide.subtitle}</div>}
             {slide.title && <h3 className="carousel-slide__title">{slide.title}</h3>}
-            {slide.description && (
-              <p className="carousel-slide__description">{slide.description}</p>
-            )}
+            {slide.description && <p className="carousel-slide__description">{slide.description}</p>}
             {(slide.buttonText || slide.buttonLink || slide.link) && (
               <Button
                 type={slide.buttonType || carouselConfig.buttonType || 'primary'}
                 size="large"
                 className="carousel-slide__action"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openLink(slide.buttonLink || slide.link);
+                disabled={!isAvailable}
+                onClick={event => {
+                  event.stopPropagation()
+                  openLink(slide.buttonLink || slide.link, slide.systemId)
                 }}
               >
                 {slide.buttonText || '查看详情'}
@@ -308,12 +291,21 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
             )}
           </div>
         </div>
-      );
+      )
     },
-    [carouselConfig.buttonType, carouselConfig.overlayColor, carouselConfig.overlayStyle, carouselConfig.textAlign, handleSlideClick, openLink],
-  );
+    [
+      carouselConfig.buttonType,
+      carouselConfig.overlayColor,
+      carouselConfig.overlayStyle,
+      carouselConfig.textAlign,
+      deployedSystemSet,
+      handleSlideClick,
+      isEditMode,
+      openLink,
+    ],
+  )
 
-  const hasSlides = slides.length > 0;
+  const hasSlides = slides.length > 0
 
   return (
     <div
@@ -324,10 +316,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         } as React.CSSProperties
       }
     >
-      <div
-        className="carousel-widget__viewport"
-        style={{ height: '100%' }}
-      >
+      <div className="carousel-widget__viewport" style={{ height: '100%' }}>
         {hasSlides && (
           <SwiperCarousel
             slides={slides}
@@ -350,7 +339,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CarouselWidget;
+export default CarouselWidget

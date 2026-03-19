@@ -1,83 +1,91 @@
-import React, { useMemo, useCallback, useEffect, useState } from 'react';
-import { Typography, Avatar, Dropdown, Space, MenuProps, theme, Radio, Menu } from 'antd';
-import { UserOutlined, LogoutOutlined, DownOutlined, SunOutlined, MoonOutlined, MoreOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import IconRenderer from '@/components/IconRenderer';
-import { WidgetConfig, NavItem } from '@/types';
-import { useStore } from '@/store/useStore';
-import { useSystemStore } from '@/store/useSystemStore';
-import { useCanvasTheme } from '@/hooks/useCanvasTheme';
-import './index.scss';
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Avatar, Dropdown, Menu, Radio, Space, theme, Typography } from 'antd'
+import type { MenuProps } from 'antd'
+import {
+  DownOutlined,
+  LogoutOutlined,
+  MoonOutlined,
+  MoreOutlined,
+  SunOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import axios from 'axios'
+import IconRenderer from '@/components/IconRenderer'
+import { useCanvasTheme } from '@/hooks/useCanvasTheme'
+import { useStore } from '@/store/useStore'
+import { useSystemStore } from '@/store/useSystemStore'
+import type { NavItem, WidgetConfig } from '@/types'
+import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import './index.scss'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 interface HeaderNavItem extends NavItem {
-  path?: string;
+  path?: string
 }
 
 interface HeaderBarWidgetConfig extends WidgetConfig {
-  headerTitle?: string;
-  headerAlignment?: 'left' | 'center';
-  headerFontSize?: number;
-  fontFamily?: string;
-  textColor?: string;
-  showThemeSwitcher?: boolean;
-  showUserProfile?: boolean;
-  navItems?: HeaderNavItem[];
-  navDataSource?: 'static' | 'api';
-  navApiEndpoint?: string;
-  navTextColor?: string;
-  showNavMenu?: boolean;
-  // 接口请求配置
-  navApiMethod?: 'GET' | 'POST';
-  navApiHeaders?: Record<string, string>;
-  navApiBody?: string;  // POST 请求体（JSON 字符串）
-  // 响应字段映射
+  headerTitle?: string
+  headerAlignment?: 'left' | 'center'
+  headerFontSize?: number
+  fontFamily?: string
+  textColor?: string
+  showThemeSwitcher?: boolean
+  showUserProfile?: boolean
+  navItems?: HeaderNavItem[]
+  navDataSource?: 'static' | 'api'
+  navApiEndpoint?: string
+  navTextColor?: string
+  showNavMenu?: boolean
+  navApiMethod?: 'GET' | 'POST'
+  navApiHeaders?: Record<string, string>
+  navApiBody?: string
   navFieldMapping?: {
-    name?: string;   // 名称字段，默认 name
-    url?: string;    // 链接字段，默认 url
-    icon?: string;   // 图标字段，默认 icon
-  };
+    name?: string
+    url?: string
+    icon?: string
+  }
 }
 
 interface HeaderBarWidgetProps {
-  config?: WidgetConfig;
+  config?: WidgetConfig
 }
 
 const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
-  const { userInfo, sysConfig, logout } = useSystemStore();
-  const { isEditMode } = useStore();
-  const { token } = theme.useToken();
-  const { themeMode, setCanvasThemeMode } = useCanvasTheme();
+  const { userInfo, sysConfig, logout } = useSystemStore()
+  const { isEditMode } = useStore()
+  const { token } = theme.useToken()
+  const { themeMode, setCanvasThemeMode } = useCanvasTheme()
 
-  // 换肤选项
+  const headerConfig = config as HeaderBarWidgetConfig | undefined
+  const [navItems, setNavItems] = useState<HeaderNavItem[]>(headerConfig?.navItems || [])
+  const [navLoading, setNavLoading] = useState(false)
+
+  const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
+
   const themeOptions = [
     { label: <SunOutlined />, value: 'light' },
     { label: <MoonOutlined />, value: 'dark' },
-  ];
+  ]
 
-  const headerConfig = config as HeaderBarWidgetConfig | undefined;
-  const [navItems, setNavItems] = useState<HeaderNavItem[]>(headerConfig?.navItems || []);
-  const [navLoading, setNavLoading] = useState(false);
-
-  const renderIcon = () => {
+  const renderHeaderIcon = () => {
     if (!config?.icon) {
-      return null;
+      return null
     }
 
     return (
       <IconRenderer
         value={config.icon}
         size={24}
-        color={config?.textColor ||"#1890ff"}
+        color={config.textColor || '#1890ff'}
         style={{ marginRight: 8 }}
         fallbackText={config.headerTitle}
       />
-    );
-  };
+    )
+  }
 
   const backgroundStyle = useMemo(() => {
-    const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = config || {};
+    const { backgroundType, backgroundColor, backgroundImage, backgroundGradient } = config || {}
 
     if (backgroundType === 'image' && backgroundImage) {
       return {
@@ -85,45 +93,50 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-      };
+      }
     }
+
     if (backgroundType === 'gradient' && backgroundGradient) {
-      return { background: backgroundGradient };
+      return { background: backgroundGradient }
     }
+
     if (backgroundType === 'color' && backgroundColor) {
-      return { backgroundColor };
+      return { backgroundColor }
     }
-    // 兼容旧数据：直接使用 backgroundImage
+
     if (backgroundImage) {
       return {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-      };
+      }
     }
-    return { background: 'transparent' };
-  }, [config]);
 
-  // 处理退出登录，清除 cookie 并跳转到 login_url
+    return { background: 'transparent' }
+  }, [config])
+
   const handleLogout = useCallback(() => {
-    logout();
-    // 跳转到系统配置的登录地址
-    const loginUrl = sysConfig?.login_url;
-    if (loginUrl) {
-      window.location.href = loginUrl;
-    } else {
-      // 如果没有配置 login_url，跳转到默认登录页
-      window.location.href = '/#/login';
-    }
-  }, [logout, sysConfig?.login_url]);
+    logout()
+    const loginUrl = sysConfig?.login_url
 
-  const handleMenuClick: MenuProps['onClick'] = (e) => {
-    if (isEditMode) return;
-    if (e.key === 'logout') {
-      handleLogout();
+    if (loginUrl) {
+      window.location.href = loginUrl
+      return
     }
-  };
+
+    window.location.href = '/#/login'
+  }, [logout, sysConfig?.login_url])
+
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (isEditMode) {
+      return
+    }
+
+    if (key === 'logout') {
+      handleLogout()
+    }
+  }
 
   const userMenuProps: MenuProps = {
     items: [
@@ -132,7 +145,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         label: (
           <div style={{ padding: '4px 0' }}>
             <Text strong>{userInfo?.user_info?.user_name || '用户'}</Text>
-            <div style={{ fontSize: '12px', color: token.colorTextSecondary }}>
+            <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
               {userInfo?.user_info?.account || ''}
             </div>
           </div>
@@ -150,143 +163,176 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       },
     ],
     onClick: handleMenuClick,
-  };
+  }
 
   const getNavKey = useCallback((item: HeaderNavItem, index: number) => {
-    return `nav-${index}-${item.id || item.url || item.path || item.name}`;
-  }, []);
+    return `nav-${index}-${item.id || item.url || item.path || item.name}`
+  }, [])
 
   const navKeyMap = useMemo(() => {
     return navItems.reduce<Record<string, HeaderNavItem>>((map, item, index) => {
-      map[getNavKey(item, index)] = item;
-      return map;
-    }, {});
-  }, [navItems, getNavKey]);
+      map[getNavKey(item, index)] = item
+      return map
+    }, {})
+  }, [navItems, getNavKey])
 
   const navMenuItems = useMemo(() => {
-    return navItems.map((item, index) => ({
-      key: getNavKey(item, index),
-      label: item.name || '未命名',
-      icon: item.icon ? (
-        <IconRenderer
-          value={item.icon}
-          size={16}
-          color={headerConfig?.navTextColor || headerConfig?.textColor || undefined}
-          fallbackText={item.name}
-        />
-      ) : undefined,
-    }));
-  }, [navItems, getNavKey, headerConfig?.navTextColor, headerConfig?.textColor]);
+    return navItems.map((item, index) => {
+      const isAvailable = isSystemDeployed(deployedSystemSet, item.systemId)
 
-  const alignment = headerConfig?.headerAlignment || 'left';
-  const showUserProfile = config?.showUserProfile;
-  const showNavMenu = headerConfig?.showNavMenu;
+      return {
+        key: getNavKey(item, index),
+        label: item.name || '未命名',
+        disabled: !isAvailable,
+        icon: item.icon ? (
+          <span style={!isAvailable ? { opacity: 0.45 } : undefined}>
+            <IconRenderer
+              value={item.icon}
+              size={16}
+              color={headerConfig?.navTextColor || headerConfig?.textColor || undefined}
+              fallbackText={item.name}
+            />
+          </span>
+        ) : undefined,
+      }
+    })
+  }, [
+    deployedSystemSet,
+    getNavKey,
+    headerConfig?.navTextColor,
+    headerConfig?.textColor,
+    navItems,
+  ])
 
-  // 导航数据加载
+  const alignment = headerConfig?.headerAlignment || 'left'
+  const showUserProfile = config?.showUserProfile
+  const showNavMenu = headerConfig?.showNavMenu
+
   useEffect(() => {
     if (!showNavMenu) {
-      setNavItems([]);
-      setNavLoading(false);
-      return;
+      setNavItems([])
+      setNavLoading(false)
+      return
     }
 
-    let isMounted = true;
-    const hasStaticNav = Array.isArray(headerConfig?.navItems) && headerConfig?.navItems.length;
-    const dataSource = headerConfig?.navDataSource || (hasStaticNav ? 'static' : 'api');
+    let isMounted = true
+    const hasStaticNav = Array.isArray(headerConfig?.navItems) && headerConfig.navItems.length > 0
+    const dataSource = headerConfig?.navDataSource || (hasStaticNav ? 'static' : 'api')
 
     const loadNavItems = async () => {
       if (dataSource === 'static') {
-        setNavItems(headerConfig?.navItems || []);
-        return;
+        setNavItems(headerConfig?.navItems || [])
+        return
       }
 
-      const endpoint = headerConfig?.navApiEndpoint?.trim();
-
+      const endpoint = headerConfig?.navApiEndpoint?.trim()
       if (!endpoint) {
-        setNavItems([]);
-        return;
+        setNavItems([])
+        return
       }
 
-      setNavLoading(true);
+      setNavLoading(true)
+
       try {
-        const method = headerConfig?.navApiMethod || 'GET';
-        const headers = headerConfig?.navApiHeaders;
-        let data: any = undefined;
+        const method = headerConfig?.navApiMethod || 'GET'
+        const headers = headerConfig?.navApiHeaders
+        let data: any
+
         if (method === 'POST' && headerConfig?.navApiBody) {
           try {
-            data = JSON.parse(headerConfig.navApiBody);
+            data = JSON.parse(headerConfig.navApiBody)
           } catch {
-            console.warn('HeaderBarWidget: navApiBody JSON 解析失败，将作为空 body 发送');
+            console.warn('HeaderBarWidget: navApiBody JSON 解析失败，已忽略请求体')
           }
         }
-        const response = await axios({ method, url: endpoint, ...(headers ? { headers } : {}), ...(data !== undefined ? { data } : {}) });
+
+        const response = await axios({
+          method,
+          url: endpoint,
+          ...(headers ? { headers } : {}),
+          ...(data !== undefined ? { data } : {}),
+        })
+
         const rawPayload = Array.isArray(response.data?.data)
           ? response.data.data
           : Array.isArray(response.data)
             ? response.data
-            : [];
+            : []
 
-        // 字段映射
-        const mapping = headerConfig?.navFieldMapping;
-        const payload = (mapping && (mapping.name || mapping.url || mapping.icon))
-          ? rawPayload.map((item: any) => ({
-              ...item,
-              name: item[mapping.name || 'name'] ?? item.name,
-              url: item[mapping.url || 'url'] ?? item.url,
-              icon: item[mapping.icon || 'icon'] ?? item.icon,
-            }))
-          : rawPayload;
+        const mapping = headerConfig?.navFieldMapping
+        const payload =
+          mapping && (mapping.name || mapping.url || mapping.icon)
+            ? rawPayload.map((item: any) => ({
+                ...item,
+                name: item[mapping.name || 'name'] ?? item.name,
+                url: item[mapping.url || 'url'] ?? item.url,
+                icon: item[mapping.icon || 'icon'] ?? item.icon,
+              }))
+            : rawPayload
 
         if (isMounted) {
-          setNavItems(payload as HeaderNavItem[]);
+          setNavItems(payload as HeaderNavItem[])
         }
       } catch (error) {
-        console.error('HeaderBarWidget: 导航数据加载失败', error);
+        console.error('HeaderBarWidget: 导航数据加载失败', error)
         if (isMounted) {
-          setNavItems([]);
+          setNavItems([])
         }
       } finally {
         if (isMounted) {
-          setNavLoading(false);
+          setNavLoading(false)
         }
       }
-    };
+    }
 
-    loadNavItems();
+    loadNavItems()
 
     return () => {
-      isMounted = false;
-    };
-  }, [showNavMenu, headerConfig?.navItems, headerConfig?.navDataSource, headerConfig?.navApiEndpoint, headerConfig?.navApiMethod, headerConfig?.navApiHeaders, headerConfig?.navApiBody, headerConfig?.navFieldMapping]);
+      isMounted = false
+    }
+  }, [
+    headerConfig?.navApiBody,
+    headerConfig?.navApiEndpoint,
+    headerConfig?.navApiHeaders,
+    headerConfig?.navApiMethod,
+    headerConfig?.navDataSource,
+    headerConfig?.navFieldMapping,
+    headerConfig?.navItems,
+    showNavMenu,
+  ])
 
   const handleNavClick: MenuProps['onClick'] = ({ key }) => {
-    if (isEditMode) return;
-    const target = navKeyMap[key];
-    const targetUrl = target?.url || target?.path;
-    if (!target || !targetUrl) {
-      return;
+    if (isEditMode) {
+      return
     }
 
-    const shouldOpenNewTab = target.openInNew ?? /^https?:\/\//.test(targetUrl);
+    const target = navKeyMap[key]
+    const targetUrl = target?.url || target?.path
+
+    if (!target || !targetUrl || !isSystemDeployed(deployedSystemSet, target.systemId)) {
+      return
+    }
+
+    const shouldOpenNewTab = target.openInNew ?? /^https?:\/\//.test(targetUrl)
     if (shouldOpenNewTab) {
-      window.open(targetUrl, '_blank');
-    } else {
-      window.location.href = targetUrl;
+      window.open(targetUrl, '_blank')
+      return
     }
-  };
 
-  const navTextColor = headerConfig?.navTextColor || headerConfig?.textColor || config?.textColor || token.colorTextBase;
+    window.location.href = targetUrl
+  }
+
+  const navTextColor =
+    headerConfig?.navTextColor || headerConfig?.textColor || config?.textColor || token.colorTextBase
 
   return (
     <div
       className={`header-bar-widget alignment-${alignment}`}
-      style={{
-        ...backgroundStyle,
-      }}
+      style={backgroundStyle}
     >
       <div className="header-bar-content">
         <div className="title-section">
-          {renderIcon()}
+          {renderHeaderIcon()}
           <Typography.Title
             level={4}
             style={{
@@ -327,7 +373,11 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
             <div className="theme-switcher-section">
               <Radio.Group
                 options={themeOptions}
-                onChange={(e) => { if (!isEditMode) setCanvasThemeMode(e.target.value); }}
+                onChange={event => {
+                  if (!isEditMode) {
+                    setCanvasThemeMode(event.target.value)
+                  }
+                }}
                 value={themeMode}
                 optionType="button"
                 size="small"
@@ -339,15 +389,22 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
           {showUserProfile && (
             <div className="user-profile-section">
               <Dropdown menu={userMenuProps} trigger={['click']} disabled={isEditMode}>
-                <div className="user-profile-trigger" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  className="user-profile-trigger"
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
                   <Avatar
                     size="small"
                     icon={<UserOutlined />}
                     style={{ backgroundColor: token.colorPrimary }}
                   />
                   <Space size={4}>
-                    <Text style={{ color: config?.textColor || 'inherit' }}>{userInfo?.user_info?.user_name || '个人中心'}</Text>
-                    <DownOutlined style={{ fontSize: '10px', color: config?.textColor || 'inherit' }} />
+                    <Text style={{ color: config?.textColor || 'inherit' }}>
+                      {userInfo?.user_info?.user_name || '个人中心'}
+                    </Text>
+                    <DownOutlined
+                      style={{ fontSize: 10, color: config?.textColor || 'inherit' }}
+                    />
                   </Space>
                 </div>
               </Dropdown>
@@ -356,7 +413,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default HeaderBarWidget;
+export default HeaderBarWidget
