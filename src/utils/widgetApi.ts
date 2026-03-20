@@ -51,6 +51,11 @@ export interface WidgetApiPageState {
   pageSize: number
 }
 
+export interface WidgetApiKeyValueItem {
+  key?: string
+  value?: string
+}
+
 const isPlainObject = (value: unknown): value is Record<string, any> =>
   Object.prototype.toString.call(value) === '[object Object]'
 
@@ -79,6 +84,68 @@ export const parseJsonConfig = (value?: Record<string, any> | string) => {
   }
 
   return value
+}
+
+const parseKeyValueItem = (value?: string) => {
+  if (value == null) {
+    return ''
+  }
+
+  const text = String(value).trim()
+  if (!text) {
+    return ''
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return value
+  }
+}
+
+export const objectToKeyValueList = (
+  value?: Record<string, any> | string,
+): WidgetApiKeyValueItem[] => {
+  const parsed = parseJsonConfig(value)
+
+  if (!isPlainObject(parsed)) {
+    return []
+  }
+
+  return Object.entries(parsed).map(([key, itemValue]) => ({
+    key,
+    value:
+      typeof itemValue === 'string'
+        ? itemValue
+        : itemValue == null
+          ? ''
+          : JSON.stringify(itemValue),
+  }))
+}
+
+export const keyValueListToObject = (
+  list?: WidgetApiKeyValueItem[],
+): Record<string, any> | undefined => {
+  if (!Array.isArray(list)) {
+    return undefined
+  }
+
+  const result = list.reduce<Record<string, any>>((acc, item) => {
+    const key = item?.key?.trim()
+    if (!key) {
+      return acc
+    }
+
+    acc[key] = parseKeyValueItem(item.value)
+    return acc
+  }, {})
+
+  return Object.keys(result).length ? result : undefined
+}
+
+export const keyValueListToJsonString = (list?: WidgetApiKeyValueItem[]) => {
+  const result = keyValueListToObject(list)
+  return result ? JSON.stringify(result, null, 2) : undefined
 }
 
 const mergeObjectPayload = (

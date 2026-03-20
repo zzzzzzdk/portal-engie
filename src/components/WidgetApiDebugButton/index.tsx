@@ -29,7 +29,7 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
       const config = buildConfig(values)
 
       if (!config?.endpoint?.trim()) {
-        message.warning('\u8bf7\u5148\u586b\u5199\u63a5\u53e3\u5730\u5740')
+        message.warning('请先填写接口地址')
         return
       }
 
@@ -39,18 +39,19 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
       const result = await requestWidgetApi(config, pageState)
 
       Modal.info({
-        title: '\u63a5\u53e3\u8c03\u8bd5\u7ed3\u679c',
+        title: '接口调试结果',
         width: 860,
+        // footer: null,
         content: (
           <div style={{ display: 'grid', gap: 12, maxHeight: '70vh', overflow: 'auto' }}>
             <div>
-              <Typography.Text strong>{'\u8bf7\u6c42\u914d\u7f6e'}</Typography.Text>
+              <Typography.Text strong>{'请求配置'}</Typography.Text>
               <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {JSON.stringify(requestConfig, null, 2)}
               </pre>
             </div>
             <div>
-              <Typography.Text strong>{'\u89e3\u6790\u7ed3\u679c'}</Typography.Text>
+              <Typography.Text strong>{'解析结果'}</Typography.Text>
               <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {JSON.stringify(
                   {
@@ -65,7 +66,7 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
               </pre>
             </div>
             <div>
-              <Typography.Text strong>{'\u54cd\u5e94\u9884\u89c8'}</Typography.Text>
+              <Typography.Text strong>{'响应预览'}</Typography.Text>
               <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {JSON.stringify(result.raw, null, 2)}
               </pre>
@@ -77,7 +78,7 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
       if (error?.errorFields) {
         return
       }
-      message.error(error?.message || '\u63a5\u53e3\u8c03\u8bd5\u5931\u8d25')
+      message.error(error?.message || '接口调试失败')
     } finally {
       setLoading(false)
     }
@@ -90,7 +91,7 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
       loading={loading}
       disabled={disabled}
     >
-      {'\u63a5\u53e3\u8c03\u8bd5'}
+      接口调试
     </Button>
   )
 }

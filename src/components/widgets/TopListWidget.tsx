@@ -33,11 +33,11 @@ interface TopListWidgetProps {
 }
 
 const DEFAULT_DATA: TopListItem[] = [
-  { name: '\u4ea7\u54c1 A', value: 1234, change: '+12%' },
-  { name: '\u4ea7\u54c1 B', value: 984, change: '+5%' },
-  { name: '\u4ea7\u54c1 C', value: 856, change: '-2%' },
-  { name: '\u4ea7\u54c1 D', value: 664, change: '+8%' },
-  { name: '\u4ea7\u54c1 E', value: 432, change: '+15%' },
+  { name: '产品 A', value: 1234, change: '+12%' },
+  { name: '产品 B', value: 984, change: '+5%' },
+  { name: '产品 C', value: 856, change: '-2%' },
+  { name: '产品 D', value: 664, change: '+8%' },
+  { name: '产品 E', value: 432, change: '+15%' },
 ]
 
 const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
@@ -70,7 +70,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
 
         return {
           id: item.id || `item-${index}`,
-          name: String(item?.[nameField] ?? item?.name ?? '\u672a\u77e5'),
+          name: String(item?.[nameField] ?? item?.name ?? '未知'),
           value: typeof rawValue === 'number' ? rawValue : Number(rawValue) || 0,
           change: rawChange != null ? String(rawChange) : undefined,
           unit: rawUnit != null ? String(rawUnit) : undefined,
@@ -109,8 +109,8 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
         setListData(DEFAULT_DATA.slice(0, maxItems))
       }
     } catch (err: any) {
-      console.error('\u52a0\u8f7d\u6392\u884c\u699c\u6570\u636e\u5931\u8d25:', err)
-      setError(err.message || '\u6570\u636e\u52a0\u8f7d\u5931\u8d25')
+      console.error('加载排行榜数据失败:', err)
+      setError(err.message || '数据加载失败')
     } finally {
       setLoading(false)
     }
@@ -155,7 +155,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
 
   const formatValue = (value: number, unit?: string) => {
     if (value >= 10000) {
-      return `${(value / 10000).toFixed(1)}\u4e07${unit || ''}`
+      return `${(value / 10000).toFixed(1)}万${unit || ''}`
     }
     return `${value.toLocaleString()}${unit || ''}`
   }

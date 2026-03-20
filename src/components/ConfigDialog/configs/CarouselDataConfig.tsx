@@ -3,13 +3,11 @@ import {
   Form,
   Input,
   InputNumber,
-  Radio,
   Select,
   Button,
   Divider,
   ColorPicker,
   Upload,
-  Space,
   message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
@@ -17,25 +15,14 @@ import type { WidgetConfigProps } from './types';
 import { MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
+import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
 import {
   DEFAULT_CAROUSEL_LIST_FIELD,
   getWidgetApiEndpointPlaceholder,
 } from '@/utils/widgetApiDefaults';
 import '../index.scss';
+import { keyValueListToObject } from '@/utils/widgetApi';
 import { uploadImage } from '@/services';
-
-const validateJson = (_: any, value: string) => {
-  if (!value) {
-    return Promise.resolve();
-  }
-
-  try {
-    JSON.parse(value);
-    return Promise.resolve();
-  } catch {
-    return Promise.reject('请输入合法的 JSON 格式');
-  }
-};
 
 const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => {
   if (!Array.isArray(headersList)) {
@@ -55,15 +42,16 @@ const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => 
 
 const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
   const [uploadingIndex, setUploadingIndex] = useState<string | null>(null);
-  const apiMethod = Form.useWatch(['apiConfig', 'method'], form) || 'GET';
 
   return (
     <>
       <Form.Item name="dataSourceType" label="数据来源" initialValue="static">
-        <Radio.Group optionType="button">
-          <Radio.Button value="static">静态列表</Radio.Button>
-          <Radio.Button value="api">接口数据</Radio.Button>
-        </Radio.Group>
+        <Select
+          options={[
+            { label: '静态列表', value: 'static' },
+            { label: '接口数据', value: 'api' },
+          ]}
+        />
       </Form.Item>
 
       <Form.Item noStyle shouldUpdate={(prev, curr) => prev.dataSourceType !== curr.dataSourceType}>
@@ -86,7 +74,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                               event.currentTarget.parentElement?.classList.toggle('expanded');
                             }}
                           >
-                            <span>轮播项 {name + 1}</span>
+                            <span>{'轮播项' + (name + 1)}</span>
                             <div className="header-actions">
                               <Button
                                 type="text"
@@ -245,107 +233,64 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
 
           return (
             <>
-              <Divider>接口配置</Divider>
+              <Form.Item label="接口地址" required className="widget-api-form-item">
+                <div className="widget-api-endpoint-row">
+                  <Form.Item name={['apiConfig', 'method']} noStyle initialValue="GET">
+                    <Select
+                      className="widget-api-endpoint-row__method"
+                      options={[
+                        { value: 'GET', label: 'GET' },
+                        { value: 'POST', label: 'POST' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name={['apiConfig', 'endpoint']}
+                    noStyle
+                    rules={[{ required: true, message: '请输入接口地址' }]}
+                  >
+                    <Input
+                      className="widget-api-endpoint-row__input"
+                      placeholder={getWidgetApiEndpointPlaceholder('carousel')}
+                    />
+                  </Form.Item>
+                </div>
+              </Form.Item>
               <Form.Item
-                name={['apiConfig', 'endpoint']}
-                label="接口地址"
-                rules={[{ required: true, message: '请输入接口地址' }]}
+                name={['apiConfig', 'listField']}
+                label="列表字段路径"
+                tooltip="默认按 data.carousel.items 取值；修改后按填写路径取值。"
               >
-                <Input placeholder={getWidgetApiEndpointPlaceholder('carousel')} />
+                <Input placeholder={DEFAULT_CAROUSEL_LIST_FIELD} />
               </Form.Item>
-              <div className="form-row-2">
-                <Form.Item name={['apiConfig', 'method']} label="请求方式" initialValue="GET">
-                  <Select
-                    options={[
-                      { value: 'GET', label: 'GET' },
-                      { value: 'POST', label: 'POST' },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name={['apiConfig', 'listField']}
-                  label="列表字段路径"
-                  tooltip="默认按 data.carousel.items 取值；修改后按填写路径取值。"
-                >
-                  <Input placeholder={DEFAULT_CAROUSEL_LIST_FIELD} />
-                </Form.Item>
-              </div>
-              <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization、Content-Type 等">
-                <Form.List name={['apiConfig', 'headersList']}>
-                  {(fields, { add, remove }) => (
-                    <>
-                      {fields.map(({ key, name, ...restField }) => (
-                        <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'key']}
-                            noStyle
-                            rules={[{ required: true, message: '请输入 Key' }]}
-                          >
-                            <Input placeholder="Header Key" style={{ width: 160 }} />
-                          </Form.Item>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'value']}
-                            noStyle
-                            rules={[{ required: true, message: '请输入 Value' }]}
-                          >
-                            <Input placeholder="Header Value" style={{ width: 200 }} />
-                          </Form.Item>
-                          <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f' }} />
-                        </Space>
-                      ))}
-                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
-                        添加请求头
-                      </Button>
-                    </>
-                  )}
-                </Form.List>
-              </Form.Item>
-              {apiMethod === 'GET' && (
-                <Form.Item
-                  name={['apiConfig', 'queryParams']}
-                  label="Query 参数(JSON)"
-                  tooltip="GET 请求时会拼接到 URL query 中"
-                  rules={[{ validator: validateJson }]}
-                >
-                  <Input.TextArea
-                    rows={4}
-                    placeholder='{"scene": "portal"}'
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                </Form.Item>
-              )}
-              {apiMethod === 'POST' && (
-                <Form.Item
-                  name={['apiConfig', 'bodyParams']}
-                  label="Body 参数(JSON)"
-                  tooltip="POST 请求体，请输入合法的 JSON 格式"
-                  rules={[{ validator: validateJson }]}
-                >
-                  <Input.TextArea
-                    rows={4}
-                    placeholder='{"scene": "portal"}'
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                </Form.Item>
-              )}
-              <div style={{ marginBottom: 12 }}>
-                <WidgetApiDebugButton
+              <Form.Item label="参数配置" className="widget-api-form-item">
+                <WidgetApiConfigTabs
                   form={form}
-                  buildConfig={formValues => {
-                    const apiConfig = formValues.apiConfig || {};
-                    return {
-                      endpoint: apiConfig.endpoint,
-                      method: apiConfig.method || 'GET',
-                      headers: buildHeaders(apiConfig.headersList),
-                      query: apiConfig.queryParams ?? apiConfig.params,
-                      body: apiConfig.bodyParams ?? apiConfig.body,
-                      listField: apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
-                    };
-                  }}
+                  methodName={['apiConfig', 'method']}
+                  headersName={['apiConfig', 'headersList']}
+                  queryName={['apiConfig', 'queryParamsList']}
+                  bodyName={['apiConfig', 'bodyParamsList']}
+                  debugContent={
+                    <WidgetApiDebugButton
+                      form={form}
+                      buildConfig={formValues => {
+                        const apiConfig = formValues.apiConfig || {};
+                        return {
+                          endpoint: apiConfig.endpoint,
+                          method: apiConfig.method || 'GET',
+                          headers: buildHeaders(apiConfig.headersList),
+                          query: keyValueListToObject(apiConfig.queryParamsList),
+                          body: keyValueListToObject(apiConfig.bodyParamsList),
+                          listField: apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
+                        };
+                      }}
+                    />
+                  }
+                  debugHint="调试时将使用当前轮播图的接口地址、参数配置和列表路径。"
                 />
-              </div>
+              </Form.Item>
+
+              <Divider>字段配置</Divider>
               <div className="form-row-3">
                 <Form.Item name={['apiConfig', 'mapping', 'titleField']} label="标题字段">
                   <Input placeholder="title" />

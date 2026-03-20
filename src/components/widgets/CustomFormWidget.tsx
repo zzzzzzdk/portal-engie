@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, FormConfig, FormField, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
+import { parseJsonConfig } from '@/utils/widgetApi';
 
 const { bus } = WujieReact;
 
@@ -17,21 +18,17 @@ interface CustomFormWidgetConfig extends FormConfig {
   showResetButton?: boolean;
   layout?: 'horizontal' | 'vertical' | 'inline';
   labelWidth?: number;
-  // 按钮样式
   submitButtonColor?: string;
   submitButtonTextColor?: string;
   submitButtonSize?: 'small' | 'middle' | 'large';
   resetButtonColor?: string;
   resetButtonTextColor?: string;
-  // 布局设置
   buttonAlign?: 'left' | 'center' | 'right';
   borderRadius?: number;
   fieldSpacing?: number;
-  // 数据交互
   submitMethod?: 'api' | 'eventRoute';
   apiMethod?: 'POST' | 'PUT' | 'PATCH';
   apiHeaders?: Record<string, string>;
-  // 提交反馈
   successMessage?: string;
   failureMessage?: string;
   successResetForm?: boolean;
@@ -42,16 +39,23 @@ interface CustomFormWidgetProps {
   widget?: Widget;
 }
 
-// 默认表单字段
 const DEFAULT_FIELDS: FormField[] = [
   { id: '1', type: 'text', label: '姓名', name: 'name', required: true },
-  { id: '2', type: 'select', label: '角色', name: 'role', options: [{ label: '管理员', value: 'admin' }, { label: '用户', value: 'user' }] },
+  {
+    id: '2',
+    type: 'select',
+    label: '角色',
+    name: 'role',
+    options: [
+      { label: '管理员', value: 'admin' },
+      { label: '用户', value: 'user' },
+    ],
+  },
 ];
 
 const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) => {
   const [form] = Form.useForm();
 
-  // 获取配置
   const formConfig = config as CustomFormWidgetConfig;
   const fields = formConfig.fields || DEFAULT_FIELDS;
   const eventRoutes = formConfig.eventRoutes || [];
@@ -75,7 +79,6 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   const failureMessage = formConfig.failureMessage || '提交失败';
   const successResetForm = formConfig.successResetForm ?? false;
 
-  // 发送事件到微应用
   const emitRoutes = useCallback((routes: EventRouteConfig[], values: Record<string, any>) => {
     const enabledRoutes = routes.filter(route => route.enabled !== false);
     if (enabledRoutes.length === 0) return;
@@ -93,9 +96,20 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     });
   }, [widget?.id]);
 
-  // 提交表单
+  const buildApiPayload = useCallback((formValues: Record<string, any>) => {
+    const configuredBody = parseJsonConfig(formConfig.apiBody);
+
+    if (configuredBody && typeof configuredBody === 'object' && !Array.isArray(configuredBody)) {
+      return {
+        ...configuredBody,
+        ...formValues,
+      };
+    }
+
+    return formValues;
+  }, [formConfig.apiBody]);
+
   const onFinish = async (values: Record<string, any>) => {
-    // 将 dayjs 日期对象格式化为本地日期字符串，避免 UTC 时区偏移
     const formattedValues = { ...values };
     for (const key in formattedValues) {
       if (dayjs.isDayjs(formattedValues[key])) {
@@ -105,10 +119,12 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
 
     try {
       if (submitMethod === 'api' && formConfig.apiEndpoint) {
+        const requestPayload = buildApiPayload(formattedValues);
+
         await axios({
           method: apiMethod,
           url: formConfig.apiEndpoint,
-          data: formattedValues,
+          data: requestPayload,
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         });
       }
@@ -123,18 +139,15 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     }
   };
 
-  // 提交失败（校验失败）
   const onFinishFailed = () => {
     message.warning('请检查表单填写是否完整');
   };
 
-  // 重置表单
   const handleReset = () => {
     form.resetFields();
     message.info('表单已重置');
   };
 
-  // 渲染表单字段
   const renderField = (field: FormField) => {
     switch (field.type) {
       case 'text':
@@ -156,7 +169,6 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     }
   };
 
-  // 获取表单布局属性
   const getFormLayout = () => {
     if (layout === 'horizontal') {
       return {
@@ -167,12 +179,10 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     return {};
   };
 
-  // 按钮对齐样式
   const buttonAlignStyle: React.CSSProperties = {
     textAlign: buttonAlign,
   };
 
-  // 提交按钮样式
   const submitBtnStyle: React.CSSProperties | undefined = (submitButtonColor || submitButtonTextColor)
     ? {
         ...(submitButtonColor ? { backgroundColor: submitButtonColor, borderColor: submitButtonColor } : {}),
@@ -180,7 +190,6 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
       }
     : undefined;
 
-  // 重置按钮样式
   const resetBtnStyle: React.CSSProperties | undefined = (resetButtonColor || resetButtonTextColor)
     ? {
         ...(resetButtonColor ? { backgroundColor: resetButtonColor, borderColor: resetButtonColor } : {}),
@@ -202,7 +211,7 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
         onFinishFailed={onFinishFailed}
         {...getFormLayout()}
       >
-        {fields.map((field) => (
+        {fields.map(field => (
           <Form.Item
             key={field.id}
             name={field.name}

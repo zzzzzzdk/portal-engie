@@ -362,3 +362,90 @@
      }
    }
 }
+
+
+.config-dialog {
+  .widget-api-form-item {
+    .ant-form-item-control {
+      width: 100%;
+    }
+  }
+
+  .widget-api-endpoint-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+
+    &__method {
+      flex: 0 0 88px;
+      min-width: 88px;
+    }
+
+    &__input {
+      flex: 1;
+    }
+
+    .ant-select,
+    .ant-input-affix-wrapper,
+    .ant-input {
+      width: 100%;
+    }
+  }
+
+  .widget-api-config-tabs {
+    border: 1px solid var(--ant-color-border);
+    border-radius: 8px;
+    background: var(--ant-color-bg-container);
+    padding: 0 12px 12px;
+
+    &__tabs {
+      .ant-tabs-nav {
+        margin-bottom: 12px;
+      }
+
+      .ant-tabs-tab {
+        padding: 12px 0 10px;
+      }
+    }
+
+    &__list,
+    &__debug,
+    &__empty {
+      min-height: 120px;
+    }
+
+    &__row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+
+      .ant-form-item {
+        margin-bottom: 0;
+      }
+    }
+
+    &__remove {
+      width: 32px;
+      height: 32px;
+    }
+
+    &__add {
+      padding-left: 0;
+    }
+
+    &__debug {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    &__empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}

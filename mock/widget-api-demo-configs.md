@@ -4,7 +4,7 @@
 
 ## 表格组件
 
-支持 `GET + query + 服务端分页`，返回结构为 `data.list`。
+支持 `GET + query 
 
 ```json
 {

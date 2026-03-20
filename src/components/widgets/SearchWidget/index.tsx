@@ -4,7 +4,8 @@ import { SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
-import './index.scss'
+import { parseJsonConfig } from '@/utils/widgetApi';
+import './index.scss';
 
 const { bus } = WujieReact;
 
@@ -13,29 +14,29 @@ const { bus } = WujieReact;
  */
 interface SearchField {
   id: string;
-  name: string;          // 字段名
-  label: string;         // 显示标签
-  type: 'input' | 'select';  // 类型
-  placeholder?: string;  // 占位符
-  options?: { label: string; value: string }[];  // 选项(select类型)
-  defaultValue?: string; // 默认值
+  name: string;
+  label: string;
+  type: 'input' | 'select';
+  placeholder?: string;
+  options?: { label: string; value: string }[];
+  defaultValue?: string;
 }
 
 /**
  * 搜索组件配置
  */
 interface SearchWidgetConfig extends WidgetConfig {
-  placeholder?: string;       // 搜索框占位符
-  buttonText?: string;        // 按钮文字
-  searchFields?: SearchField[];  // 多字段搜索配置
-  eventRoutes?: EventRouteConfig[];  // 事件路由配置
-  showClearButton?: boolean;  // 是否显示清除按钮
-  layout?: 'inline' | 'vertical';  // 布局方式
-  // 数据交互
+  placeholder?: string;
+  buttonText?: string;
+  searchFields?: SearchField[];
+  eventRoutes?: EventRouteConfig[];
+  showClearButton?: boolean;
+  layout?: 'inline' | 'vertical';
   submitMethod?: 'api' | 'eventRoute';
-  apiEndpoint?: string;              // API 地址
-  apiMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';       // HTTP 方法
+  apiEndpoint?: string;
+  apiMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
   apiHeaders?: Record<string, string>;
+  apiQuery?: string | Record<string, any>;
   apiBody?: string | Record<string, any>;
 }
 
@@ -45,7 +46,6 @@ interface SearchWidgetProps {
 }
 
 const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
-  // 获取配置
   const searchConfig = config as SearchWidgetConfig;
   const placeholder = searchConfig?.placeholder || '请输入搜索内容...';
   const buttonText = searchConfig?.buttonText || '搜索';
@@ -57,12 +57,11 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   const apiEndpoint = searchConfig?.apiEndpoint;
   const apiMethod = searchConfig?.apiMethod || 'GET';
   const apiHeaders = searchConfig?.apiHeaders;
+  const apiQuery = searchConfig?.apiQuery;
   const apiBody = searchConfig?.apiBody;
 
-  // 简单搜索状态
   const [searchValue, setSearchValue] = useState('');
 
-  // 多字段搜索状态
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     searchFields?.forEach(field => {
@@ -73,7 +72,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     return initial;
   });
 
-  // 发送搜索事件到微应用（事件路由）
   const emitSearchEvent = useCallback((searchParams: Record<string, any>) => {
     const enabledRoutes = eventRoutes.filter(route => route.enabled !== false);
 
@@ -102,22 +100,29 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     message.success('搜索请求已发送');
   }, [eventRoutes, widget?.id]);
 
-  // 统一搜索处理
-  const buildApiPayload = useCallback((searchParams: Record<string, any>) => {
-    if (!apiBody) {
-      return searchParams;
+  const buildApiQuery = useCallback((searchParams: Record<string, any>) => {
+    const configuredQuery = parseJsonConfig(apiQuery);
+
+    if (configuredQuery && typeof configuredQuery === 'object' && !Array.isArray(configuredQuery)) {
+      return apiMethod === 'GET'
+        ? {
+            ...configuredQuery,
+            ...searchParams,
+          }
+        : configuredQuery;
     }
 
-    try {
-      const parsedBody = typeof apiBody === 'string' ? JSON.parse(apiBody) : apiBody;
-      if (parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)) {
-        return {
-          ...parsedBody,
-          ...searchParams,
-        };
-      }
-    } catch (error) {
-      console.warn('SearchWidget: apiBody JSON 解析失败，将仅发送搜索参数', error);
+    return apiMethod === 'GET' ? searchParams : undefined;
+  }, [apiMethod, apiQuery]);
+
+  const buildApiPayload = useCallback((searchParams: Record<string, any>) => {
+    const configuredBody = parseJsonConfig(apiBody);
+
+    if (configuredBody && typeof configuredBody === 'object' && !Array.isArray(configuredBody)) {
+      return {
+        ...configuredBody,
+        ...searchParams,
+      };
     }
 
     return searchParams;
@@ -126,24 +131,25 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   const handleSearchSubmit = useCallback(async (searchParams: Record<string, any>) => {
     if (submitMethod === 'api' && apiEndpoint) {
       try {
+        const requestQuery = buildApiQuery(searchParams);
         const requestPayload = buildApiPayload(searchParams);
         await axios({
           method: apiMethod,
           url: apiEndpoint,
-          ...(apiMethod === 'GET' ? { params: searchParams } : { data: requestPayload }),
+          ...(requestQuery ? { params: requestQuery } : {}),
+          ...(apiMethod === 'GET' ? {} : { data: requestPayload }),
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         });
         message.success('搜索请求已发送');
       } catch (error) {
         message.error('搜索请求失败');
-        console.error('搜索API请求失败:', error);
+        console.error('搜索 API 请求失败:', error);
       }
     } else {
       emitSearchEvent(searchParams);
     }
-  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiPayload, emitSearchEvent]);
+  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiQuery, buildApiPayload, emitSearchEvent]);
 
-  // 简单搜索
   const handleSimpleSearch = (value: string) => {
     if (!value.trim()) {
       message.warning('请输入搜索内容');
@@ -152,7 +158,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     handleSearchSubmit({ keyword: value.trim() });
   };
 
-  // 多字段搜索
   const handleFieldSearch = () => {
     const hasValue = Object.values(fieldValues).some(v => v && v.trim());
     if (!hasValue) {
@@ -170,7 +175,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     handleSearchSubmit(params);
   };
 
-  // 清除搜索
   const handleClear = () => {
     setSearchValue('');
     const initial: Record<string, string> = {};
@@ -182,12 +186,10 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     setFieldValues(initial);
   };
 
-  // 更新字段值
   const handleFieldChange = (name: string, value: string) => {
     setFieldValues(prev => ({ ...prev, [name]: value }));
   };
 
-  // 简单搜索模式
   if (!searchFields || searchFields.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 20px' }}>
@@ -203,7 +205,6 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     );
   }
 
-  // 多字段搜索模式
   const isVertical = layout === 'vertical';
 
   return (

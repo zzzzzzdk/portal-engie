@@ -38,15 +38,15 @@ interface DataTableWidgetProps {
 }
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { key: 'name', title: '\u59d3\u540d', dataIndex: 'name' },
-  { key: 'age', title: '\u5e74\u9f84', dataIndex: 'age', type: 'number' },
-  { key: 'status', title: '\u72b6\u6001', dataIndex: 'status', type: 'tag' },
+  { key: 'name', title: '姓名', dataIndex: 'name' },
+  { key: 'age', title: '年龄', dataIndex: 'age', type: 'number' },
+  { key: 'status', title: '状态', dataIndex: 'status', type: 'tag' },
 ]
 
 const DEFAULT_DATA = [
-  { key: '1', name: '\u5f20\u4e09', age: 32, status: '\u5728\u7ebf' },
-  { key: '2', name: '\u674e\u56db', age: 42, status: '\u79bb\u7ebf' },
-  { key: '3', name: '\u738b\u4e94', age: 28, status: '\u5728\u7ebf' },
+  { key: '1', name: '张三', age: 32, status: '在线' },
+  { key: '2', name: '李四', age: 42, status: '离线' },
+  { key: '3', name: '王五', age: 28, status: '在线' },
 ]
 
 const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
@@ -174,8 +174,8 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
           }
         }
       } catch (err: any) {
-        console.error('\u52a0\u8f7d\u8868\u683c\u6570\u636e\u5931\u8d25:', err)
-        setError(err.message || '\u6570\u636e\u52a0\u8f7d\u5931\u8d25')
+        console.error('加载表格数据失败:', err)
+        setError(err.message || '数据加载失败')
       } finally {
         setLoading(false)
       }
@@ -317,7 +317,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       pageSize: pageState.pageSize,
       total: pageState.total,
       showSizeChanger: true,
-      showTotal: showTotal ? total => `\u5171 ${total} \u6761` : undefined,
+      showTotal: showTotal ? total => `共 ${total} 条` : undefined,
       onChange: (current, pageSize) => {
         const next = {
           current,

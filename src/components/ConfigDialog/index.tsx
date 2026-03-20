@@ -15,6 +15,7 @@ import BackgroundSettings from '@/components/BackgroundSettings';
 import AssistantHubConfig from '@/components/AssistantHubConfig';
 import IconPicker from '@/components/IconPicker';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
+import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
 import { getIconValueType } from '@/components/IconPicker/types';
 import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
@@ -24,6 +25,7 @@ import {
   getWidgetApiFieldMeta,
   getWidgetPaginationDefaults,
 } from '@/utils/widgetApiDefaults';
+import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -293,13 +295,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
         form.setFieldsValue({
           ...normalizedConfig,
-          // title ???? normalizedConfig ??????? widget.config.title????????
+          // title uses widget.title to avoid being overwritten by config.title
           title: widget.title,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           apiMethod: widget.config.apiMethod || 'GET',
           apiQuery: stringifyJsonValue(widget.config.apiQuery),
+          apiQueryList: objectToKeyValueList(widget.config.apiQuery),
           apiBody: stringifyJsonValue(widget.config.apiBody),
+          apiBodyList: objectToKeyValueList(widget.config.apiBody),
           apiDataField: widget.config.apiDataField,
           apiListField: widget.config.apiListField,
           paginationMode: widget.config.paginationMode || 'none',
@@ -379,11 +383,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               queryParams: stringifyJsonValue(
                 widget.config.apiConfig.queryParams ?? widget.config.apiConfig.params,
               ),
+              queryParamsList: objectToKeyValueList(
+                widget.config.apiConfig.queryParams ?? widget.config.apiConfig.params,
+              ),
               bodyParams: typeof (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams) === 'string'
                 ? (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams)
                 : (widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams)
                   ? JSON.stringify(widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams, null, 2)
                   : '',
+              bodyParamsList: objectToKeyValueList(
+                widget.config.apiConfig.body ?? widget.config.apiConfig.bodyParams,
+              ),
             },
           });
         }
@@ -411,6 +421,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             fieldSpacing: widget.config.fieldSpacing,
             submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
             apiMethod: widget.config.apiMethod || 'POST',
+            apiBody: stringifyJsonValue(widget.config.apiBody),
+            apiBodyList: objectToKeyValueList(widget.config.apiBody),
             apiHeadersList: widget.config.apiHeaders
               ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
               : [],
@@ -420,12 +432,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           });
         }
 
-        // search 特有配置初始化
+        // search ???????
         if (widget.type === 'search') {
           form.setFieldsValue({
             submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
             apiMethod: widget.config.apiMethod || 'GET',
-            apiBody: widget.config.apiBody || '',
+            apiQuery: stringifyJsonValue(widget.config.apiQuery),
+            apiQueryList: objectToKeyValueList(widget.config.apiQuery),
+            apiBody: stringifyJsonValue(widget.config.apiBody),
+            apiBodyList: objectToKeyValueList(widget.config.apiBody),
             apiHeadersList: widget.config.apiHeaders
               ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
               : [],
@@ -913,10 +928,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             delete normalizedRestConfig.apiHeadersList;
           }
 
-          if (typeof normalizedRestConfig.apiQuery === 'string') {
+          if ('apiQueryList' in normalizedRestConfig) {
+            normalizedRestConfig.apiQuery = keyValueListToJsonString(normalizedRestConfig.apiQueryList);
+            delete normalizedRestConfig.apiQueryList;
+          } else if (typeof normalizedRestConfig.apiQuery === 'string') {
             normalizedRestConfig.apiQuery = normalizedRestConfig.apiQuery.trim() || undefined;
           }
-          if (typeof normalizedRestConfig.apiBody === 'string') {
+
+          if ('apiBodyList' in normalizedRestConfig) {
+            normalizedRestConfig.apiBody = keyValueListToJsonString(normalizedRestConfig.apiBodyList);
+            delete normalizedRestConfig.apiBodyList;
+          } else if (typeof normalizedRestConfig.apiBody === 'string') {
             normalizedRestConfig.apiBody = normalizedRestConfig.apiBody.trim() || undefined;
           }
           if (typeof normalizedRestConfig.apiDataField === 'string') {
@@ -1060,7 +1082,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               delete normalizedRestConfig.apiConfig.headersList;
             }
 
-            if (typeof normalizedRestConfig.apiConfig.queryParams === 'string') {
+            if ('queryParamsList' in normalizedRestConfig.apiConfig) {
+              normalizedRestConfig.apiConfig.queryParams =
+                keyValueListToObject(normalizedRestConfig.apiConfig.queryParamsList);
+              delete normalizedRestConfig.apiConfig.queryParamsList;
+            } else if (typeof normalizedRestConfig.apiConfig.queryParams === 'string') {
               normalizedRestConfig.apiConfig.queryParams =
                 normalizedRestConfig.apiConfig.queryParams.trim() || undefined;
             }
@@ -1075,6 +1101,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
             if (normalizedRestConfig.apiConfig.method !== 'POST') {
               normalizedRestConfig.apiConfig.body = undefined;
+              delete normalizedRestConfig.apiConfig.bodyParams;
+              delete normalizedRestConfig.apiConfig.bodyParamsList;
+            } else if ('bodyParamsList' in normalizedRestConfig.apiConfig) {
+              normalizedRestConfig.apiConfig.body =
+                keyValueListToObject(normalizedRestConfig.apiConfig.bodyParamsList);
+              delete normalizedRestConfig.apiConfig.bodyParamsList;
               delete normalizedRestConfig.apiConfig.bodyParams;
             } else if (typeof normalizedRestConfig.apiConfig.bodyParams === 'string') {
               const bodyText = normalizedRestConfig.apiConfig.bodyParams.trim();
@@ -1426,20 +1458,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                               { label: '新窗口', value: true },
                             ]} />
                         </Form.Item>
-                        <Form.Item
+                        {/* <Form.Item
                           name="apiListField"
                           label="列表字段路径"
                           tooltip="默认按 payload.groups.list 取值；修改后按填写路径取值。"
                         >
                           <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} />
-                        </Form.Item>
-                        <Form.Item
-                          name="apiListField"
-                          label="列表字段路径"
-                          tooltip="默认按 payload.groups.list 取值；修改后按填写路径取值。"
-                        >
-                          <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} />
-                        </Form.Item>
+                        </Form.Item> */}
                       </div>
                     </div>
                   ))}
@@ -2026,21 +2051,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     const apiPlaceholder = getWidgetApiEndpointPlaceholder(widget.type);
     const apiFieldMeta = getWidgetApiFieldMeta(widget.type);
     const paginationDefaults = getWidgetPaginationDefaults(widget.type);
-    const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => {
-      if (!Array.isArray(headersList)) {
-        return undefined;
-      }
-
-      const headers = headersList.reduce<Record<string, string>>((result, item) => {
-        const key = item?.key?.trim();
-        if (key) {
-          result[key] = item.value || '';
-        }
-        return result;
-      }, {});
-
-      return Object.keys(headers).length ? headers : undefined;
-    };
     const statsFieldPreview = (Array.isArray(statsItemsValue) && statsItemsValue.length > 0
       ? statsItemsValue
       : DEFAULT_STATS_ITEMS)
@@ -2052,9 +2062,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       <>
         {['chart', 'stats', 'dataTable', 'news', 'topList'].includes(widget.type) && (
           <>
+            <Form.Item label="数据来源" required>
+              <Select
+                value="customApi"
+                options={[{ label: '自定义接口', value: 'customApi' }]}
+              />
+            </Form.Item>
             <Form.Item
-              name="apiEndpoint"
-              label="数据接口"
+              label="接口地址"
+              required
               extra={
                 widget.type === 'news'
                   ? '接口返回需包含新闻列表字段，以及标题、摘要、链接等映射字段。'
@@ -2062,96 +2078,95 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                     ? '接口返回需包含排行榜列表字段，以及名称、数值、变化等映射字段。'
                     : undefined
               }
+              className="widget-api-form-item"
             >
-              <Input placeholder={apiPlaceholder} />
-            </Form.Item>
-            <div className="form-row-2">
-              <Form.Item name="apiMethod" label="请求方式" initialValue="GET">
-                <Select>
-                  <Select.Option value="GET">GET</Select.Option>
-                  <Select.Option value="POST">POST</Select.Option>
-                </Select>
-              </Form.Item>
-              {apiFieldMeta ? (
-                <Form.Item
-                  name={apiFieldMeta.name}
-                  label={apiFieldMeta.label}
-                  tooltip={apiFieldMeta.tooltip}
-                  // extra={`默认路径为 ${apiFieldMeta.defaultValue}；修改后按填写路径取值。`}
-                >
-                  <Input placeholder={apiFieldMeta.placeholder} />
+              <div className="widget-api-endpoint-row">
+                <Form.Item name="apiMethod" noStyle initialValue="GET">
+                  <Select
+                    className="widget-api-endpoint-row__method"
+                    options={[
+                      { value: 'GET', label: 'GET' },
+                      { value: 'POST', label: 'POST' },
+                    ]}
+                  />
                 </Form.Item>
-              ) : (
-                <div />
-              )}
-            </div>
-            <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization、Content-Type 等">
-              <Form.List name="apiHeadersList">
-                {(fields, { add, remove }) => (
-                  <>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'key']}
-                          noStyle
-                          rules={[{ required: true, message: '请输入 Key' }]}
-                        >
-                          <Input placeholder="Header Key" />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'value']}
-                          noStyle
-                          rules={[{ required: true, message: '请输入 Value' }]}
-                        >
-                          <Input placeholder="Header Value" />
-                        </Form.Item>
-                        <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', flexShrink: 0 }} />
-                      </div>
-                    ))}
-                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
-                      添加请求头
-                    </Button>
-                  </>
-                )}
-              </Form.List>
+                <Form.Item
+                  name="apiEndpoint"
+                  noStyle
+                  rules={[{ required: true, message: '请输入接口地址' }]}
+                >
+                  <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
+                </Form.Item>
+              </div>
             </Form.Item>
-            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.apiMethod !== cur.apiMethod}>
-              {({ getFieldValue }) => {
-                const apiMethod = getFieldValue('apiMethod') || 'GET';
-                if (apiMethod === 'GET') {
-                  return (
-                    <Form.Item
-                      name="apiQuery"
-                      label="Query 参数(JSON)"
-                      tooltip="GET 请求时会拼接到 URL query 中"
-                      rules={[{ validator: validateJson }]}
-                    >
-                      <Input.TextArea rows={4} placeholder='{"keyword":"demo"}' style={{ fontFamily: 'monospace' }} />
-                    </Form.Item>
-                  );
+            {apiFieldMeta ? (
+              <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
+                <Input placeholder={apiFieldMeta.placeholder} />
+              </Form.Item>
+            ) : null}
+            <Form.Item label="参数配置" className="widget-api-form-item">
+              <WidgetApiConfigTabs
+                form={form}
+                methodName="apiMethod"
+                headersName="apiHeadersList"
+                queryName="apiQueryList"
+                bodyName="apiBodyList"
+                debugContent={
+                  <WidgetApiDebugButton
+                    form={form}
+                    buildConfig={formValues => ({
+                      endpoint: formValues.apiEndpoint,
+                      method: formValues.apiMethod || 'GET',
+                      headers: buildHeaderMap(formValues.apiHeadersList),
+                      query: keyValueListToObject(formValues.apiQueryList),
+                      body: keyValueListToObject(formValues.apiBodyList),
+                      dataField:
+                        apiFieldMeta?.name === 'apiDataField'
+                          ? (formValues.apiDataField || apiFieldMeta.defaultValue)
+                          : undefined,
+                      listField:
+                        apiFieldMeta?.name === 'apiListField'
+                          ? (formValues.apiListField || apiFieldMeta.defaultValue)
+                          : undefined,
+                      pagination:
+                        ['dataTable'].includes(widget.type) &&
+                        formValues.paginationMode === 'pagination'
+                          ? {
+                              mode: 'pagination',
+                              pageParam: formValues.paginationConfig?.pageParam || paginationDefaults?.pageParam,
+                              pageSizeParam:
+                                formValues.paginationConfig?.pageSizeParam || paginationDefaults?.pageSizeParam,
+                              totalField: formValues.paginationConfig?.totalField || paginationDefaults?.totalField,
+                              currentField:
+                                formValues.paginationConfig?.currentField || paginationDefaults?.currentField,
+                              pageSizeField:
+                                formValues.paginationConfig?.pageSizeField || paginationDefaults?.pageSizeField,
+                            }
+                          : undefined,
+                    })}
+                    buildPageState={formValues =>
+                      ['dataTable'].includes(widget.type) &&
+                      formValues.paginationMode === 'pagination'
+                        ? {
+                            current: formValues.paginationConfig?.page || 1,
+                            pageSize: formValues.paginationConfig?.pageSize || 10,
+                          }
+                        : undefined
+                    }
+                  />
                 }
-
-                return (
-                  <Form.Item
-                    name="apiBody"
-                    label="Body 参数(JSON)"
-                    tooltip="POST 请求体，请输入合法的 JSON 格式"
-                    rules={[{ validator: validateJson }]}
-                  >
-                    <Input.TextArea rows={4} placeholder='{"keyword":"demo"}' style={{ fontFamily: 'monospace' }} />
-                  </Form.Item>
-                );
-              }}
+                debugHint="调试时将使用当前表单里的接口地址、参数配置和字段路径。"
+              />
             </Form.Item>
             {['dataTable'].includes(widget.type) && (
               <>
                 <Form.Item name="paginationMode" label="分页模式" initialValue="none">
-                  <Radio.Group optionType="button">
-                    <Radio.Button value="none">不分页</Radio.Button>
-                    <Radio.Button value="pagination">分页</Radio.Button>
-                  </Radio.Group>
+                  <Select
+                    options={[
+                      { label: '不分页', value: 'none' },
+                      { label: '分页', value: 'pagination' },
+                    ]}
+                  />
                 </Form.Item>
                 <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paginationMode !== cur.paginationMode}>
                   {({ getFieldValue }) => {
@@ -2178,36 +2193,21 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                           </Form.Item>
                         </div>
                         <div className="form-row-2">
-                          <Form.Item
-                            name={['paginationConfig', 'pageParam']}
-                            label="页码参数名"
-                          >
+                          <Form.Item name={['paginationConfig', 'pageParam']} label="页码参数名">
                             <Input placeholder={paginationDefaults?.pageParam || 'page'} />
                           </Form.Item>
-                          <Form.Item
-                            name={['paginationConfig', 'pageSizeParam']}
-                            label="每页条数参数名"
-                          >
+                          <Form.Item name={['paginationConfig', 'pageSizeParam']} label="每页条数参数名">
                             <Input placeholder={paginationDefaults?.pageSizeParam || 'page_size'} />
                           </Form.Item>
                         </div>
                         <div className="form-row-3">
-                          <Form.Item
-                            name={['paginationConfig', 'totalField']}
-                            label="总数字段路径"
-                          >
+                          <Form.Item name={['paginationConfig', 'totalField']} label="总数字段路径">
                             <Input placeholder={paginationDefaults?.totalField || 'data.total'} />
                           </Form.Item>
-                          <Form.Item
-                            name={['paginationConfig', 'currentField']}
-                            label="当前页字段路径"
-                          >
+                          <Form.Item name={['paginationConfig', 'currentField']} label="当前页字段路径">
                             <Input placeholder={paginationDefaults?.currentField || 'data.page'} />
                           </Form.Item>
-                          <Form.Item
-                            name={['paginationConfig', 'pageSizeField']}
-                            label="每页条数字段路径"
-                          >
+                          <Form.Item name={['paginationConfig', 'pageSizeField']} label="每页条数字段路径">
                             <Input placeholder={paginationDefaults?.pageSizeField || 'data.page_size'} />
                           </Form.Item>
                         </div>
@@ -2217,50 +2217,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 </Form.Item>
               </>
             )}
-            <div style={{ marginBottom: 12 }}>
-              <WidgetApiDebugButton
-                form={form}
-                buildConfig={formValues => ({
-                  endpoint: formValues.apiEndpoint,
-                  method: formValues.apiMethod || 'GET',
-                  headers: buildHeaders(formValues.apiHeadersList),
-                  query: formValues.apiQuery,
-                  body: formValues.apiBody,
-                  dataField:
-                    apiFieldMeta?.name === 'apiDataField'
-                      ? (formValues.apiDataField || apiFieldMeta.defaultValue)
-                      : undefined,
-                  listField:
-                    apiFieldMeta?.name === 'apiListField'
-                      ? (formValues.apiListField || apiFieldMeta.defaultValue)
-                      : undefined,
-                  pagination:
-                    ['dataTable'].includes(widget.type) &&
-                    formValues.paginationMode === 'pagination'
-                      ? {
-                          mode: 'pagination',
-                          pageParam: formValues.paginationConfig?.pageParam || paginationDefaults?.pageParam,
-                          pageSizeParam:
-                            formValues.paginationConfig?.pageSizeParam || paginationDefaults?.pageSizeParam,
-                          totalField: formValues.paginationConfig?.totalField || paginationDefaults?.totalField,
-                          currentField:
-                            formValues.paginationConfig?.currentField || paginationDefaults?.currentField,
-                          pageSizeField:
-                            formValues.paginationConfig?.pageSizeField || paginationDefaults?.pageSizeField,
-                        }
-                      : undefined,
-                })}
-                buildPageState={formValues =>
-                  ['dataTable'].includes(widget.type) &&
-                  formValues.paginationMode === 'pagination'
-                    ? {
-                        current: formValues.paginationConfig?.page || 1,
-                        pageSize: formValues.paginationConfig?.pageSize || 10,
-                      }
-                    : undefined
-                }
-              />
-            </div>
           </>
         )}
 
@@ -2462,10 +2418,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         {widget.type === 'navGroup' && (
           <>
             <Form.Item name="dataSource" label="数据来源" initialValue="api">
-              <Radio.Group>
-                <Radio value="api">接口获取</Radio>
-                <Radio value="static">手动配置</Radio>
-              </Radio.Group>
+              <Select
+                options={[
+                  { label: '接口获取', value: 'api' },
+                  { label: '手动配置', value: 'static' },
+                ]}
+              />
             </Form.Item>
 
             <Form.Item noStyle shouldUpdate={(prev, cur) => prev.dataSource !== cur.dataSource}>
@@ -2474,93 +2432,65 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 if (dataSource === 'api') {
                   return (
                     <>
-                      <Form.Item name="apiEndpoint" label="数据接口">
-                        <Input placeholder={getWidgetApiEndpointPlaceholder('navGroup')} />
+                      <Form.Item label="接口地址" required className="widget-api-form-item">
+                        <div className="widget-api-endpoint-row">
+                          <Form.Item name="apiMethod" noStyle initialValue="GET">
+                            <Select
+                              className="widget-api-endpoint-row__method"
+                              options={[
+                                { value: 'GET', label: 'GET' },
+                                { value: 'POST', label: 'POST' },
+                              ]}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="apiEndpoint"
+                            noStyle
+                            rules={[{ required: true, message: '请输入接口地址' }]}
+                          >
+                            <Input
+                              className="widget-api-endpoint-row__input"
+                              placeholder={getWidgetApiEndpointPlaceholder('navGroup')}
+                            />
+                          </Form.Item>
+                        </div>
                       </Form.Item>
-                      <div className="form-row-2">
-                        <Form.Item name="apiMethod" label="请求方式" initialValue="GET">
-                          <Select>
-                            <Select.Option value="GET">GET</Select.Option>
-                            <Select.Option value="POST">POST</Select.Option>
-                          </Select>
-                        </Form.Item>
-                        <Form.Item
-                          name="apiListField"
-                          label="列表字段路径"
-                          tooltip="默认按 payload.groups.list 取值；修改后按填写路径取值。"
-                        >
-                          <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} />
-                        </Form.Item>
-                      </div>
-                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.apiMethod !== cur.apiMethod}>
-                        {({ getFieldValue: getVal }) => {
-                          const apiMethod = getVal('apiMethod') || 'GET';
-                          if (apiMethod === 'GET') {
-                            return (
-                              <Form.Item
-                                name="apiQuery"
-                                label="Query 参数(JSON)"
-                                tooltip="GET 请求时会拼接到 URL query 中"
-                                rules={[{ validator: validateJson }]}
-                              >
-                                <Input.TextArea rows={4} placeholder='{"groupType":"portal"}' />
-                              </Form.Item>
-                            );
-                          }
-                          return (
-                            <Form.Item
-                              name="apiBody"
-                              label="Body 参数(JSON)"
-                              tooltip="POST 请求体，请输入合法的 JSON 格式"
-                              rules={[{ validator: validateJson }]}
-                            >
-                              <Input.TextArea rows={4} placeholder='{"groupType":"portal"}' />
-                            </Form.Item>
-                          );
-                        }}
+                      <Form.Item
+                        name="apiListField"
+                        label="列表字段路径"
+                        tooltip="默认按 payload.groups.list 取值；修改后按填写路径取值。"
+                      >
+                        <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} />
                       </Form.Item>
-                      <Form.Item label="请求头" tooltip="自定义 HTTP 请求头，如 Authorization 等">
-                        <Form.List name="apiHeadersList">
-                          {(fields, { add, remove }) => (
-                            <>
-                              {fields.map(({ key, name, ...restField }) => (
-                                <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'baseline' }}>
-                                  <Form.Item {...restField} name={[name, 'key']} noStyle rules={[{ required: true, message: '请输入Key' }]}>
-                                    <Input placeholder="Header Key" />
-                                  </Form.Item>
-                                  <Form.Item {...restField} name={[name, 'value']} noStyle rules={[{ required: true, message: '请输入Value' }]}>
-                                    <Input placeholder="Header Value" />
-                                  </Form.Item>
-                                  <DeleteOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', flexShrink: 0 }} />
-                                </div>
-                              ))}
-                              <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
-                                添加请求头
-                              </Button>
-                            </>
-                          )}
-                        </Form.List>
-                      </Form.Item>
-                      <div style={{ marginBottom: 12 }}>
-                        <WidgetApiDebugButton
+                      <Form.Item label="参数配置" className="widget-api-form-item">
+                        <WidgetApiConfigTabs
                           form={form}
-                          buildConfig={formValues => ({
-                            endpoint: formValues.apiEndpoint,
-                            method: formValues.apiMethod || 'GET',
-                            headers: buildHeaders(formValues.apiHeadersList),
-                            query: formValues.apiQuery,
-                            body: formValues.apiBody,
-                            listField: formValues.apiListField || DEFAULT_NAV_GROUP_LIST_FIELD,
-                          })}
+                          methodName="apiMethod"
+                          headersName="apiHeadersList"
+                          queryName="apiQueryList"
+                          bodyName="apiBodyList"
+                          debugContent={
+                            <WidgetApiDebugButton
+                              form={form}
+                              buildConfig={formValues => ({
+                                endpoint: formValues.apiEndpoint,
+                                method: formValues.apiMethod || 'GET',
+                                headers: buildHeaderMap(formValues.apiHeadersList),
+                                query: keyValueListToObject(formValues.apiQueryList),
+                                body: keyValueListToObject(formValues.apiBodyList),
+                                listField: formValues.apiListField || DEFAULT_NAV_GROUP_LIST_FIELD,
+                              })}
+                            />
+                          }
+                          debugHint="调试时将使用当前接口地址、参数配置和列表字段路径。"
                         />
-                      </div>
+                      </Form.Item>
                       <div className="empty-hint" style={{ marginTop: 8 }}>
-                        接口返回中导航数组默认读取 `payload.groups.list`，修改后会严格按你填写的路径取值。
+                        {'接口返回中的导航数组默认读取 payload.groups.list，修改后会严格按填写路径取值。'}
                       </div>
                     </>
                   );
                 }
-                // 手动配置模式
                 return (
                   <>
                     <Divider style={{ margin: '12px 0' }}>导航项配置</Divider>
