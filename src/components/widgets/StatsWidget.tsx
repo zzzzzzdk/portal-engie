@@ -21,6 +21,7 @@ interface StatItem {
 interface StatsWidgetConfig extends WidgetConfig {
   statsItems?: StatItem[]
   layout?: 'horizontal' | 'vertical'
+  staticData?: Record<string, any>
 }
 
 interface StatsWidgetProps {
@@ -41,6 +42,8 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
 
   const statsConfig = config as StatsWidgetConfig
   const apiEndpoint = statsConfig?.apiEndpoint
+  const isStaticDataSource = statsConfig?.dataSource === 'static'
+  const staticData = statsConfig?.staticData
   const refreshInterval = statsConfig?.refreshInterval || 0
   const statsItems = statsConfig?.statsItems || DEFAULT_STATS
   const layout = statsConfig?.layout || 'horizontal'
@@ -53,14 +56,16 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
     try {
       if (apiEndpoint) {
         const result = await requestWidgetApi({
-        endpoint: apiEndpoint,
-        method: statsConfig?.apiMethod,
-        headers: statsConfig?.apiHeaders,
-        query: statsConfig?.apiQuery,
-        body: statsConfig?.apiBody,
-        dataField: statsConfig?.apiDataField || defaultDataField,
-      })
+          endpoint: apiEndpoint,
+          method: statsConfig?.apiMethod,
+          headers: statsConfig?.apiHeaders,
+          query: statsConfig?.apiQuery,
+          body: statsConfig?.apiBody,
+          dataField: statsConfig?.apiDataField || defaultDataField,
+        })
         setStatsData(result.data || result.raw || {})
+      } else if (isStaticDataSource && staticData && typeof staticData === 'object' && !Array.isArray(staticData)) {
+        setStatsData(staticData)
       } else {
         await new Promise(resolve => setTimeout(resolve, 500))
         setStatsData({
@@ -82,6 +87,8 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
     statsConfig?.apiMethod,
     statsConfig?.apiQuery,
     defaultDataField,
+    isStaticDataSource,
+    staticData,
   ])
 
   useEffect(() => {
@@ -89,7 +96,7 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
   }, [loadData])
 
   useEffect(() => {
-    if (refreshInterval > 0) {
+    if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
         loadData()
       }, safeIntervalMs(refreshInterval))
@@ -101,7 +108,7 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
         intervalRef.current = null
       }
     }
-  }, [refreshInterval, loadData])
+  }, [refreshInterval, apiEndpoint, loadData])
 
   useEffect(() => {
     if (widget?.refreshCount && widget.refreshCount > 0) {

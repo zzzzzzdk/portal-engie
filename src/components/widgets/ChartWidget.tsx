@@ -17,6 +17,7 @@ interface ChartWidgetConfig extends WidgetConfig {
   smooth?: boolean
   showLegend?: boolean
   colors?: string[]
+  staticData?: any
 }
 
 interface ChartWidgetProps {
@@ -40,6 +41,8 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
 
   const chartConfig = config as ChartWidgetConfig
   const apiEndpoint = chartConfig?.apiEndpoint
+  const isStaticDataSource = chartConfig?.dataSource === 'static'
+  const staticData = chartConfig?.staticData
   const refreshInterval = chartConfig?.refreshInterval || 0
   const chartType = chartConfig?.chartType || 'line'
   const chartTitle = chartConfig?.chartTitle
@@ -51,6 +54,8 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
 
   const loadData = useCallback(async () => {
     if (!apiEndpoint) {
+      setError(null)
+      setChartData(isStaticDataSource ? (staticData || DEFAULT_DATA) : DEFAULT_DATA)
       return
     }
 
@@ -81,13 +86,13 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
     chartConfig?.apiMethod,
     chartConfig?.apiQuery,
     defaultDataField,
+    isStaticDataSource,
+    staticData,
   ])
 
   useEffect(() => {
-    if (apiEndpoint) {
-      loadData()
-    }
-  }, [apiEndpoint, loadData])
+    loadData()
+  }, [loadData])
 
   useEffect(() => {
     if (refreshInterval > 0 && apiEndpoint) {
@@ -105,10 +110,10 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
   }, [refreshInterval, apiEndpoint, loadData])
 
   useEffect(() => {
-    if (widget?.refreshCount && widget.refreshCount > 0 && apiEndpoint) {
+    if (widget?.refreshCount && widget.refreshCount > 0) {
       loadData()
     }
-  }, [widget?.refreshCount, apiEndpoint, loadData])
+  }, [widget?.refreshCount, loadData])
 
   const generateOption = useCallback(() => {
     const xData = chartData?.[xAxisField] || chartData?.xAxis || DEFAULT_DATA.xAxis

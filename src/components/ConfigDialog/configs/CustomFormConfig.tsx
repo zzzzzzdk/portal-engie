@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Select, Switch, Radio, Divider } from 'antd';
+import { Form, Input, Select, Radio, Divider } from 'antd';
 import EventRouteConfig from '@/components/EventRouteConfig';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
@@ -9,6 +9,16 @@ import { WidgetConfigProps } from './types';
 
 const FORM_SENDER_EVENTS = [
   { id: 'form-submit', type: MicroAppEventType.DATA_SUBMIT, name: '表单提交' },
+];
+
+const SUCCESS_ACTION_OPTIONS = [
+  { label: '无操作', value: 'none' },
+  { label: '成功后重置表单', value: 'resetForm' },
+];
+
+const FAILURE_ACTION_OPTIONS = [
+  { label: '无操作', value: 'none' },
+  { label: '失败后重置表单', value: 'resetForm' },
 ];
 
 const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => {
@@ -27,9 +37,6 @@ const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => 
   return Object.keys(headers).length ? headers : undefined;
 };
 
-/**
- * 自定义表单组件配置 - 数据与交互 Tab
- */
 const CustomFormConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
   const form = Form.useFormInstance();
   const submitMethod = Form.useWatch('submitMethod', form) || 'eventRoute';
@@ -37,7 +44,12 @@ const CustomFormConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
   return (
     <>
       <Divider>数据交互</Divider>
-      <Form.Item name="submitMethod" label="提交方式">
+      <Form.Item
+        name="submitMethod"
+        label="提交方式"
+        layout="horizontal"
+        colon={false}
+      >
         <Radio.Group>
           <Radio.Button value="api">API 接口</Radio.Button>
           <Radio.Button value="eventRoute">事件路由</Radio.Button>
@@ -94,7 +106,11 @@ const CustomFormConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
       )}
 
       {submitMethod === 'eventRoute' && (
-        <Form.Item name="eventRoutes" label="事件路由" tooltip="配置表单提交结果发送到哪个微应用">
+        <Form.Item
+          name="eventRoutes"
+          label="事件路由"
+          tooltip="配置表单提交结果发送到哪个微应用"
+        >
           <EventRouteConfig
             currentWidgetId={widget.id}
             currentSystemId={undefined}
@@ -104,18 +120,24 @@ const CustomFormConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
         </Form.Item>
       )}
 
-      <Divider>提交反馈</Divider>
+      <Divider>提交结果反馈</Divider>
       <div className="form-row-2">
-        <Form.Item name="successMessage" label="成功提示">
+        <Form.Item name="successAction" label="成功时操作" initialValue="none">
+          <Select options={SUCCESS_ACTION_OPTIONS} placeholder="请选择成功时操作" />
+        </Form.Item>
+        <Form.Item name="failureAction" label="失败时操作" initialValue="none">
+          <Select options={FAILURE_ACTION_OPTIONS} placeholder="请选择失败时操作" />
+        </Form.Item>
+      </div>
+      <div className="form-row-2">
+        <Form.Item name="successMessage" label="成功提示消息">
           <Input placeholder="提交成功" />
         </Form.Item>
-        <Form.Item name="failureMessage" label="失败提示">
+        <Form.Item name="failureMessage" label="失败提示消息">
           <Input placeholder="提交失败" />
         </Form.Item>
       </div>
-      <Form.Item name="successResetForm" label="成功后重置表单" valuePropName="checked">
-        <Switch />
-      </Form.Item>
+
     </>
   );
 };

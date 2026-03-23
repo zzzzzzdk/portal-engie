@@ -392,6 +392,37 @@
     }
   }
 
+  .static-data-editor {
+    margin-bottom: 16px;
+  }
+
+  .static-data-preview {
+    min-height: 180px;
+    margin-bottom: 24px;
+    padding: 12px;
+    border: 1px solid var(--ant-color-border);
+    border-radius: 8px;
+    background: var(--ant-color-bg-layout);
+
+    &__summary {
+      margin-bottom: 8px;
+      color: var(--ant-color-text-secondary);
+      font-size: 13px;
+    }
+
+    &__content {
+      margin: 0;
+      max-height: 320px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--ant-color-text);
+      font-family: Consolas, 'Courier New', monospace;
+    }
+  }
+
   .widget-api-config-tabs {
     border: 1px solid var(--ant-color-border);
     border-radius: 8px;

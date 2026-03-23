@@ -31,6 +31,8 @@ interface CustomFormWidgetConfig extends FormConfig {
   apiHeaders?: Record<string, string>;
   successMessage?: string;
   failureMessage?: string;
+  successAction?: 'none' | 'resetForm';
+  failureAction?: 'none' | 'resetForm';
   successResetForm?: boolean;
 }
 
@@ -77,7 +79,9 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   const apiHeaders = formConfig.apiHeaders;
   const successMessage = formConfig.successMessage || '提交成功';
   const failureMessage = formConfig.failureMessage || '提交失败';
-  const successResetForm = formConfig.successResetForm ?? false;
+  const successAction =
+    formConfig.successAction || (formConfig.successResetForm ? 'resetForm' : 'none');
+  const failureAction = formConfig.failureAction || 'none';
 
   const emitRoutes = useCallback((routes: EventRouteConfig[], values: Record<string, any>) => {
     const enabledRoutes = routes.filter(route => route.enabled !== false);
@@ -132,9 +136,14 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
         emitRoutes(eventRoutes, formattedValues);
       }
       message.success(successMessage);
-      if (successResetForm) form.resetFields();
+      if (successAction === 'resetForm') {
+        form.resetFields();
+      }
     } catch (error) {
       message.error(failureMessage);
+      if (failureAction === 'resetForm') {
+        form.resetFields();
+      }
       console.error('表单提交失败:', error);
     }
   };

@@ -22,6 +22,7 @@ interface NewsWidgetConfig extends WidgetConfig {
   urlField?: string
   avatarField?: string
   maxItems?: number
+  staticData?: any
 }
 
 interface NewsWidgetProps {
@@ -57,8 +58,9 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
 
   const newsConfig = config as NewsWidgetConfig
   const apiEndpoint = newsConfig?.apiEndpoint
+  const isStaticDataSource = newsConfig?.dataSource === 'static'
   const refreshInterval = newsConfig?.refreshInterval || 0
-  const staticItems = newsConfig?.newsItems
+  const staticData = newsConfig?.staticData ?? newsConfig?.newsItems
   const titleField = newsConfig?.titleField || 'title'
   const descriptionField = newsConfig?.descriptionField || 'description'
   const urlField = newsConfig?.urlField || 'url'
@@ -103,8 +105,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
             : []
 
         setNewsData(transformData(sourceList).slice(0, maxItems))
-      } else if (staticItems && staticItems.length > 0) {
-        setNewsData(staticItems.slice(0, maxItems))
+      } else if (isStaticDataSource && Array.isArray(staticData)) {
+        setNewsData(transformData(staticData).slice(0, maxItems))
       } else {
         await new Promise(resolve => setTimeout(resolve, 300))
         setNewsData(DEFAULT_NEWS.slice(0, maxItems))
@@ -125,7 +127,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
     newsConfig?.apiListField,
     newsConfig?.apiMethod,
     newsConfig?.apiQuery,
-    staticItems,
+    isStaticDataSource,
+    staticData,
     transformData,
   ])
 

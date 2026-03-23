@@ -183,7 +183,7 @@ const EventRouteConfigComponent: React.FC<EventRouteConfigComponentProps> = ({
     <div className="event-route-config">
        <div className="event-route-header">
           {/* <div className="title">事件路由</div> */}
-          <div className="subtitle">配置事件流向，将当前微应用的事件分发给其他应用</div>
+          <div className="subtitle">配置事件流向，将当前应用的事件分发给其他应用</div>
        </div>
 
        <div className="route-list">

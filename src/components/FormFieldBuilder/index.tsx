@@ -123,11 +123,11 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
     children: (
       <Space direction="vertical" style={{ width: '100%' }}>
         <Space style={{ width: '100%' }} align="start">
-          <Form.Item label="标签" style={{ marginBottom: 0, flex: 1 }}>
+          <Form.Item label="字段名" style={{ marginBottom: 0, flex: 1 }}>
             <Input value={field.label} onChange={(e) => handleChange(index, { label: e.target.value })} />
           </Form.Item>
           <Form.Item
-            label="字段名"
+            label="字段"
             style={{ marginBottom: 0, flex: 1 }}
             validateStatus={getNameError(field) ? 'error' : undefined}
             help={getNameError(field)}
@@ -196,7 +196,7 @@ const FormFieldBuilder: React.FC<FormFieldBuilderProps> = ({ value = [], onChang
         size="small"
         style={{ marginBottom: 8 }}
       />
-      <Button type="dashed" onClick={handleAdd} block icon={<PlusOutlined />}>
+      <Button type="primary" onClick={handleAdd} block icon={<PlusOutlined />}>
         添加字段
       </Button>
     </div>

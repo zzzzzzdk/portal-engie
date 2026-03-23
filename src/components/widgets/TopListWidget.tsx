@@ -25,6 +25,7 @@ interface TopListWidgetConfig extends WidgetConfig {
   listTitle?: string
   valueLabel?: string
   changeLabel?: string
+  staticData?: any
 }
 
 interface TopListWidgetProps {
@@ -48,8 +49,9 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
 
   const listConfig = config as TopListWidgetConfig
   const apiEndpoint = listConfig?.apiEndpoint
+  const isStaticDataSource = listConfig?.dataSource === 'static'
   const refreshInterval = listConfig?.refreshInterval || 0
-  const staticItems = listConfig?.listItems
+  const staticData = listConfig?.staticData ?? listConfig?.listItems
   const nameField = listConfig?.nameField || 'name'
   const valueField = listConfig?.valueField || 'value'
   const changeField = listConfig?.changeField || 'change'
@@ -102,8 +104,8 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
             : []
 
         setListData(transformData(sourceList).slice(0, maxItems))
-      } else if (staticItems && staticItems.length > 0) {
-        setListData(staticItems.slice(0, maxItems))
+      } else if (isStaticDataSource && Array.isArray(staticData)) {
+        setListData(transformData(staticData).slice(0, maxItems))
       } else {
         await new Promise(resolve => setTimeout(resolve, 300))
         setListData(DEFAULT_DATA.slice(0, maxItems))
@@ -124,7 +126,8 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
     listConfig?.apiMethod,
     listConfig?.apiQuery,
     maxItems,
-    staticItems,
+    isStaticDataSource,
+    staticData,
     transformData,
   ])
 

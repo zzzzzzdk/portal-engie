@@ -37,7 +37,12 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
   return (
     <>
       <Divider>数据交互</Divider>
-      <Form.Item name="submitMethod" label="提交方式">
+      <Form.Item
+        name="submitMethod"
+        label="提交方式"
+        layout='horizontal'
+        colon={false}
+      >
         <Radio.Group>
           <Radio.Button value="api">API 接口</Radio.Button>
           <Radio.Button value="eventRoute">事件路由</Radio.Button>

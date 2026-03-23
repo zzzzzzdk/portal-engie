@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
-import { Widget, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
+import { Widget, WidgetType, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { REFRESHABLE_WIDGET_TYPES, MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
@@ -63,6 +63,30 @@ const stringifyJsonValue = (value: any): string => {
   }
 };
 
+const COMMON_STATIC_DATA_WIDGET_TYPES = ['chart', 'stats', 'dataTable', 'news', 'topList'];
+
+const getCommonStaticDataInitialValue = (widget: Widget): string => {
+  const config = widget.config as Record<string, any>;
+
+  if (config.staticData != null && config.staticData !== '') {
+    return stringifyJsonValue(config.staticData);
+  }
+
+  if (widget.type === 'dataTable' && Array.isArray(config.tableData)) {
+    return stringifyJsonValue(config.tableData);
+  }
+
+  if (widget.type === 'news' && Array.isArray(config.newsItems)) {
+    return stringifyJsonValue(config.newsItems);
+  }
+
+  if (widget.type === 'topList' && Array.isArray(config.listItems)) {
+    return stringifyJsonValue(config.listItems);
+  }
+
+  return '';
+};
+
 const buildHeaderMap = (headersList?: Array<{ key?: string; value?: string }>) => {
   if (!Array.isArray(headersList)) {
     return undefined;
@@ -83,6 +107,152 @@ const DEFAULT_STATS_ITEMS = [
   { key: 'activeUsers', label: '活跃用户', precision: 0, trend: 'up', color: '#3f8600' },
   { key: 'idleRate', label: '空闲率', precision: 2, suffix: '%', trend: 'down', color: '#cf1322' },
 ];
+
+interface StaticDataEditorMeta {
+  placeholder: string;
+  extra: string;
+}
+
+const buildJsonPlaceholder = (value: any) => JSON.stringify(value, null, 2);
+
+const getStaticDataEditorMeta = (
+  widgetType: WidgetType,
+  options: {
+    statsItems?: Array<{ key?: string; label?: string }>;
+    rowKey?: string;
+    columns?: Array<{ dataIndex?: string; title?: string; type?: string }>;
+    xAxisField?: string;
+    yAxisField?: string;
+    titleField?: string;
+    descriptionField?: string;
+    avatarField?: string;
+    urlField?: string;
+    nameField?: string;
+    valueField?: string;
+    changeField?: string;
+    unitField?: string;
+  } = {},
+): StaticDataEditorMeta => {
+  switch (widgetType) {
+    case 'chart': {
+      const xAxisField = options.xAxisField || 'xAxis';
+      const yAxisField = options.yAxisField || 'series';
+      return {
+        extra: '图表组件需要对象结构，字段名建议与 X 轴字段、Y 轴字段配置保持一致。',
+        placeholder: buildJsonPlaceholder({
+          [xAxisField]: ['周一', '周二', '周三', '周四', '周五'],
+          [yAxisField]: [120, 200, 150, 80, 70],
+        }),
+      };
+    }
+    case 'stats': {
+      const statsItems = Array.isArray(options.statsItems) && options.statsItems.length
+        ? options.statsItems
+        : DEFAULT_STATS_ITEMS;
+      const sample = statsItems.reduce<Record<string, number>>((result, item, index) => {
+        const key = item?.key?.trim();
+        if (key) {
+          result[key] = index === 0 ? 1286 : 98.6;
+        }
+        return result;
+      }, {});
+      return {
+        extra: '统计组件需要对象结构，键名应与“统计项配置”中的 key 一一对应。',
+        placeholder: buildJsonPlaceholder(
+          Object.keys(sample).length
+            ? sample
+            : {
+              activeUsers: 1286,
+              idleRate: 98.6,
+            },
+        ),
+      };
+    }
+    case 'dataTable': {
+      const rowKey = options.rowKey || 'key';
+      const columns = Array.isArray(options.columns) ? options.columns.filter(item => item?.dataIndex) : [];
+      const sampleRow = columns.reduce<Record<string, any>>((result, column, index) => {
+        const dataIndex = column?.dataIndex?.trim();
+        if (!dataIndex) {
+          return result;
+        }
+        switch (column?.type) {
+          case 'number':
+            result[dataIndex] = index + 1;
+            break;
+          case 'date':
+            result[dataIndex] = '2026-03-23';
+            break;
+          case 'tag':
+          case 'status':
+            result[dataIndex] = '正常';
+            break;
+          default:
+            result[dataIndex] = column?.title || `${dataIndex} 示例`;
+            break;
+        }
+        return result;
+      }, { [rowKey]: 'row-1' });
+
+      return {
+        extra: '表格组件需要数组结构，每一项对应一行数据，字段名应与“数据列配置”中的 dataIndex 保持一致。',
+        placeholder: buildJsonPlaceholder([
+          Object.keys(sampleRow).length > 1
+            ? sampleRow
+            : {
+              [rowKey]: 'row-1',
+              name: '示例名称',
+              value: 1286,
+              status: '正常',
+            },
+        ]),
+      };
+    }
+    case 'news': {
+      const titleField = options.titleField || 'title';
+      const descriptionField = options.descriptionField || 'description';
+      const avatarField = options.avatarField || 'avatar';
+      const urlField = options.urlField || 'url';
+      return {
+        extra: '新闻组件需要数组结构，每一项是一条新闻，字段名建议与标题、摘要、头像、链接映射保持一致。',
+        placeholder: buildJsonPlaceholder([
+          {
+            id: 'news-1',
+            [titleField]: '港口巡检日报已生成',
+            [descriptionField]: '今日完成 12 个重点区域巡检，异常事件 2 起。',
+            [avatarField]: 'https://example.com/news-cover.png',
+            [urlField]: 'https://example.com/news/1',
+            time: '2026-03-23 09:30:00',
+            source: '指挥中心',
+          },
+        ]),
+      };
+    }
+    case 'topList': {
+      const nameField = options.nameField || 'name';
+      const valueField = options.valueField || 'value';
+      const changeField = options.changeField || 'change';
+      const unitField = options.unitField || 'unit';
+      return {
+        extra: '排行榜组件需要数组结构，每一项是一条排行记录，字段名建议与名称、数值、变化、单位映射保持一致。',
+        placeholder: buildJsonPlaceholder([
+          {
+            id: 'top-01',
+            [nameField]: '一号海域',
+            [valueField]: 1286,
+            [changeField]: '+12.8%',
+            [unitField]: '次',
+          },
+        ]),
+      };
+    }
+    default:
+      return {
+        extra: '直接输入 JSON 格式的静态数据，支持数组或对象。',
+        placeholder: '[\n  {\n    \"name\": \"示例\",\n    \"value\": 100\n  }\n]',
+      };
+  }
+};
 
 // 规范化颜色值（处理 ColorPicker 对象和序列化后的 JSON 对象）
 const normalizeColorValue = (color: any, defaultColor?: string): string | undefined => {
@@ -112,9 +282,103 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const [form] = Form.useForm();
   const showNavMenuValue = Form.useWatch('showNavMenu', form);
   const statsItemsValue = Form.useWatch('statsItems', form);
+  const columnsValue = Form.useWatch('columns', form);
+  const rowKeyValue = Form.useWatch('rowKey', form);
+  const xAxisFieldValue = Form.useWatch('xAxisField', form);
+  const yAxisFieldValue = Form.useWatch('yAxisField', form);
+  const titleFieldValue = Form.useWatch('titleField', form);
+  const descriptionFieldValue = Form.useWatch('descriptionField', form);
+  const avatarFieldValue = Form.useWatch('avatarField', form);
+  const urlFieldValue = Form.useWatch('urlField', form);
+  const nameFieldValue = Form.useWatch('nameField', form);
+  const valueFieldValue = Form.useWatch('valueField', form);
+  const changeFieldValue = Form.useWatch('changeField', form);
+  const unitFieldValue = Form.useWatch('unitField', form);
+  const genericDataSourceValue = Form.useWatch('dataSource', form) || 'customApi';
+  const genericStaticDataValue = Form.useWatch('staticData', form) || '';
+  const genericStaticDataText =
+    typeof genericStaticDataValue === 'string'
+      ? genericStaticDataValue
+      : stringifyJsonValue(genericStaticDataValue);
   const [fileList, setFileList] = useState<any[]>([]);
   const prevWidgetIdRef = useRef<string | null>(null);
   const [bgUploading, setBgUploading] = useState(false);
+  const genericStaticDataEditorMeta = useMemo(
+    () =>
+      getStaticDataEditorMeta(widget.type, {
+        statsItems: statsItemsValue,
+        rowKey: rowKeyValue,
+        columns: columnsValue,
+        xAxisField: xAxisFieldValue,
+        yAxisField: yAxisFieldValue,
+        titleField: titleFieldValue,
+        descriptionField: descriptionFieldValue,
+        avatarField: avatarFieldValue,
+        urlField: urlFieldValue,
+        nameField: nameFieldValue,
+        valueField: valueFieldValue,
+        changeField: changeFieldValue,
+        unitField: unitFieldValue,
+      }),
+    [
+      avatarFieldValue,
+      changeFieldValue,
+      columnsValue,
+      descriptionFieldValue,
+      nameFieldValue,
+      rowKeyValue,
+      statsItemsValue,
+      titleFieldValue,
+      unitFieldValue,
+      urlFieldValue,
+      valueFieldValue,
+      widget.type,
+      xAxisFieldValue,
+      yAxisFieldValue,
+    ],
+  );
+  const genericStaticDataPreview = useMemo(() => {
+    if (!COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
+      return {
+        title: '数据预览将在此显示',
+        content: '[]',
+      };
+    }
+
+    if (!genericStaticDataText.trim()) {
+      return {
+        title: '数据预览将在此显示',
+        content: '[]',
+      };
+    }
+
+    try {
+      const parsed = JSON.parse(genericStaticDataText);
+      if (Array.isArray(parsed)) {
+        return {
+          title: `当前共 ${parsed.length} 条数据`,
+          content: JSON.stringify(parsed, null, 2),
+        };
+      }
+
+      if (parsed && typeof parsed === 'object') {
+        return {
+          title: `当前共 ${Object.keys(parsed).length} 个字段`,
+          content: JSON.stringify(parsed, null, 2),
+        };
+      }
+
+      return {
+        title: `当前数据类型：${typeof parsed}`,
+        content: JSON.stringify(parsed, null, 2),
+      };
+    } catch {
+      return {
+        title: '请输入合法的 JSON 格式以便预览',
+        content: '[]',
+      };
+    }
+  }, [genericStaticDataText, widget.type]);
 
   // 计算 navGroup 导航项的默认样式（基于当前风格 Token）
   const navGroupItemDefaults = useMemo(() => {
@@ -377,8 +641,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               ...widget.config.apiConfig,
               ...(widget.config.apiConfig.headers
                 ? {
-                    headersList: Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value })),
-                  }
+                  headersList: Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value })),
+                }
                 : {}),
               queryParams: stringifyJsonValue(
                 widget.config.apiConfig.queryParams ?? widget.config.apiConfig.params,
@@ -428,7 +692,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               : [],
             successMessage: widget.config.successMessage || '提交成功',
             failureMessage: widget.config.failureMessage || '提交失败',
-            successResetForm: widget.config.successResetForm ?? false,
+            successAction: widget.config.successAction || (widget.config.successResetForm ? 'resetForm' : 'none'),
+            failureAction: widget.config.failureAction || 'none',
           });
         }
 
@@ -444,6 +709,21 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             apiHeadersList: widget.config.apiHeaders
               ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
               : [],
+          });
+        }
+
+        if (COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
+          const hasLegacyStaticData =
+            (widget.type === 'dataTable' && Array.isArray((widget.config as any).tableData) && (widget.config as any).tableData.length > 0) ||
+            (widget.type === 'news' && Array.isArray((widget.config as any).newsItems) && (widget.config as any).newsItems.length > 0) ||
+            (widget.type === 'topList' && Array.isArray((widget.config as any).listItems) && (widget.config as any).listItems.length > 0);
+          const hasStaticData =
+            ((widget.config as any).staticData != null && (widget.config as any).staticData !== '') ||
+            hasLegacyStaticData;
+
+          form.setFieldsValue({
+            dataSource: hasStaticData ? 'static' : ((widget.config as any).dataSource || 'customApi'),
+            staticData: getCommonStaticDataInitialValue(widget),
           });
         }
       }
@@ -948,6 +1228,61 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             normalizedRestConfig.apiListField = normalizedRestConfig.apiListField.trim() || undefined;
           }
 
+          if (COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
+            const dataSource = normalizedRestConfig.dataSource || 'customApi';
+            const staticDataText =
+              typeof normalizedRestConfig.staticData === 'string'
+                ? normalizedRestConfig.staticData.trim()
+                : '';
+
+            if (dataSource === 'static') {
+              normalizedRestConfig.staticData = staticDataText ? JSON.parse(staticDataText) : undefined;
+              normalizedRestConfig.apiEndpoint = undefined;
+              normalizedRestConfig.apiMethod = undefined;
+              normalizedRestConfig.apiHeaders = undefined;
+              normalizedRestConfig.apiQuery = undefined;
+              normalizedRestConfig.apiBody = undefined;
+              normalizedRestConfig.apiDataField = undefined;
+              normalizedRestConfig.apiListField = undefined;
+
+              if (widget.type === 'dataTable') {
+                normalizedRestConfig.tableData = Array.isArray(normalizedRestConfig.staticData)
+                  ? normalizedRestConfig.staticData
+                  : [];
+              }
+
+              if (widget.type === 'news') {
+                normalizedRestConfig.newsItems = Array.isArray(normalizedRestConfig.staticData)
+                  ? normalizedRestConfig.staticData
+                  : [];
+              }
+
+              if (widget.type === 'topList') {
+                normalizedRestConfig.listItems = Array.isArray(normalizedRestConfig.staticData)
+                  ? normalizedRestConfig.staticData
+                  : [];
+              }
+            } else {
+              normalizedRestConfig.staticData = undefined;
+
+              if (widget.type === 'dataTable') {
+                normalizedRestConfig.tableData = undefined;
+              }
+
+              if (widget.type === 'news') {
+                normalizedRestConfig.newsItems = undefined;
+              }
+
+              if (widget.type === 'topList') {
+                normalizedRestConfig.listItems = undefined;
+              }
+
+              if (normalizedRestConfig.apiMethod !== 'POST') {
+                normalizedRestConfig.apiBody = undefined;
+              }
+            }
+          }
+
           if (['news', 'topList'].includes(widget.type)) {
             normalizedRestConfig.paginationMode = undefined;
             normalizedRestConfig.paginationConfig = undefined;
@@ -1380,7 +1715,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
         {widget.type === 'customForm' && (
           <>
-            <Form.Item name="fields" label="表单字段">
+            <Divider>表单字段</Divider>
+            <Form.Item name="fields" label="字段">
               <FormFieldBuilder />
             </Form.Item>
             <CustomFormStyleConfig form={form} widget={widget} />
@@ -1453,10 +1789,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                           </Form.Item>
                         </div>
                         <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false} style={{ marginBottom: 0 }}>
-                            <Select options={[
-                              { label: '当前页', value: false },
-                              { label: '新窗口', value: true },
-                            ]} />
+                          <Select options={[
+                            { label: '当前页', value: false },
+                            { label: '新窗口', value: true },
+                          ]} />
                         </Form.Item>
                         {/* <Form.Item
                           name="apiListField"
@@ -2062,102 +2398,135 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       <>
         {['chart', 'stats', 'dataTable', 'news', 'topList'].includes(widget.type) && (
           <>
-            <Form.Item label="数据来源" required>
-              <Select
-                value="customApi"
-                options={[{ label: '自定义接口', value: 'customApi' }]}
-              />
-            </Form.Item>
             <Form.Item
-              label="接口地址"
-              required
-              extra={
-                widget.type === 'news'
-                  ? '接口返回需包含新闻列表字段，以及标题、摘要、链接等映射字段。'
-                  : widget.type === 'topList'
-                    ? '接口返回需包含排行榜列表字段，以及名称、数值、变化等映射字段。'
-                    : undefined
-              }
-              className="widget-api-form-item"
+              name="dataSource"
+              label="数据来源"
+              initialValue="customApi"
+              rules={[{ required: true, message: '请选择数据来源' }]}
             >
-              <div className="widget-api-endpoint-row">
-                <Form.Item name="apiMethod" noStyle initialValue="GET">
-                  <Select
-                    className="widget-api-endpoint-row__method"
-                    options={[
-                      { value: 'GET', label: 'GET' },
-                      { value: 'POST', label: 'POST' },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="apiEndpoint"
-                  noStyle
-                  rules={[{ required: true, message: '请输入接口地址' }]}
-                >
-                  <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
-                </Form.Item>
-              </div>
-            </Form.Item>
-            {apiFieldMeta ? (
-              <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
-                <Input placeholder={apiFieldMeta.placeholder} />
-              </Form.Item>
-            ) : null}
-            <Form.Item label="参数配置" className="widget-api-form-item">
-              <WidgetApiConfigTabs
-                form={form}
-                methodName="apiMethod"
-                headersName="apiHeadersList"
-                queryName="apiQueryList"
-                bodyName="apiBodyList"
-                debugContent={
-                  <WidgetApiDebugButton
-                    form={form}
-                    buildConfig={formValues => ({
-                      endpoint: formValues.apiEndpoint,
-                      method: formValues.apiMethod || 'GET',
-                      headers: buildHeaderMap(formValues.apiHeadersList),
-                      query: keyValueListToObject(formValues.apiQueryList),
-                      body: keyValueListToObject(formValues.apiBodyList),
-                      dataField:
-                        apiFieldMeta?.name === 'apiDataField'
-                          ? (formValues.apiDataField || apiFieldMeta.defaultValue)
-                          : undefined,
-                      listField:
-                        apiFieldMeta?.name === 'apiListField'
-                          ? (formValues.apiListField || apiFieldMeta.defaultValue)
-                          : undefined,
-                      pagination:
-                        ['dataTable'].includes(widget.type) &&
-                        formValues.paginationMode === 'pagination'
-                          ? {
-                              mode: 'pagination',
-                              pageParam: formValues.paginationConfig?.pageParam || paginationDefaults?.pageParam,
-                              pageSizeParam:
-                                formValues.paginationConfig?.pageSizeParam || paginationDefaults?.pageSizeParam,
-                              totalField: formValues.paginationConfig?.totalField || paginationDefaults?.totalField,
-                              currentField:
-                                formValues.paginationConfig?.currentField || paginationDefaults?.currentField,
-                              pageSizeField:
-                                formValues.paginationConfig?.pageSizeField || paginationDefaults?.pageSizeField,
-                            }
-                          : undefined,
-                    })}
-                    buildPageState={formValues =>
-                      ['dataTable'].includes(widget.type) &&
-                      formValues.paginationMode === 'pagination'
-                        ? {
-                            current: formValues.paginationConfig?.page || 1,
-                            pageSize: formValues.paginationConfig?.pageSize || 10,
-                          }
-                        : undefined
-                    }
-                  />
-                }
-                debugHint="调试时将使用当前表单里的接口地址、参数配置和字段路径。"
+              <Select
+                options={[
+                  { label: '自定义接口', value: 'customApi' },
+                  { label: '静态数据', value: 'static' },
+                ]}
               />
             </Form.Item>
+            {genericDataSourceValue === 'static' ? (
+              <>
+                <Form.Item
+                  name="staticData"
+                  label="静态数据编辑器"
+                  rules={[
+                    { required: true, message: '请输入静态数据' },
+                    { validator: validateJson },
+                  ]}
+                  extra={genericStaticDataEditorMeta.extra}
+                  className="static-data-editor"
+                >
+                  <Input.TextArea
+                    rows={10}
+                    placeholder={genericStaticDataEditorMeta.placeholder}
+                    autoSize={{minRows: 6}} />
+                </Form.Item>
+                <div className="static-data-preview">
+                  <div className="static-data-preview__summary">{genericStaticDataPreview.title}</div>
+                  <pre className="static-data-preview__content">{genericStaticDataPreview.content}</pre>
+                </div>
+              </>
+            ) : (
+              <>
+                <Form.Item
+                  label="接口地址"
+                  required
+                  extra={
+                    widget.type === 'news'
+                      ? '接口返回需包含新闻列表字段，以及标题、摘要、链接等映射字段。'
+                      : widget.type === 'topList'
+                        ? '接口返回需包含排行榜列表字段，以及名称、数值、变化等映射字段。'
+                        : undefined
+                  }
+                  className="widget-api-form-item"
+                >
+                  <div className="widget-api-endpoint-row">
+                    <Form.Item name="apiMethod" noStyle initialValue="GET">
+                      <Select
+                        className="widget-api-endpoint-row__method"
+                        options={[
+                          { value: 'GET', label: 'GET' },
+                          { value: 'POST', label: 'POST' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="apiEndpoint"
+                      noStyle
+                      rules={[{ required: true, message: '请输入接口地址' }]}
+                    >
+                      <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
+                    </Form.Item>
+                  </div>
+                </Form.Item>
+                {apiFieldMeta ? (
+                  <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
+                    <Input placeholder={apiFieldMeta.placeholder} />
+                  </Form.Item>
+                ) : null}
+                <Form.Item label="参数配置" className="widget-api-form-item">
+                  <WidgetApiConfigTabs
+                    form={form}
+                    methodName="apiMethod"
+                    headersName="apiHeadersList"
+                    queryName="apiQueryList"
+                    bodyName="apiBodyList"
+                    debugContent={
+                      <WidgetApiDebugButton
+                        form={form}
+                        buildConfig={formValues => ({
+                          endpoint: formValues.apiEndpoint,
+                          method: formValues.apiMethod || 'GET',
+                          headers: buildHeaderMap(formValues.apiHeadersList),
+                          query: keyValueListToObject(formValues.apiQueryList),
+                          body: keyValueListToObject(formValues.apiBodyList),
+                          dataField:
+                            apiFieldMeta?.name === 'apiDataField'
+                              ? (formValues.apiDataField || apiFieldMeta.defaultValue)
+                              : undefined,
+                          listField:
+                            apiFieldMeta?.name === 'apiListField'
+                              ? (formValues.apiListField || apiFieldMeta.defaultValue)
+                              : undefined,
+                          pagination:
+                            ['dataTable'].includes(widget.type) &&
+                              formValues.paginationMode === 'pagination'
+                              ? {
+                                mode: 'pagination',
+                                pageParam: formValues.paginationConfig?.pageParam || paginationDefaults?.pageParam,
+                                pageSizeParam:
+                                  formValues.paginationConfig?.pageSizeParam || paginationDefaults?.pageSizeParam,
+                                totalField: formValues.paginationConfig?.totalField || paginationDefaults?.totalField,
+                                currentField:
+                                  formValues.paginationConfig?.currentField || paginationDefaults?.currentField,
+                                pageSizeField:
+                                  formValues.paginationConfig?.pageSizeField || paginationDefaults?.pageSizeField,
+                              }
+                              : undefined,
+                        })}
+                        buildPageState={formValues =>
+                          ['dataTable'].includes(widget.type) &&
+                            formValues.paginationMode === 'pagination'
+                            ? {
+                              current: formValues.paginationConfig?.page || 1,
+                              pageSize: formValues.paginationConfig?.pageSize || 10,
+                            }
+                            : undefined
+                        }
+                      />
+                    }
+                    debugHint="调试时将使用当前表单里的接口地址、参数配置和字段路径。"
+                  />
+                </Form.Item>
+              </>
+            )}
             {['dataTable'].includes(widget.type) && (
               <>
                 <Form.Item name="paginationMode" label="分页模式" initialValue="none">

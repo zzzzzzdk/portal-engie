@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Table, Tag, Spin, Empty, Typography } from 'antd'
 import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
@@ -23,6 +23,7 @@ interface ColumnConfig {
 interface DataTableWidgetConfig extends WidgetConfig {
   columns?: ColumnConfig[]
   tableData?: any[]
+  staticData?: any[]
   rowKey?: string
   pagination?: boolean | { pageSize?: number; showTotal?: boolean }
   scrollY?: number
@@ -37,6 +38,25 @@ interface DataTableWidgetProps {
   widget?: Widget
 }
 
+interface SharedPaginationState {
+  current: number
+  pageSize: number
+  total: number
+  serverSide: boolean
+}
+
+interface CachedTableRequestState {
+  rows: any[]
+  pagination: SharedPaginationState
+}
+
+interface SharedTableViewState {
+  rows: any[]
+  loading: boolean
+  error: string | null
+  pagination: SharedPaginationState
+}
+
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'name', title: '姓名', dataIndex: 'name' },
   { key: 'age', title: '年龄', dataIndex: 'age', type: 'number' },
@@ -49,29 +69,153 @@ const DEFAULT_DATA = [
   { key: '3', name: '王五', age: 28, status: '在线' },
 ]
 
-const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
-  const [tableData, setTableData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [pageState, setPageState] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-    serverSide: false,
-  })
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const pageStateRef = useRef(pageState)
+const EMPTY_ARRAY: any[] = []
 
+const dataTableRequestCache = new Map<string, CachedTableRequestState>()
+const dataTableInFlightRequests = new Map<string, Promise<CachedTableRequestState>>()
+const dataTableViewStateCache = new Map<string, SharedTableViewState>()
+
+const createPaginationState = (
+  current = 1,
+  pageSize = 10,
+  total = 0,
+  serverSide = false,
+): SharedPaginationState => ({
+  current,
+  pageSize,
+  total,
+  serverSide,
+})
+
+const buildStableText = (value: unknown) => {
+  if (value == null || value === '') {
+    return ''
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return ''
+  }
+}
+
+const normalizeTableRows = (list: any[], rowKey: string) =>
+  list.map((item, index) => ({
+    ...item,
+    [rowKey]: item?.[rowKey] || `row-${index}`,
+  }))
+
+const buildDataTableViewStateKey = (params: {
+  widgetId?: string
+  dataSource: 'api' | 'static' | 'default'
+  apiEndpoint?: string
+  apiMethod?: string
+  apiHeadersText?: string
+  apiQuery?: string
+  apiBody?: string
+  apiDataField?: string
+  apiListField?: string
+  paginationMode?: string
+  paginationConfig?: Record<string, any>
+  staticDataText?: string
+  rowKey?: string
+}) =>
+  JSON.stringify({
+    widgetId: params.widgetId || '',
+    dataSource: params.dataSource,
+    endpoint: params.apiEndpoint || '',
+    method: params.apiMethod || 'GET',
+    headers: params.apiHeadersText || '',
+    query: params.apiQuery || '',
+    body: params.apiBody || '',
+    dataField: params.apiDataField || '',
+    listField: params.apiListField || '',
+    paginationMode: params.paginationMode || 'none',
+    paginationConfig: params.paginationConfig || {},
+    staticDataText: params.staticDataText || '',
+    rowKey: params.rowKey || 'key',
+  })
+
+const buildDataTableRequestKey = (viewStateKey: string, pageState: { current: number; pageSize: number }) =>
+  JSON.stringify({
+    viewStateKey,
+    current: pageState.current,
+    pageSize: pageState.pageSize,
+  })
+
+const buildSharedTableViewState = (
+  rows: any[],
+  pagination: SharedPaginationState,
+  loading: boolean,
+  error: string | null,
+): SharedTableViewState => ({
+  rows,
+  loading,
+  error,
+  pagination: { ...pagination },
+})
+
+const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
   const tableConfig = config as DataTableWidgetConfig
   const apiEndpoint = tableConfig?.apiEndpoint
+  const isStaticDataSource = tableConfig?.dataSource === 'static'
   const refreshInterval = tableConfig?.refreshInterval || 0
   const columnsConfig = tableConfig?.columns || DEFAULT_COLUMNS
-  const staticData = tableConfig?.tableData
+  const staticData = useMemo(() => {
+    if (Array.isArray(tableConfig?.staticData)) {
+      return tableConfig.staticData
+    }
+
+    if (Array.isArray(tableConfig?.tableData)) {
+      return tableConfig.tableData
+    }
+
+    return EMPTY_ARRAY
+  }, [tableConfig?.staticData, tableConfig?.tableData])
   const rowKey = tableConfig?.rowKey || 'key'
   const legacyPaginationConfig = tableConfig?.pagination
   const paginationMode =
     tableConfig?.paginationMode || (legacyPaginationConfig ? 'pagination' : 'none')
   const paginationConfig = tableConfig?.paginationConfig || {}
+  const initialPageSize = useMemo(
+    () =>
+      paginationConfig.pageSize ||
+      (typeof legacyPaginationConfig === 'object' ? legacyPaginationConfig.pageSize : undefined) ||
+      10,
+    [legacyPaginationConfig, paginationConfig.pageSize],
+  )
+  const initialCurrent = useMemo(() => paginationConfig.page || 1, [paginationConfig.page])
+  const apiHeadersText = useMemo(
+    () => (tableConfig?.apiHeaders ? JSON.stringify(tableConfig.apiHeaders) : ''),
+    [tableConfig?.apiHeaders],
+  )
+  const apiHeaders = useMemo(
+    () => (apiHeadersText ? JSON.parse(apiHeadersText) as Record<string, string> : undefined),
+    [apiHeadersText],
+  )
+  const apiQuery = useMemo(
+    () =>
+      typeof tableConfig?.apiQuery === 'string'
+        ? tableConfig.apiQuery
+        : tableConfig?.apiQuery != null
+          ? JSON.stringify(tableConfig.apiQuery)
+          : undefined,
+    [tableConfig?.apiQuery],
+  )
+  const apiBody = useMemo(
+    () =>
+      typeof tableConfig?.apiBody === 'string'
+        ? tableConfig.apiBody
+        : tableConfig?.apiBody != null
+          ? JSON.stringify(tableConfig.apiBody)
+          : undefined,
+    [tableConfig?.apiBody],
+  )
+  const staticDataText = useMemo(() => buildStableText(staticData), [staticData])
   const defaultListField = getWidgetDefaultFieldValue('dataTable')
   const defaultPagination = getWidgetPaginationDefaults('dataTable')
   const scrollY = tableConfig?.scrollY || 240
@@ -79,129 +223,271 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
   const bordered = tableConfig?.bordered ?? false
   const size = tableConfig?.size || 'small'
   const showTableHeader = tableConfig?.showHeader ?? true
-
-  useEffect(() => {
-    pageStateRef.current = pageState
-  }, [pageState])
-
-  useEffect(() => {
-    const defaultPageSize =
-      paginationConfig.pageSize ||
-      (typeof legacyPaginationConfig === 'object' ? legacyPaginationConfig.pageSize : undefined) ||
-      10
-
-    setPageState(prev => ({
-      ...prev,
-      current: paginationConfig.page || 1,
-      pageSize: defaultPageSize,
-    }))
-  }, [legacyPaginationConfig, paginationConfig.page, paginationConfig.pageSize])
-
-  const loadData = useCallback(
-    async (nextPageState = pageStateRef.current) => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        if (apiEndpoint) {
-          const result = await requestWidgetApi(
-            {
-              endpoint: apiEndpoint,
-              method: tableConfig?.apiMethod,
-              headers: tableConfig?.apiHeaders,
-              query: tableConfig?.apiQuery,
-              body: tableConfig?.apiBody,
-              dataField: tableConfig?.apiDataField,
-              listField: tableConfig?.apiListField || defaultListField,
-              pagination:
-                paginationMode === 'pagination'
-                  ? {
-                      mode: 'pagination',
-                      pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
-                      pageSizeParam:
-                        paginationConfig.pageSizeParam || defaultPagination?.pageSizeParam,
-                      totalField: paginationConfig.totalField || defaultPagination?.totalField,
-                      currentField:
-                        paginationConfig.currentField || defaultPagination?.currentField,
-                      pageSizeField:
-                        paginationConfig.pageSizeField || defaultPagination?.pageSizeField,
-                    }
-                  : undefined,
-            },
-            paginationMode === 'pagination'
-              ? { current: nextPageState.current, pageSize: nextPageState.pageSize }
-              : undefined,
-          )
-
-          const sourceList = result.list.length
-            ? result.list
-            : Array.isArray(result.data)
-              ? result.data
-              : []
-          const normalizedList = sourceList.map((item, index) => ({
-            ...item,
-            [rowKey]: item?.[rowKey] || `row-${index}`,
-          }))
-
-          setTableData(normalizedList)
-
-          if (paginationMode === 'pagination') {
-            setPageState({
-              current: result.pagination.current || nextPageState.current,
-              pageSize: result.pagination.pageSize || nextPageState.pageSize,
-              total: result.pagination.total || normalizedList.length,
-              serverSide: result.pagination.serverSide,
-            })
-          }
-        } else if (staticData && staticData.length > 0) {
-          setTableData(staticData)
-          if (paginationMode === 'pagination') {
-            setPageState(prev => ({
-              ...prev,
-              total: staticData.length,
-              serverSide: false,
-            }))
-          }
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 300))
-          setTableData(DEFAULT_DATA)
-          if (paginationMode === 'pagination') {
-            setPageState(prev => ({
-              ...prev,
-              total: DEFAULT_DATA.length,
-              serverSide: false,
-            }))
-          }
-        }
-      } catch (err: any) {
-        console.error('加载表格数据失败:', err)
-        setError(err.message || '数据加载失败')
-      } finally {
-        setLoading(false)
-      }
-    },
+  const initialPaginationState = useMemo(
+    () => createPaginationState(initialCurrent, initialPageSize),
+    [initialCurrent, initialPageSize],
+  )
+  const viewStateKey = useMemo(
+    () =>
+      buildDataTableViewStateKey({
+        widgetId: widget?.id,
+        dataSource: apiEndpoint ? 'api' : isStaticDataSource ? 'static' : 'default',
+        apiEndpoint,
+        apiMethod: tableConfig?.apiMethod,
+        apiHeadersText,
+        apiQuery,
+        apiBody,
+        apiDataField: tableConfig?.apiDataField,
+        apiListField: tableConfig?.apiListField || defaultListField,
+        paginationMode,
+        paginationConfig: {
+          pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
+          pageSizeParam: paginationConfig.pageSizeParam || defaultPagination?.pageSizeParam,
+          totalField: paginationConfig.totalField || defaultPagination?.totalField,
+          currentField: paginationConfig.currentField || defaultPagination?.currentField,
+          pageSizeField: paginationConfig.pageSizeField || defaultPagination?.pageSizeField,
+          showTotal: paginationConfig.showTotal ?? false,
+        },
+        staticDataText,
+        rowKey,
+      }),
     [
+      apiBody,
       apiEndpoint,
-      paginationConfig.currentField,
-      paginationConfig.pageParam,
-      paginationConfig.pageSizeField,
-      paginationConfig.pageSizeParam,
-      paginationConfig.totalField,
-      paginationMode,
-      rowKey,
-      staticData,
+      apiHeadersText,
+      apiQuery,
       defaultListField,
       defaultPagination?.currentField,
       defaultPagination?.pageParam,
       defaultPagination?.pageSizeField,
       defaultPagination?.pageSizeParam,
       defaultPagination?.totalField,
-      tableConfig?.apiBody,
+      isStaticDataSource,
+      paginationConfig.currentField,
+      paginationConfig.pageParam,
+      paginationConfig.pageSizeField,
+      paginationConfig.pageSizeParam,
+      paginationConfig.showTotal,
+      paginationConfig.totalField,
+      paginationMode,
+      rowKey,
+      staticDataText,
       tableConfig?.apiDataField,
-      tableConfig?.apiHeaders,
       tableConfig?.apiListField,
       tableConfig?.apiMethod,
-      tableConfig?.apiQuery,
+      widget?.id,
+    ],
+  )
+  const cachedInitialViewState = dataTableViewStateCache.get(viewStateKey)
+
+  const [tableData, setTableData] = useState<any[]>(() => cachedInitialViewState?.rows || [])
+  const [loading, setLoading] = useState<boolean>(() => cachedInitialViewState?.loading ?? Boolean(apiEndpoint))
+  const [error, setError] = useState<string | null>(() => cachedInitialViewState?.error ?? null)
+  const [pageState, setPageState] = useState<SharedPaginationState>(
+    () => cachedInitialViewState?.pagination || initialPaginationState,
+  )
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pageStateRef = useRef(pageState)
+  const tableDataRef = useRef(tableData)
+
+  useEffect(() => {
+    pageStateRef.current = pageState
+  }, [pageState])
+
+  useEffect(() => {
+    tableDataRef.current = tableData
+  }, [tableData])
+
+  const applySharedViewState = useCallback((nextState: SharedTableViewState) => {
+    setTableData(nextState.rows)
+    setLoading(nextState.loading)
+    setError(nextState.error)
+    setPageState(prev => {
+      const nextPagination = nextState.pagination
+      if (
+        prev.current === nextPagination.current &&
+        prev.pageSize === nextPagination.pageSize &&
+        prev.total === nextPagination.total &&
+        prev.serverSide === nextPagination.serverSide
+      ) {
+        return prev
+      }
+
+      return nextPagination
+    })
+  }, [])
+
+  const persistSharedViewState = useCallback((nextState: SharedTableViewState) => {
+    dataTableViewStateCache.set(viewStateKey, nextState)
+    applySharedViewState(nextState)
+  }, [applySharedViewState, viewStateKey])
+
+  useEffect(() => {
+    const cachedViewState = dataTableViewStateCache.get(viewStateKey)
+    if (cachedViewState) {
+      applySharedViewState(cachedViewState)
+      return
+    }
+
+    setPageState(prev => {
+      if (prev.current === initialCurrent && prev.pageSize === initialPageSize) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        current: initialCurrent,
+        pageSize: initialPageSize,
+      }
+    })
+  }, [applySharedViewState, initialCurrent, initialPageSize, viewStateKey])
+
+  const loadData = useCallback(
+    async (nextPageState = pageStateRef.current, options?: { force?: boolean }) => {
+      const requestKey = buildDataTableRequestKey(viewStateKey, nextPageState)
+      const cachedViewState = dataTableViewStateCache.get(viewStateKey)
+
+      if (apiEndpoint) {
+        const requestPaginationConfig =
+          paginationMode === 'pagination'
+            ? {
+                mode: 'pagination' as const,
+                pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
+                pageSizeParam: paginationConfig.pageSizeParam || defaultPagination?.pageSizeParam,
+                totalField: paginationConfig.totalField || defaultPagination?.totalField,
+                currentField: paginationConfig.currentField || defaultPagination?.currentField,
+                pageSizeField: paginationConfig.pageSizeField || defaultPagination?.pageSizeField,
+              }
+            : undefined
+
+        if (!options?.force) {
+          const cachedRequestState = dataTableRequestCache.get(requestKey)
+          if (cachedRequestState) {
+            persistSharedViewState(buildSharedTableViewState(
+              cachedRequestState.rows,
+              cachedRequestState.pagination,
+              false,
+              null,
+            ))
+            return
+          }
+        }
+
+        let requestPromise = dataTableInFlightRequests.get(requestKey)
+
+        if (!requestPromise || options?.force) {
+          persistSharedViewState(buildSharedTableViewState(
+            cachedViewState?.rows || tableDataRef.current,
+            cachedViewState?.pagination || createPaginationState(nextPageState.current, nextPageState.pageSize),
+            true,
+            null,
+          ))
+
+          requestPromise = requestWidgetApi(
+            {
+              endpoint: apiEndpoint,
+              method: tableConfig?.apiMethod,
+              headers: apiHeaders,
+              query: apiQuery,
+              body: apiBody,
+              dataField: tableConfig?.apiDataField,
+              listField: tableConfig?.apiListField || defaultListField,
+              pagination: requestPaginationConfig,
+            },
+            paginationMode === 'pagination'
+              ? { current: nextPageState.current, pageSize: nextPageState.pageSize }
+              : undefined,
+          ).then(result => {
+            const sourceList = result.list.length
+              ? result.list
+              : Array.isArray(result.data)
+                ? result.data
+                : []
+            const normalizedList = normalizeTableRows(sourceList, rowKey)
+            const requestState = {
+              rows: normalizedList,
+              pagination: createPaginationState(
+                result.pagination.current || nextPageState.current,
+                result.pagination.pageSize || nextPageState.pageSize,
+                result.pagination.total || normalizedList.length,
+                result.pagination.serverSide,
+              ),
+            }
+
+            dataTableRequestCache.set(requestKey, requestState)
+            return requestState
+          }).finally(() => {
+            if (dataTableInFlightRequests.get(requestKey) === requestPromise) {
+              dataTableInFlightRequests.delete(requestKey)
+            }
+          })
+
+          dataTableInFlightRequests.set(requestKey, requestPromise)
+        }
+
+        try {
+          const requestState = await requestPromise
+          persistSharedViewState(buildSharedTableViewState(
+            requestState.rows,
+            requestState.pagination,
+            false,
+            null,
+          ))
+        } catch (err: any) {
+          persistSharedViewState(buildSharedTableViewState(
+            cachedViewState?.rows || tableDataRef.current,
+            cachedViewState?.pagination || createPaginationState(nextPageState.current, nextPageState.pageSize),
+            false,
+            err?.message || '数据加载失败',
+          ))
+        }
+
+        return
+      }
+
+      if (isStaticDataSource) {
+        const normalizedList = normalizeTableRows(staticData, rowKey)
+        persistSharedViewState(buildSharedTableViewState(
+          normalizedList,
+          createPaginationState(nextPageState.current, nextPageState.pageSize, normalizedList.length, false),
+          false,
+          null,
+        ))
+        return
+      }
+
+      persistSharedViewState(buildSharedTableViewState(
+        DEFAULT_DATA,
+        createPaginationState(nextPageState.current, nextPageState.pageSize, DEFAULT_DATA.length, false),
+        false,
+        null,
+      ))
+    },
+    [
+      apiBody,
+      apiEndpoint,
+      apiHeaders,
+      apiQuery,
+      defaultListField,
+      defaultPagination?.currentField,
+      defaultPagination?.pageParam,
+      defaultPagination?.pageSizeField,
+      defaultPagination?.pageSizeParam,
+      defaultPagination?.totalField,
+      isStaticDataSource,
+      paginationConfig.currentField,
+      paginationConfig.pageParam,
+      paginationConfig.pageSizeField,
+      paginationConfig.pageSizeParam,
+      paginationConfig.totalField,
+      paginationMode,
+      persistSharedViewState,
+      rowKey,
+      staticData,
+      tableConfig?.apiDataField,
+      tableConfig?.apiListField,
+      tableConfig?.apiMethod,
+      viewStateKey,
     ],
   )
 
@@ -212,7 +498,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
   useEffect(() => {
     if (refreshInterval > 0 && apiEndpoint) {
       intervalRef.current = setInterval(() => {
-        loadData()
+        loadData(pageStateRef.current, { force: true })
       }, safeIntervalMs(refreshInterval))
     }
 
@@ -226,7 +512,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
 
   useEffect(() => {
     if (widget?.refreshCount && widget.refreshCount > 0) {
-      loadData()
+      loadData(pageStateRef.current, { force: true })
     }
   }, [widget?.refreshCount, loadData])
 
@@ -325,9 +611,11 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
           total: pageState.total,
           serverSide: pageState.serverSide,
         }
+
         setPageState(next)
+
         if (pageState.serverSide && apiEndpoint) {
-          loadData(next)
+          loadData(next, { force: true })
         }
       },
     }

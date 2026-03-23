@@ -367,6 +367,8 @@ export interface FormField {
 export interface FormConfig extends WidgetConfig {
   fields: FormField[];
   submitUrl?: string;
+  successAction?: 'none' | 'resetForm';
+  failureAction?: 'none' | 'resetForm';
 }
 
 // 微应用可发送的事件定义

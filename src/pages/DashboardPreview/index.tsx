@@ -107,7 +107,12 @@ const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
 
   return (
     <CanvasThemeProvider containerRef={canvasContainerRef} overrideConfig={dashboardConfig}>
-      <div ref={canvasContainerRef} className={clsx('dashboard-preview-container')} style={backgroundStyle}>
+      <div
+        ref={canvasContainerRef}
+        className={clsx('dashboard-preview-container')}
+        data-export-root="dashboard-preview"
+        style={backgroundStyle}
+      >
         <GridStackRenderProvider>
           <GridStackRender
             componentMap={{
@@ -136,6 +141,18 @@ const DashboardPreview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<PublishedDashboard | null>(null);
+  const exportMicroAppCount = useMemo(() => {
+    if (!dashboardData) {
+      return 0;
+    }
+
+    const widgetCount = dashboardData.widgets.filter(widget => widget.type === 'microApp').length;
+    const floatingCount = dashboardData.floatingModules.filter(module => {
+      return (module.config as Record<string, any>)?.contentType === 'microApp';
+    }).length;
+
+    return widgetCount + floatingCount;
+  }, [dashboardData]);
 
   useEffect(() => {
     if (!id) {
@@ -188,6 +205,26 @@ const DashboardPreview: React.FC = () => {
 
     fetchDashboard();
   }, [id]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    root.dataset.exportPreviewState = loading ? 'loading' : error ? 'error' : 'ready';
+
+    if (!loading && dashboardData) {
+      root.dataset.exportExpectedMicroAppCount = String(exportMicroAppCount);
+    } else {
+      delete root.dataset.exportExpectedMicroAppCount;
+    }
+
+    return () => {
+      delete root.dataset.exportPreviewState;
+      delete root.dataset.exportExpectedMicroAppCount;
+    };
+  }, [loading, error, dashboardData, exportMicroAppCount]);
 
   const buildGridOptions = useCallback((): GridStackOptions | null => {
     if (!dashboardData) return null;
