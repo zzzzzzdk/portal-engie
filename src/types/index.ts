@@ -190,11 +190,21 @@ export interface AppState {
   globalMicroApps: Widget[];  // 全局无边框微应用列表
   login: (userInfo?: UserInfo) => void;
   logout: () => void;
-  addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number }) => void;
-  addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule, position?: { x: number; y: number }) => void;
+  addWidget: (
+    type: WidgetType,
+    position?: { x: number; y: number; w?: number; h?: number; groupId?: string }
+  ) => Widget;
+  addMicroAppWidget: (
+    systemId: string,
+    moduleId: string,
+    module: MicroAppModule,
+    position?: { x: number; y: number; groupId?: string }
+  ) => Widget;
   // 微应用拖放暂存（拖放微应用到画布后暂存位置和模式，等用户选择具体微应用后再创建）
-  pendingMicroAppDrop: { x: number; y: number; mode: 'widget' | 'floating' } | null;
-  setPendingMicroAppDrop: (pending: { x: number; y: number; mode: 'widget' | 'floating' } | null) => void;
+  pendingMicroAppDrop: { x: number; y: number; groupId?: string; mode: 'widget' | 'floating' } | null;
+  setPendingMicroAppDrop: (
+    pending: { x: number; y: number; groupId?: string; mode: 'widget' | 'floating' } | null
+  ) => void;
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<Widget>) => void;
   refreshWidget: (id: string) => void;

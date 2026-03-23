@@ -3,7 +3,7 @@ import { Result, Spin, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import WujieReact from 'wujie-react';
 import { getToken } from '@/utils/cookie';
-import type { MicroAppWidgetConfig, MicroAppModule, Widget } from '@/types';
+import type { DashboardConfig, MicroAppWidgetConfig, MicroAppModule, Widget } from '@/types';
 import { getWidgetDisplayMode } from '@/utils/widgetHelpers';
 import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
@@ -16,6 +16,7 @@ const { bus, preloadApp } = WujieReact;
 interface MicroAppWidgetProps {
   config: MicroAppWidgetConfig;
   widget?: Widget;
+  dashboardConfig?: DashboardConfig;
 }
 
 type ExportMicroAppState = 'loading' | 'ready' | 'error';
@@ -75,8 +76,12 @@ const clearExportMicroAppState = (id: string, container: HTMLDivElement | null) 
   );
 };
 
-const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({ config, widget }) => {
-  const { themeMode, styleMode, styleTokens } = useCanvasTheme();
+const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({
+  config,
+  widget,
+  dashboardConfig,
+}) => {
+  const { themeMode, styleMode, styleTokens } = useCanvasTheme(dashboardConfig);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moduleConfig, setModuleConfig] = useState<MicroAppModule | null>(null);

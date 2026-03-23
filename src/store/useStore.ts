@@ -240,7 +240,7 @@ export const useStore = create<AppState>()(
       groups: [] as WidgetGroup[],
       isEditMode: true, // Default to edit mode for easier setup
       isDirty: false,   // 是否有未保存的变更
-      pendingMicroAppDrop: null as { x: number; y: number; mode: 'widget' | 'floating' } | null,
+      pendingMicroAppDrop: null as { x: number; y: number; groupId?: string; mode: 'widget' | 'floating' } | null,
       isFullScreen: false,
       isAuthenticated: !!getToken(), // 初始化时从 cookie 检查登录状态
       userInfo: null,
@@ -270,8 +270,11 @@ export const useStore = create<AppState>()(
         });
       },
 
-      addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number }) => {
+      addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number; groupId?: string }) => {
         const id = uuidv4();
+        const targetGroupId = position?.groupId && get().groups.some(group => group.id === position.groupId)
+          ? position.groupId
+          : undefined;
         // 根据组件类型获取对应的默认布局配置
         let layoutConfig: { w: number; h: number; x: number; y: number; minW: number; minH: number };
 
@@ -312,15 +315,33 @@ export const useStore = create<AppState>()(
           title: type.charAt(0).toUpperCase() + type.slice(1),
           layout: sanitizeLayout({ ...layoutConfig, i: id, y: position ? layoutConfig.y : Infinity }),
           config: getDefaultConfig(type),
+          groupId: targetGroupId,
         };
 
         set((state) => ({
           widgets: [...state.widgets, newWidget],
+          groups: targetGroupId
+            ? state.groups.map(group =>
+              group.id === targetGroupId
+                ? { ...group, widgetIds: [...group.widgetIds, id] }
+                : group
+            )
+            : state.groups,
         }));
+
+        return newWidget;
       },
 
-      addMicroAppWidget: (systemId: string, moduleId: string, module: MicroAppModule, position?: { x: number; y: number }) => {
+      addMicroAppWidget: (
+        systemId: string,
+        moduleId: string,
+        module: MicroAppModule,
+        position?: { x: number; y: number; groupId?: string }
+      ) => {
         const id = uuidv4();
+        const targetGroupId = position?.groupId && get().groups.some(group => group.id === position.groupId)
+          ? position.groupId
+          : undefined;
         const defaultSize = module.defaultSize || { w: 6, h: 5 };
         const newWidget: Widget = {
           id,
@@ -349,11 +370,21 @@ export const useStore = create<AppState>()(
             iconSvg: module.iconSvg,
             forceIconOnly: module.forceIconOnly,
           },
+          groupId: targetGroupId,
         };
 
         set((state) => ({
           widgets: [...state.widgets, newWidget],
+          groups: targetGroupId
+            ? state.groups.map(group =>
+              group.id === targetGroupId
+                ? { ...group, widgetIds: [...group.widgetIds, id] }
+                : group
+            )
+            : state.groups,
         }));
+
+        return newWidget;
       },
 
       createWidgetGroup: (title: string, widgetIds: string[]) => {
@@ -613,7 +644,9 @@ export const useStore = create<AppState>()(
       },
 
       setEditMode: (isEditMode: boolean) => set({ isEditMode }),
-      setPendingMicroAppDrop: (pending: { x: number; y: number; mode: 'widget' | 'floating' } | null) => set({ pendingMicroAppDrop: pending }),
+      setPendingMicroAppDrop: (
+        pending: { x: number; y: number; groupId?: string; mode: 'widget' | 'floating' } | null
+      ) => set({ pendingMicroAppDrop: pending }),
       markDirty: () => set({ isDirty: true }),
       clearDirty: () => set({ isDirty: false }),
 

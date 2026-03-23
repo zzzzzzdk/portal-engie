@@ -71,6 +71,7 @@ const DashboardInner: React.FC = () => {
   } = useGridStackContext();
   const availableWidgets = useMemo(() => widgets.filter((widget) => !widget.groupId), [widgets]);
   const widgetMap = useMemo(() => new Map(widgets.map((widget) => [widget.id, widget])), [widgets]);
+  const groupMap = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
 
   const widgetIdsRef = useRef<Set<string>>(new Set(availableWidgets.map((w) => w.id)));
   const allWidgetIdsRef = useRef<Set<string>>(new Set(widgets.map((w) => w.id))); // 追踪所有 widgets 以处理删除
@@ -104,6 +105,121 @@ const DashboardInner: React.FC = () => {
 
     return style;
   }, [isEditMode, gridVisualMetrics, dashboardConfig, isDark]);
+
+  const findParentGroupIdByGrid = useCallback((targetGrid: GridStack | null): string | null => {
+    if (!gridStack || !targetGrid || targetGrid === gridStack) {
+      return null;
+    }
+
+    const findInNodes = (nodes: GridStackNode[] | undefined): string | null => {
+      if (!nodes) {
+        return null;
+      }
+
+      for (const node of nodes) {
+        if (!node?.id) {
+          continue;
+        }
+
+        if (node.subGrid === targetGrid) {
+          return String(node.id);
+        }
+
+        const nestedGroupId = findInNodes(node.subGrid?.engine?.nodes);
+        if (nestedGroupId) {
+          return nestedGroupId;
+        }
+      }
+
+      return null;
+    };
+
+    return findInNodes(gridStack.engine?.nodes);
+  }, [gridStack]);
+
+  const handleExternalDrop = useCallback((
+    ownerGrid: GridStack,
+    _event: Event,
+    _prevNode: GridStackNode,
+    newNode: GridStackNode
+  ) => {
+    if (!isEditMode) return;
+
+    const widgetType = newNode.content as string | undefined;
+    const el = newNode.el;
+    if (el) {
+      try {
+        const sourceGrid = el.gridstackNode?.grid || ownerGrid;
+        sourceGrid.removeWidget(el, true, false);
+      } catch {
+        // 忽略临时节点清理失败
+      }
+    }
+
+    if (!widgetType) return;
+
+    const targetGroupId = findParentGroupIdByGrid(ownerGrid);
+    const targetGroup = targetGroupId ? groupMap.get(targetGroupId) : undefined;
+    const dropX = newNode.x ?? 0;
+    const dropY = newNode.y ?? 0;
+    const widgetPosition = targetGroup
+      ? {
+        x: (targetGroup.layout.x || 0) + dropX,
+        y: (targetGroup.layout.y || 0) + dropY,
+        groupId: targetGroupId || undefined,
+      }
+      : { x: dropX, y: dropY };
+
+    if (widgetType === 'create-group') {
+      createEmptyGroup();
+      return;
+    }
+
+    if (widgetType === 'microApp') {
+      setPendingMicroAppDrop({
+        x: widgetPosition.x,
+        y: widgetPosition.y,
+        groupId: targetGroupId || undefined,
+        mode: 'widget',
+      });
+      return;
+    }
+
+    if (widgetType.startsWith('floating-')) {
+      const containerRect = canvasContainerRef.current?.getBoundingClientRect();
+      const pixelX = lastMousePosRef.current.x - (containerRect?.left || 0);
+      const pixelY = lastMousePosRef.current.y - (containerRect?.top || 0);
+
+      if (widgetType === 'floating-assistantHub') {
+        addFloatingModuleLocal(
+          'assistantHub',
+          '鍔╂墜涓績',
+          { entries: [] },
+          {
+            width: 720, height: 500,
+            collapsedWidth: 60, collapsedHeight: 60,
+            isExpanded: false,
+            expandAnchor: 'top-left',
+            position: { x: pixelX, y: pixelY },
+          }
+        );
+      } else if (widgetType === 'floating-microApp') {
+        setPendingMicroAppDrop({ x: pixelX, y: pixelY, mode: 'floating' });
+      }
+      return;
+    }
+
+    addWidget(widgetType as WidgetType, widgetPosition);
+  }, [
+    addFloatingModuleLocal,
+    addWidget,
+    canvasContainerRef,
+    createEmptyGroup,
+    findParentGroupIdByGrid,
+    groupMap,
+    isEditMode,
+    setPendingMicroAppDrop,
+  ]);
 
   const syncLayoutFromGrid = useCallback(() => {
     if (pendingSyncFrameRef.current !== null) {
@@ -450,6 +566,73 @@ const DashboardInner: React.FC = () => {
 
   // 切换编辑模式
   useEffect(() => {
+    if (!gridStack) {
+      return;
+    }
+
+    let hasDomChanges = false;
+    const nextMetaMap = new Map<string, GridStackWidget>(_rawWidgetMetaMap.value);
+
+    groups.forEach((group) => {
+      const groupNode = findGridNodeById(gridStack, group.id);
+      const subGrid = groupNode?.subGrid;
+      if (!subGrid) {
+        return;
+      }
+
+      const desiredIds = group.widgetIds.filter((id) => widgetMap.has(id));
+      const desiredIdSet = new Set(desiredIds);
+      const currentNodes = subGrid.engine?.nodes || [];
+      const currentIds = currentNodes
+        .map((node) => (node?.id ? String(node.id) : ''))
+        .filter(Boolean);
+
+      desiredIds.forEach((widgetId) => {
+        if (currentIds.includes(widgetId)) {
+          return;
+        }
+
+        const widget = widgetMap.get(widgetId);
+        if (!widget) {
+          return;
+        }
+
+        const childNode = createGroupChildGridNode(widget, group);
+        subGrid.addWidget(childNode);
+        nextMetaMap.set(widgetId, childNode);
+        hasDomChanges = true;
+      });
+
+      currentIds.forEach((widgetId) => {
+        if (desiredIdSet.has(widgetId)) {
+          return;
+        }
+
+        const widgetEl = document.body.querySelector<HTMLElement>(`[gs-id="${widgetId}"]`);
+        if (widgetEl) {
+          subGrid.removeWidget(widgetEl, true, false);
+          nextMetaMap.delete(widgetId);
+          hasDomChanges = true;
+        }
+      });
+    });
+
+    if (!hasDomChanges) {
+      return;
+    }
+
+    isApplyingStoreLayout.current = true;
+    try {
+      _rawWidgetMetaMap.set(nextMetaMap);
+      syncLayoutFromGrid();
+    } finally {
+      requestAnimationFrame(() => {
+        isApplyingStoreLayout.current = false;
+      });
+    }
+  }, [groups, gridStack, syncLayoutFromGrid, widgetMap, _rawWidgetMetaMap]);
+
+  useEffect(() => {
     if (gridStack) {
       if (isEditMode) {
         gridStack.enable();
@@ -511,6 +694,9 @@ const DashboardInner: React.FC = () => {
     if (!gridStack) return;
 
     const handleDropped = (_event: Event, _prevNode: GridStackNode, newNode: GridStackNode) => {
+      handleExternalDrop(gridStack, _event, _prevNode, newNode);
+      return;
+
       if (!isEditMode) return;
 
       // 从 newNode.content 读取 widget 类型（在 data-gs-widget JSON 中设置）
@@ -521,8 +707,10 @@ const DashboardInner: React.FC = () => {
       const el = newNode.el;
       if (el) {
         try {
-          const ownerGrid = el.gridstackNode?.grid || gridStack;
-          ownerGrid.removeWidget(el, true, false);
+          const ownerGrid = (el?.gridstackNode?.grid || gridStack)!;
+          if (ownerGrid && el) {
+            ownerGrid.removeWidget(el!, true, false);
+          }
         } catch {
           // 忽略移除失败
         }
@@ -548,7 +736,7 @@ const DashboardInner: React.FC = () => {
       }
 
       // 悬浮模块：直接添加到鼠标释放位置（使用实际鼠标坐标，比网格坐标转换更精确）
-      if (widgetType.startsWith('floating-')) {
+      if (widgetType?.startsWith('floating-')) {
         // 鼠标坐标是 viewport-relative (clientX/Y)，但 FloatingModule 使用 position:fixed
         // 并以容器偏移为基准，所以需要减去容器偏移，避免位置偏移到右下方
         const containerRect = canvasContainerRef.current?.getBoundingClientRect();
@@ -584,7 +772,7 @@ const DashboardInner: React.FC = () => {
     return () => {
       gridStack.off('dropped');
     };
-  }, [gridStack, isEditMode, addWidget, createEmptyGroup, addFloatingModuleLocal, setPendingMicroAppDrop]);
+  }, [gridStack, isEditMode, addWidget, createEmptyGroup, addFloatingModuleLocal, setPendingMicroAppDrop, handleExternalDrop]);
 
   useEffect(() => {
     if (!gridStack) return;
@@ -603,6 +791,31 @@ const DashboardInner: React.FC = () => {
       gridStack.off('added');
     };
   }, [gridStack, syncLayoutFromGrid]);
+
+  useEffect(() => {
+    if (!gridStack) {
+      return;
+    }
+
+    const handleNestedDropped = (ownerGrid: GridStack) =>
+      (event: Event, prevNode: GridStackNode, newNode: GridStackNode) => {
+        handleExternalDrop(ownerGrid, event, prevNode, newNode);
+      };
+
+    syncNestedGridDropListeners(gridStack, handleNestedDropped);
+
+    const handleSubGridAdded = () => {
+      window.setTimeout(() => {
+        syncNestedGridDropListeners(gridStack, handleNestedDropped);
+      }, 100);
+    };
+
+    gridStack.on('added', handleSubGridAdded);
+
+    return () => {
+      gridStack.off('added');
+    };
+  }, [gridStack, handleExternalDrop]);
 
   return (
     <CanvasThemeProvider containerRef={canvasContainerRef}>
@@ -848,6 +1061,46 @@ function createWidgetGridNode(widget: Widget): GridStackWidget & { id: string } 
   };
 }
 
+function createGroupChildGridNode(widget: Widget, group: WidgetGroup): GridStackWidget & { id: string } {
+  const baseNode = createWidgetGridNode(widget);
+  const relativeX = (widget.layout.x || 0) - (group.layout.x || 0);
+  const relativeY = (widget.layout.y || 0) - (group.layout.y || 0);
+
+  return {
+    ...baseNode,
+    x: Math.max(relativeX, 0),
+    y: Math.max(relativeY, 0),
+    autoPosition: undefined,
+  };
+}
+
+function findGridNodeById(grid: GridStack | null, targetId: string): GridStackNode | null {
+  const findInNodes = (nodes: GridStackNode[] | undefined): GridStackNode | null => {
+    if (!nodes) {
+      return null;
+    }
+
+    for (const node of nodes) {
+      if (!node) {
+        continue;
+      }
+
+      if (String(node.id) === targetId) {
+        return node;
+      }
+
+      const nestedNode = findInNodes(node.subGrid?.engine?.nodes);
+      if (nestedNode) {
+        return nestedNode;
+      }
+    }
+
+    return null;
+  };
+
+  return findInNodes(grid?.engine?.nodes);
+}
+
 function createGroupGridWidget(
   group: WidgetGroup,
   widgetMap: Map<string, Widget>,
@@ -934,6 +1187,21 @@ function buildInitialChildren(
     .map((group) => createGroupGridWidget(group, widgetMap, preset))
     .filter((groupNode): groupNode is Exclude<ReturnType<typeof createGroupGridWidget>, null> => Boolean(groupNode));
   return [...rootWidgets, ...groupWidgets];
+}
+
+function syncNestedGridDropListeners(
+  grid: GridStack | null,
+  createDroppedHandler: (ownerGrid: GridStack) => (event: Event, prevNode: GridStackNode, newNode: GridStackNode) => void
+) {
+  if (!grid?.engine?.nodes) return;
+
+  grid.engine.nodes.forEach((node: any) => {
+    if (node?.subGrid) {
+      node.subGrid.off('dropped');
+      node.subGrid.on('dropped', createDroppedHandler(node.subGrid) as any);
+      syncNestedGridDropListeners(node.subGrid, createDroppedHandler);
+    }
+  });
 }
 
 function updateNestedGridDensity(

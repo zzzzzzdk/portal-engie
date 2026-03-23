@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { usePreviewWidget } from './PreviewDataContext';
+import { usePreviewData, usePreviewWidget } from './PreviewDataContext';
 import WidgetWrapper from '@/components/WidgetWrapper';
 import WidgetIconView from '@/components/WidgetIconView';
 import { isIconOnlyMode } from '@/utils/widgetHelpers';
@@ -37,6 +37,7 @@ interface PreviewWidgetAdapterProps {
 
 const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, type }) => {
   const widget = usePreviewWidget(widgetId);
+  const { dashboardConfig } = usePreviewData();
 
   const resolvedWidget = useMemo(() => widget, [widget]);
 
@@ -93,7 +94,7 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
       case 'typography':
         return <TypographyWidget {...commonProps} />;
       case 'microApp':
-        return <MicroAppWidget {...commonProps} />;
+        return <MicroAppWidget {...commonProps} dashboardConfig={dashboardConfig} />;
       case 'pageNavigator':
         return <PageNavigatorWidget {...commonProps} />;
       case 'iconNav':

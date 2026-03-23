@@ -124,7 +124,11 @@ const PreviewInner: React.FC<PreviewInnerProps> = ({ dashboardData }) => {
 
         {/* 悬浮模块 - 预览模式 */}
         {floatingModules?.map((module) => (
-          <FloatingModule key={module.id} widget={module}/>
+          <FloatingModule
+            key={module.id}
+            widget={module}
+            dashboardConfig={dashboardConfig}
+          />
         ))}
       </div>
     </CanvasThemeProvider>

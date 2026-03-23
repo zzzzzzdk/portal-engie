@@ -285,7 +285,14 @@ const Layout: React.FC = () => {
       message.success(`已添加全局微应用: ${module.name}`);
     } else {
       // 以小部件形式添加到网格（如果有拖放位置则使用）
-      addMicroAppWidget(systemId, moduleId, module, dropPos ? { x: dropPos.x, y: dropPos.y } : undefined);
+      addMicroAppWidget(
+        systemId,
+        moduleId,
+        module,
+        dropPos
+          ? { x: dropPos.x, y: dropPos.y, ...(dropPos.groupId ? { groupId: dropPos.groupId } : {}) }
+          : undefined
+      );
       message.success(`已添加微应用: ${module.name}`);
     }
   };

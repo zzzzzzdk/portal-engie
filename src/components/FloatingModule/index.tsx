@@ -23,7 +23,7 @@ import { isValidCssGradient } from '@/components/BackgroundSettings';
 import MicroAppWidget from '../widgets/MicroAppWidget';
 import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
-import type { Widget, FloatingModuleConfig } from '@/types';
+import type { DashboardConfig, Widget, FloatingModuleConfig } from '@/types';
 import './index.scss';
 
 const { confirm } = Modal;
@@ -169,9 +169,10 @@ const calculateSmartPosition = (
 
 interface FloatingModuleProps {
   widget: Widget;
+  dashboardConfig?: DashboardConfig;
 }
 
-const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
+const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardConfig }) => {
   const initialContainer = typeof document !== 'undefined' ? findFloatingContainer() : null;
   const initialViewport = getViewportSize(initialContainer);
   const initialOffset = initialContainer ? getContainerOffset(initialContainer) : { left: 0, top: 0 };
@@ -696,6 +697,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget }) => {
             sync: config.microApp?.sync,
             alive: config.microApp?.alive,
           }}
+          dashboardConfig={dashboardConfig}
         />
       );
     }
