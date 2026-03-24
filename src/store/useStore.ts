@@ -247,6 +247,7 @@ export const useStore = create<AppState>()(
       configPanelTarget: null,
       floatingModules: [] as Widget[], // 悬浮模块列表
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
+      currentCoverUrl: '',
       dashboardConfig: {
         backgroundType: 'color',
         backgroundColor: '',
@@ -453,7 +454,7 @@ export const useStore = create<AppState>()(
         });
       },
 
-      createEmptyGroup: (title?: string) => {
+      createEmptyGroup: (title?: string, position?: { x: number; y: number }) => {
         let createdGroup: WidgetGroup | null = null;
 
         set((state) => {
@@ -462,6 +463,8 @@ export const useStore = create<AppState>()(
           const layout = sanitizeLayout({
             ...DEFAULT_GROUP_LAYOUT,
             i: groupId,
+            x: position?.x ?? DEFAULT_GROUP_LAYOUT.x,
+            y: position?.y ?? DEFAULT_GROUP_LAYOUT.y,
           });
 
           const newGroup: WidgetGroup = {
@@ -661,6 +664,7 @@ export const useStore = create<AppState>()(
           groups: [],
           floatingModules: [] as Widget[], // 悬浮模块列表
           globalMicroApps: [] as Widget[], // 全局无边框微应用列表
+          currentCoverUrl: '',
           dashboardConfig: {
             backgroundType: 'color',
             backgroundColor: '',
@@ -668,6 +672,26 @@ export const useStore = create<AppState>()(
             styleMode: 'normal',
           },
           isDirty: false,
+        });
+        _suppressDirtyMark = false;
+      },
+
+      clearDashboardCanvas: (options) => {
+        const currentTitle = options?.preserveTitle ? get().dashboardConfig?.title : undefined;
+        _suppressDirtyMark = true;
+        set({
+          widgets: [],
+          groups: [],
+          floatingModules: [] as Widget[],
+          globalMicroApps: [] as Widget[],
+          dashboardConfig: {
+            backgroundType: 'color',
+            backgroundColor: '',
+            themeMode: 'light',
+            styleMode: 'normal',
+            ...(currentTitle ? { title: currentTitle } : {}),
+          },
+          isDirty: true,
         });
         _suppressDirtyMark = false;
       },
@@ -696,6 +720,7 @@ export const useStore = create<AppState>()(
         groups?: WidgetGroup[];
         floatingModules?: Widget[];
         dashboardConfig?: any;
+        coverUrl?: string;
       }) => {
         _suppressDirtyMark = true;
         const sanitizedConfig = sanitizeDashboardConfig(data.dashboardConfig);
@@ -709,6 +734,7 @@ export const useStore = create<AppState>()(
             layout: sanitizeLayout(g.layout)
           })) || [],
           floatingModules: data.floatingModules || [],
+          currentCoverUrl: data.coverUrl ?? '',
           dashboardConfig: Object.keys(sanitizedConfig).length > 0 ? sanitizedConfig : {
             backgroundType: 'color',
             backgroundColor: '',
@@ -727,6 +753,8 @@ export const useStore = create<AppState>()(
             ...config,
           } as any,
         })),
+
+      setCurrentCoverUrl: (coverUrl) => set({ currentCoverUrl: coverUrl }),
 
       // ============================================
       // 悬浮模块相关方法

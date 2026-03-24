@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
 import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, DashboardOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
 import { Outlet, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { flushSync } from 'react-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
 import GlobalMicroAppContainer from './GlobalMicroAppContainer'
@@ -21,11 +22,13 @@ import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import captureDashboardCover from '@/utils/captureDashboardCover'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
-import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard'
 import Logo from '@/assets/images/logo.svg'
 import './index.scss';
 
 const { Header, Content } = AntdLayout;
+const waitForUiPaint = () => new Promise<void>((resolve) => {
+  window.requestAnimationFrame(() => resolve());
+});
 
 const Layout: React.FC = () => {
   const {
@@ -44,9 +47,11 @@ const Layout: React.FC = () => {
     floatingModules,
     configPanelTarget,
     dashboardConfig,
-    resetDashboard,
+    clearDashboardCanvas,
     closeConfigPanel,
     updateDashboardConfig,
+    currentCoverUrl,
+    setCurrentCoverUrl,
     clearDirty,
     pendingMicroAppDrop,
     setPendingMicroAppDrop,
@@ -56,6 +61,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
+  const dashboardStatus = searchParams.get('status') === '1' ? 1 : 0;
   const { message, modal } = AntdApp.useApp();
   const canvasTheme = useCanvasTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
@@ -68,10 +74,18 @@ const Layout: React.FC = () => {
   const [publishAction, setPublishAction] = useState<'publish' | 'draft'>('publish')
   const [publishLoading, setPublishLoading] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle')
+  const [isCapturingCover, setIsCapturingCover] = useState(false)
+  const [globalMaskText, setGlobalMaskText] = useState<string | null>(null)
   const configDialogSaveRef = useRef<(() => Promise<boolean>) | null>(null)
+  const currentCoverUrlRef = useRef('')
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
   const draftLoading = publishLoading && publishAction === 'draft'
   const publishButtonLoading = publishLoading && publishAction === 'publish'
+  const showPublishingMask = Boolean(globalMaskText)
+  const _publishingMaskText = publishAction === 'publish'
+    ? '正在生成封面并发布...'
+    : '正在生成封面并保存...'
+  const publishingMaskText = globalMaskText || _publishingMaskText
   const configPanelWidget = useMemo(() => {
     if (!configPanelTarget) {
       return null;
@@ -111,6 +125,40 @@ const Layout: React.FC = () => {
       closeConfigPanel();
     }
   }, [isEditMode, closeConfigPanel])
+
+  useEffect(() => {
+    if (!editId) {
+      currentCoverUrlRef.current = '';
+      return;
+    }
+
+    currentCoverUrlRef.current = currentCoverUrl;
+    return;
+
+    let cancelled = false;
+
+    const loadCurrentCover = async () => {
+      try {
+        const res = { code: 20000, data: { coverUrl: currentCoverUrl } };
+        if (!cancelled && res.code === 20000 && res.data) {
+          currentCoverUrlRef.current =
+            (res.data as typeof res.data & { cover_url?: string }).cover_url
+            ?? res.data.coverUrl
+            ?? '';
+        }
+      } catch (error) {
+        console.error('获取当前应用封面失败:', error);
+      }
+    };
+
+    void loadCurrentCover();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editId, currentCoverUrl]);
+
+  const getCurrentCoverUrl = useCallback(() => currentCoverUrl, [currentCoverUrl])
 
   // 响应拖放微应用到画布：打开微应用市场选择器
   useEffect(() => {
@@ -326,6 +374,13 @@ const Layout: React.FC = () => {
         }
       }
       const values = await publishForm.validateFields();
+      currentAction = publishAction;
+      flushSync(() => {
+        setPublishModalOpen(false);
+        setGlobalMaskText(currentAction === 'publish' ? '正在生成封面并发布...' : '正在生成封面并保存...');
+        setPublishLoading(true);
+      });
+      await waitForUiPaint();
       const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
       // 画布级主题配置已在 dashboardConfig 中（themeMode/styleMode），全局配色从 ConfigStore 取
       const { themePreset, baseColors } = useConfigStore.getState();
@@ -346,11 +401,11 @@ const Layout: React.FC = () => {
         floatingModules,
         dashboardConfig: publishConfig,
       };
-      const coverImageBase64 = await captureDashboardCover();
+      setIsCapturingCover(true);
+      const coverImageBase64 = await captureDashboardCover({ waitMs: 80 });
       if (!coverImageBase64) {
         message.warning('封面生成失败，将继续提交');
       }
-      setPublishLoading(true);
       currentAction = publishAction;
       const res = await publishDashboard({
         id: editId || undefined,
@@ -363,29 +418,31 @@ const Layout: React.FC = () => {
         throw new Error(res.message || '请求失败');
       }
       const responseId = res.data.id || editId || '';
+      if (coverImageBase64) {
+        setCurrentCoverUrl(coverImageBase64);
+      }
       if (responseId) {
         const params = new URLSearchParams(searchParams);
         params.set('editId', responseId);
+        params.set('status', currentAction === 'publish' ? '1' : '0');
         navigate({
           pathname: location.pathname,
           search: params.toString(),
         }, { replace: true });
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, responseId);
-        }
       }
       updateDashboardConfig({
         title: values.title,
       });
       clearDirty();
       message.success(currentAction === 'publish' ? '工作台发布成功' : '暂存成功');
-      setPublishModalOpen(false);
       publishForm.resetFields();
     } catch (error: any) {
       console.error(error);
       const errorMsg = error?.message || (currentAction === 'publish' ? "发布失败" : '暂存失败')
       message.error(errorMsg);
     } finally {
+      setIsCapturingCover(false);
+      setGlobalMaskText(null);
       setPublishLoading(false);
     }
   };
@@ -422,44 +479,54 @@ const Layout: React.FC = () => {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
-        resetDashboard();
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
-        }
-        // 清除 URL 中的 editId 参数
-        const params = new URLSearchParams(searchParams);
-        if (params.has('editId')) {
-          params.delete('editId');
-          navigate({
-            pathname: location.pathname,
-            search: params.toString(),
-          }, { replace: true });
-        }
-        message.success('已恢复为空白页面');
+        clearDashboardCanvas({ preserveTitle: true });
+        message.success('已清空当前应用页面');
       },
     });
   };
 
-  const handleGoHome = () => {
-    navigate('/')
+  const handleGoHome = async () => {
+    if (!isDashboardRoute) {
+      navigate('/publish-list')
+      return
+    }
+
+    try {
+      if (configDialogSaveRef.current) {
+        const configSaved = await configDialogSaveRef.current();
+        if (!configSaved) {
+          return;
+        }
+      }
+
+      flushSync(() => {
+        setGlobalMaskText('正在保存并返回应用列表...');
+      });
+      await waitForUiPaint();
+
+      const saved = await silentSave({ force: true });
+      if (!saved) {
+        message.error('自动保存失败，请稍后重试');
+        return;
+      }
+
+      navigate('/publish-list')
+    } finally {
+      setGlobalMaskText(null);
+    }
   }
 
   // 头部导航菜单配置
   const headerMenuItems: MenuProps['items'] = [
     {
-      key: '/dashboard-gridstack',
-      icon: <DashboardOutlined />,
-      label: '工作台',
+      key: '/publish-list',
+      icon: <UnorderedListOutlined />,
+      label: '应用列表',
     },
     {
       key: '/micro-app-config',
       icon: <ApiOutlined />,
       label: '微应用配置',
-    },
-    {
-      key: '/publish-list',
-      icon: <UnorderedListOutlined />,
-      label: '应用列表',
     },
   ];
 
@@ -468,13 +535,16 @@ const Layout: React.FC = () => {
     const path = location.pathname;
     if (path.includes('micro-app-config')) return '/micro-app-config';
     if (path.includes('publish-list')) return '/publish-list';
-    return '/dashboard-gridstack';
+    return '/publish-list';
   };
   const isDashboardRoute = location.pathname === '/' || location.pathname.includes('dashboard-gridstack');
 
   // 自动保存
-  const { lastSaveTimeRef } = useAutoSave({
-    enabled: isDashboardRoute,
+  const { silentSave, lastSaveTimeRef } = useAutoSave({
+    enabled: isDashboardRoute && Boolean(editId),
+    dashboardId: editId || undefined,
+    status: dashboardStatus,
+    getCoverUrl: getCurrentCoverUrl,
     onSaveStatusChange: setAutoSaveStatus,
   });
 
@@ -487,9 +557,9 @@ const Layout: React.FC = () => {
       const timeStr = lastSaveTimeRef.current
         ? lastSaveTimeRef.current.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
         : '';
-      return <span className="auto-save-indicator saved"><CheckCircleOutlined /> 
-      已自动保存 
-      {/* {timeStr} */}
+      return <span className="auto-save-indicator saved"><CheckCircleOutlined />
+        已自动保存
+        {/* {timeStr} */}
       </span>;
     }
     if (autoSaveStatus === 'error') {
@@ -504,34 +574,44 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <AntdLayout className="app-layout">
+    <AntdLayout className={`app-layout${isCapturingCover ? ' is-capturing-cover' : ''}`}>
       {!isFullScreen && (
         <>
-          <Header className="app-header">
-            <div className="app-header__left">
-              <div className="app-header__logo" onClick={handleGoHome}>
-                <img src={Logo} alt="描述文字" width="52" height="24" />
-                Portal Engine
+          {!isDashboardRoute && (
+            <Header className="app-header">
+              <div className="app-header__left">
+                <div className="app-header__logo" onClick={handleGoHome}>
+                  <img src={Logo} alt="描述文字" width="52" height="24" />
+                  Portal Engine
+                </div>
+                <Menu
+                  mode="horizontal"
+                  selectedKeys={[getSelectedKey()]}
+                  items={headerMenuItems}
+                  onClick={handleMenuClick}
+                  className="app-header__menu"
+                />
               </div>
-              <Menu
-                mode="horizontal"
-                selectedKeys={[getSelectedKey()]}
-                items={headerMenuItems}
-                onClick={handleMenuClick}
-                className="app-header__menu"
-              />
-            </div>
 
-            <Space size="middle">
-              <Tooltip title="退出登录">
-                <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
-              </Tooltip>
-            </Space>
-          </Header>
+              <Space size="middle">
+                <Tooltip title="退出登录">
+                  <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
+                </Tooltip>
+              </Space>
+            </Header>
+          )}
 
           {isDashboardRoute && (
             <div className="app-sub-header">
               <div className="app-sub-header__title">
+                <Button
+                  type="text"
+                  icon={<LeftOutlined />}
+                  onClick={handleGoHome}
+                  className="app-sub-header__back"
+                >
+                  {/* 返回应用列表 */}
+                </Button>
                 <span className="app-sub-header__name">{currentAppName}</span>
               </div>
 
@@ -687,6 +767,12 @@ const Layout: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {showPublishingMask && (
+        <div className="app-layout__publishing-mask">
+          <Spin size="large" tip={publishingMaskText} fullscreen />
+        </div>
+      )}
 
     </AntdLayout>
   );

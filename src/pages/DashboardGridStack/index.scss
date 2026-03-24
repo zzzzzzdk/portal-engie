@@ -95,6 +95,16 @@
   }
 }
 
+.app-layout.is-capturing-cover {
+  .dashboard-container.grid-background {
+    border-right: none;
+
+    &::before {
+      display: none;
+    }
+  }
+}
+
 .grid-density-panel {
   position: absolute;
   top: 16px;

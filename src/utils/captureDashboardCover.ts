@@ -1,6 +1,9 @@
 import html2canvas from 'html2canvas';
 
 const DEFAULT_BG = '#ffffff';
+const waitNextFrame = () => new Promise<void>((resolve) => {
+  window.requestAnimationFrame(() => resolve());
+});
 
 const normalizeBase64 = (dataUrl: string) => {
   if (!dataUrl) {
@@ -10,7 +13,9 @@ const normalizeBase64 = (dataUrl: string) => {
   return dataUrl;
 };
 
-export const captureDashboardCover = async (): Promise<string | null> => {
+export const captureDashboardCover = async (
+  options?: { waitMs?: number }
+): Promise<string | null> => {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -19,6 +24,11 @@ export const captureDashboardCover = async (): Promise<string | null> => {
     return null;
   }
   try {
+    await waitNextFrame();
+    await waitNextFrame();
+    if (options?.waitMs) {
+      await new Promise((resolve) => window.setTimeout(resolve, options.waitMs));
+    }
     const computedStyle = window.getComputedStyle(container);
     const backgroundColor = computedStyle?.backgroundColor || DEFAULT_BG;
     const scale = Math.min(window.devicePixelRatio || 1, 2);

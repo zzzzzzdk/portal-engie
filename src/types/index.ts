@@ -188,6 +188,7 @@ export interface AppState {
   configPanelTarget: ConfigPanelTarget | null;
   floatingModules: Widget[];  // 悬浮模块列表
   globalMicroApps: Widget[];  // 全局无边框微应用列表
+  currentCoverUrl: string;
   login: (userInfo?: UserInfo) => void;
   logout: () => void;
   addWidget: (
@@ -210,7 +211,10 @@ export interface AppState {
   refreshWidget: (id: string) => void;
   updateLayout: (layouts: Layout[], options?: LayoutSyncOptions) => void;
   createWidgetGroup: (title: string, widgetIds: string[]) => void;
-  createEmptyGroup: (title?: string) => WidgetGroup;
+  createEmptyGroup: (
+    title?: string,
+    position?: { x: number; y: number }
+  ) => WidgetGroup;
   removeGroup: (id: string) => void;
   updateGroup: (id: string, updates: Partial<WidgetGroup>) => void;
   updateGroupConfig: (id: string, config: Partial<WidgetGroupConfig>) => void;
@@ -221,6 +225,7 @@ export interface AppState {
   openConfigPanel: (target: ConfigPanelTarget) => void;
   closeConfigPanel: () => void;
   resetDashboard: () => void;
+  clearDashboardCanvas: (options?: { preserveTitle?: boolean }) => void;
   saveDashboard: () => void;
   loadDashboard: () => void;
   loadDashboardFromData: (data: {
@@ -228,8 +233,10 @@ export interface AppState {
     groups?: WidgetGroup[];
     floatingModules?: Widget[];
     dashboardConfig?: DashboardConfig;
+    coverUrl?: string;
   }) => void;
   updateDashboardConfig: (config: Partial<DashboardConfig>) => void;
+  setCurrentCoverUrl: (coverUrl: string) => void;
   // 悬浮模块方法
   addFloatingModuleMicroApp: (
     systemId: string,

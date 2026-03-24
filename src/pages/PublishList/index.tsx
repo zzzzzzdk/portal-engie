@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Empty, Spin, Pagination } from 'antd';
+import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Spin, Pagination, Form } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -14,11 +14,10 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
-import { getPublishList, deletePublishedDashboard, PublishListItem } from '@/services/dashboard';
+import { getPublishList, deletePublishedDashboard, PublishListItem, publishDashboard, serializeDashboardSnapshot } from '@/services/dashboard';
 import { exportDashboardFromList } from '@/utils/exportHtml';
 import { useStore } from '@/store/useStore';
 import { useTableScroll } from '@/hooks/useTableScroll';
-import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import './index.scss';
 
 const VIEW_MODE_KEY = 'publish_list_view_mode';
@@ -35,12 +34,15 @@ const PublishList: React.FC = () => {
     total: 0,
   });
   const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
-    if (typeof window === 'undefined') return 'table';
-    return (localStorage.getItem(VIEW_MODE_KEY) as 'table' | 'card') || 'table';
+    if (typeof window === 'undefined') return 'card';
+    return (localStorage.getItem(VIEW_MODE_KEY) as 'table' | 'card') || 'card';
   });
   const [activeShareId, setActiveShareId] = useState<string | null>(null);
   const { resetDashboard, setEditMode } = useStore();
   const [exportLoading, setExportLoading] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createForm] = Form.useForm();
 
   // 获取发布列表
   const fetchList = useCallback(async (page: number, page_size: number, keyword?: string) => {
@@ -87,8 +89,9 @@ const PublishList: React.FC = () => {
 
   // 编辑 - 携带id请求数据跳转到编辑器
   const handleEdit = (record: PublishListItem) => {
-    // 跳转到编辑页，通过 URL 参数传递 id
-    navigate(`/dashboard-gridstack?editId=${record.id}`);
+    resetDashboard();
+    setEditMode(true);
+    navigate(`/dashboard-gridstack?editId=${record.id}&status=${Number(record.status) === 1 ? 1 : 0}`);
   };
 
   // 删除 - 二次确认
@@ -179,14 +182,56 @@ const PublishList: React.FC = () => {
     document.body.removeChild(textarea);
   };
 
-  // 新增 - 跳转到空白编辑页
+  const buildEmptyDashboardSnapshot = (title: string) => {
+    return serializeDashboardSnapshot({
+      widgets: [],
+      groups: [],
+      floatingModules: [],
+      dashboardConfig: {
+        title,
+        backgroundType: 'color',
+        backgroundColor: '',
+        themeMode: 'light',
+        styleMode: 'normal',
+      },
+    });
+  };
+
+  // 新增 - 先创建应用，再带着新 ID 进入工作台
   const handleCreate = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
+    createForm.resetFields();
+    setCreateModalOpen(true);
+  };
+
+  const handleCreateSubmit = async () => {
+    try {
+      const values = await createForm.validateFields();
+      const title = values.title.trim();
+      setCreateLoading(true);
+      const res = await publishDashboard({
+        title,
+        dashboardConfig: buildEmptyDashboardSnapshot(title),
+        status: 1,
+        cover_url: '',
+      });
+      if (res.code !== 20000 || !res.data?.id) {
+        throw new Error(res.message || '创建应用失败');
+      }
+      resetDashboard();
+      setEditMode(true);
+      message.success('应用创建成功');
+      setCreateModalOpen(false);
+      createForm.resetFields();
+      navigate(`/dashboard-gridstack?editId=${res.data.id}&status=1`);
+    } catch (error: any) {
+      if (error?.errorFields) {
+        return;
+      }
+      console.error('创建应用失败:', error);
+      message.error(error?.message || '创建应用失败');
+    } finally {
+      setCreateLoading(false);
     }
-    resetDashboard();
-    setEditMode(true);
-    navigate('/dashboard-gridstack');
   };
 
   const columns: ColumnsType<PublishListItem> = [
@@ -328,17 +373,32 @@ const PublishList: React.FC = () => {
   };
 
   const renderCards = () => {
-    if (!loading && !dataSource.length) {
-      return (
-        <div className="publish-card-empty">
-          <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        </div>
-      );
-    }
-
     return (
       <Spin spinning={loading}>
         <div className="publish-card-grid">
+          <button
+            type="button"
+            className="publish-card publish-card--create"
+            onClick={handleCreate}
+          >
+            <div className="publish-card__cover">
+              <div className="publish-card__thumbnail publish-card__thumbnail--create">
+                <div className="publish-card__create-icon">
+                  <PlusOutlined />
+                </div>
+                {/* <div className="publish-card__create-text">新建空白应用</div> */}
+              </div>
+            </div>
+            <div className="publish-card__body">
+              <div className="publish-card__title">
+                <div className="title">新建空白应用</div>
+              </div>
+              <div className="publish-card__info">
+                <span className='info-id'>创建后进入工作台编辑</span>
+                <span>空白模板</span>
+              </div>
+            </div>
+          </button>
           {dataSource.map((item) => {
             const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`;
             const statusValue = Number(item.status) === 1 ? 1 : 0;
@@ -465,6 +525,32 @@ const PublishList: React.FC = () => {
           onShowSizeChange={handlePaginationChange}
         />
       </div>
+      <Modal
+        title="新增应用"
+        open={createModalOpen}
+        onOk={handleCreateSubmit}
+        onCancel={() => setCreateModalOpen(false)}
+        confirmLoading={createLoading}
+        destroyOnHidden
+      >
+        <Form form={createForm} layout="vertical">
+          <Form.Item
+            name="title"
+            label="应用名称"
+            rules={[
+              { required: true, whitespace: true, message: '请输入应用名称' },
+              { max: 30, message: '应用名称最多 30 个字符' },
+            ]}
+          >
+            <Input
+              placeholder="请输入应用名称"
+              maxLength={30}
+              showCount
+              onPressEnter={() => void handleCreateSubmit()}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

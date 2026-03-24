@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GridStack, GridStackOptions, GridStackWidget, GridStackNode } from 'gridstack';
 import type { Layout } from 'react-grid-layout';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message } from 'antd';
 import {
   GridStackProvider,
@@ -16,7 +16,6 @@ import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { isValidCssGradient } from '@/components/BackgroundSettings';
-import { DASHBOARD_LAST_EDIT_ID_KEY } from '@/constants/dashboard';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
@@ -27,6 +26,12 @@ import 'gridstack/dist/gridstack.min.css';
 import './index.scss';
 
 const SUBGRID_LISTENER_REGISTRY = new WeakSet<GridStack>();
+type DropPayload =
+  | { source: 'external'; widgetType: string }
+  | { source: 'widget'; widgetId: string; widgetType?: WidgetType }
+  | { source: 'group'; groupId: string }
+  | { source: 'unknown' };
+
 type PersistHelpers = {
   hasHydrated?: () => boolean;
   onFinishHydration?: (fn: (state?: AppState, error?: unknown) => void) => () => void;
@@ -137,6 +142,63 @@ const DashboardInner: React.FC = () => {
     return findInNodes(gridStack.engine?.nodes);
   }, [gridStack]);
 
+  const resolveDropPayload = useCallback((newNode: GridStackNode): DropPayload => {
+    const nodeId = newNode.id ? String(newNode.id) : '';
+
+    if (nodeId && widgetMap.has(nodeId)) {
+      return {
+        source: 'widget',
+        widgetId: nodeId,
+        widgetType: widgetMap.get(nodeId)?.type,
+      };
+    }
+
+    if (nodeId && groupMap.has(nodeId)) {
+      return {
+        source: 'group',
+        groupId: nodeId,
+      };
+    }
+
+    const rawContent = typeof newNode.content === 'string' ? newNode.content : '';
+    if (!rawContent) {
+      return { source: 'unknown' };
+    }
+
+    try {
+      const parsed = JSON.parse(rawContent) as {
+        name?: string;
+        props?: {
+          widgetId?: string;
+          groupId?: string;
+          type?: WidgetType;
+        };
+      };
+
+      if (parsed.name === 'WidgetAdapter' && parsed.props?.widgetId) {
+        return {
+          source: 'widget',
+          widgetId: parsed.props.widgetId,
+          widgetType: parsed.props.type,
+        };
+      }
+
+      if (parsed.name === 'GroupAdapter' && parsed.props?.groupId) {
+        return {
+          source: 'group',
+          groupId: parsed.props.groupId,
+        };
+      }
+    } catch {
+      // 左侧组件库拖入时 content 是简单字符串，不需要额外处理
+    }
+
+    return {
+      source: 'external',
+      widgetType: rawContent,
+    };
+  }, [groupMap, widgetMap]);
+
   const handleExternalDrop = useCallback((
     ownerGrid: GridStack,
     _event: Event,
@@ -145,7 +207,14 @@ const DashboardInner: React.FC = () => {
   ) => {
     if (!isEditMode) return;
 
-    const widgetType = newNode.content as string | undefined;
+    const dropPayload = resolveDropPayload(newNode);
+    if (dropPayload.source === 'widget' || dropPayload.source === 'group') {
+      return;
+    }
+
+    const widgetType = dropPayload.source === 'external'
+      ? dropPayload.widgetType
+      : undefined;
     const el = newNode.el;
     if (el) {
       try {
@@ -171,7 +240,10 @@ const DashboardInner: React.FC = () => {
       : { x: dropX, y: dropY };
 
     if (widgetType === 'create-group') {
-      createEmptyGroup();
+      createEmptyGroup(undefined, {
+        x: widgetPosition.x,
+        y: widgetPosition.y,
+      });
       return;
     }
 
@@ -218,6 +290,7 @@ const DashboardInner: React.FC = () => {
     findParentGroupIdByGrid,
     groupMap,
     isEditMode,
+    resolveDropPayload,
     setPendingMicroAppDrop,
   ]);
 
@@ -852,6 +925,7 @@ const DashboardInner: React.FC = () => {
 const DashboardGridStack: React.FC = () => {
   const { widgets, groups, gridDensity, loadDashboardFromData, setEditMode } = useStore();
   const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('editId');
   const [isLoadingRemoteData, setIsLoadingRemoteData] = useState(true);
@@ -930,16 +1004,10 @@ const DashboardGridStack: React.FC = () => {
 
     const loadData = async () => {
       setIsLoadingRemoteData(true);
-      const storedEditId =
-        !editId && typeof window !== 'undefined'
-          ? localStorage.getItem(DASHBOARD_LAST_EDIT_ID_KEY)
-          : null;
-      const isResumeFromStorage = Boolean(!editId && storedEditId);
-      const targetId = editId || storedEditId;
-
-      if (!targetId) {
+      if (!editId) {
+        message.info('请从应用列表新建或编辑应用');
+        navigate('/publish-list', { replace: true });
         if (!cancelled) {
-          setRemoteDataLoaded(true);
           setIsLoadingRemoteData(false);
         }
         return;
@@ -951,7 +1019,7 @@ const DashboardGridStack: React.FC = () => {
       setRemoteDataLoaded(false);
 
       try {
-        const res = await getPublishedDashboard({ id: targetId });
+        const res = await getPublishedDashboard({ id: editId });
         if (res.code === 20000 && res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
           if (!snapshot) {
@@ -963,6 +1031,7 @@ const DashboardGridStack: React.FC = () => {
               widgets: snapshot.widgets,
               groups: snapshot.groups,
               floatingModules: snapshot.floatingModules,
+              coverUrl: (res.data as typeof res.data & { cover_url?: string }).cover_url ?? res.data.coverUrl ?? '',
               dashboardConfig: {
                 backgroundType: 'color',
                 ...config,
@@ -970,27 +1039,16 @@ const DashboardGridStack: React.FC = () => {
               },
             });
             setEditMode(true);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(DASHBOARD_LAST_EDIT_ID_KEY, targetId);
-            }
-            if (editId) {
-              message.success('已加载工作台数据');
-            } else {
-              message.success('已恢复上次编辑内容');
-            }
+            message.success('已加载工作台数据');
           }
         } else {
-          if (isResumeFromStorage && typeof window !== 'undefined') {
-            localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
-          }
           message.error(res.message || '加载工作台数据失败');
+          navigate('/publish-list', { replace: true });
         }
       } catch (error) {
         console.error('加载工作台数据失败:', error);
-        if (isResumeFromStorage && typeof window !== 'undefined') {
-          localStorage.removeItem(DASHBOARD_LAST_EDIT_ID_KEY);
-        }
         message.error('加载工作台数据失败');
+        navigate('/publish-list', { replace: true });
       }
 
       if (!cancelled) {
@@ -1004,7 +1062,7 @@ const DashboardGridStack: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyGlobalColorsFromConfig]);
+  }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyGlobalColorsFromConfig, navigate]);
 
   useEffect(() => {
     if (!isHydrated || !remoteDataLoaded || initialOptions) {
