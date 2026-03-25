@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Widget } from '@/types';
 import { Tooltip, Dropdown, Modal, Button } from 'antd';
 import type { MenuProps } from 'antd';
-import { Settings, Trash2, RefreshCw } from 'lucide-react';
+import { Settings, Trash2, RefreshCw, Copy } from 'lucide-react';
 import { getWidgetIcon } from '@/utils/widgetHelpers';
 import { WidgetIconConfig } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
@@ -29,7 +29,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { removeWidget, refreshWidget, openConfigPanel } = useStore();
+  const { removeWidget, refreshWidget, duplicateWidget, openConfigPanel } = useStore();
 
   // 判断是否为小尺寸组件（w < 2 或 h < 2），小尺寸时不显示操作按钮以避免影响拖拽
   // 用户可通过右键菜单进行设置和删除操作
@@ -73,6 +73,11 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
     }, 600);
   };
 
+  const handleDuplicate = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    duplicateWidget(widget.id);
+  };
+
   // 右键菜单配置
   const contextMenuItems: MenuProps['items'] = [
     {
@@ -81,6 +86,12 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
       icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
       onClick: () => handleRefresh(),
       disabled: isRefreshing,
+    },
+    {
+      key: 'duplicate',
+      label: '复制',
+      icon: <Copy size={14} />,
+      onClick: () => handleDuplicate(),
     },
     {
       key: 'config',
@@ -248,6 +259,13 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
           onClick={e => e.stopPropagation()}
           onMouseDown={e => e.stopPropagation()}
         >
+          <Button
+            type="text"
+            size="small"
+            icon={<Copy size={14} />}
+            onClick={handleDuplicate}
+            className="action-btn"
+          />
           <Button
             type="text"
             size="small"

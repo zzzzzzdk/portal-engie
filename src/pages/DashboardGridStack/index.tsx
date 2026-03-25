@@ -1219,7 +1219,7 @@ function createGroupGridWidget(
       cellHeight: preset.cellHeight,
       margin: preset.margin,
       minRow: 1,  // 确保空分组至少有一行高度，可作为拖拽目标
-      alwaysShowResizeHandle: false,
+      // alwaysShowResizeHandle: false,
       animate: true,
       float: true,
       // itemClass: 'grid-stack-group-wrap',

@@ -3,7 +3,7 @@ import { Widget } from '@/types';
 import { useStore } from '@/store/useStore';
 import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
 import { isValidCssGradient } from '@/components/BackgroundSettings';
-import { Settings, Trash2, RefreshCw } from 'lucide-react';
+import { Settings, Trash2, RefreshCw, Copy } from 'lucide-react';
 import { Button, Dropdown, Modal } from 'antd';
 import type { MenuProps } from 'antd';
 import clsx from 'clsx';
@@ -24,7 +24,7 @@ interface WidgetWrapperProps {
 
 const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
   ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, isPreviewMode = false, ...props }, ref) => {
-    const { removeWidget, refreshWidget, isEditMode: storeEditMode, openConfigPanel } = useStore();
+    const { removeWidget, refreshWidget, duplicateWidget, isEditMode: storeEditMode, openConfigPanel } = useStore();
     // 预览模式下强制禁用编辑
     const isEditMode = isPreviewMode ? false : storeEditMode;
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -54,6 +54,10 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       }, 600);
     };
 
+    const handleDuplicate = () => {
+      duplicateWidget(widget.id);
+    };
+
     const isRefreshable = REFRESHABLE_WIDGET_TYPES.has(widget.type);
 
     // 右键菜单配置
@@ -65,6 +69,12 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         onClick: handleRefresh,
         disabled: isRefreshing,
       }] : []),
+      {
+        key: 'duplicate',
+        label: '复制',
+        icon: <Copy size={14} />,
+        onClick: handleDuplicate,
+      },
       {
         key: 'config',
         label: '设置',
@@ -213,6 +223,12 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
                     disabled={isRefreshing}
                   />
                 )}
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<Copy size={14} />}
+                  onClick={handleDuplicate}
+                />
                 <Button
                   type="text"
                   size="small"

@@ -161,8 +161,8 @@
     transition: box-shadow 0.2s;
 
     .grid-stack-item-content {
-      overflow-y: visible;
-      overflow-x: visible;
+      overflow-y: hidden !important;
+      overflow-x: hidden !important;
       border-radius: inherit;
     }
 
@@ -171,7 +171,7 @@
       position: relative;
       z-index: 1;
       // 关键：设置最小高度，使空分组也能作为拖拽目标
-      min-height: 100%;
+      // min-height: 100%;
       height: 100%;
     }
   
@@ -190,6 +190,12 @@
   overflow-x: visible !important;
   overflow: visible !important;  // 允许 box-shadow 显示，内部内容溢出由 .widget-content 控制
   border-radius: 4px;
+}
+
+.dashboard-container.grid-background {
+  .grid-stack-item.ui-resizable-autohide:hover > .ui-resizable-handle {
+    display: block;
+  }
 }
 
 // GridStack 拖拽占位符样式
@@ -276,6 +282,7 @@
     opacity: 0;
     transition: opacity 0.2s;
     pointer-events: auto;  // 按钮需要可点击
+    margin-left: auto;
 
     .group-config-btn {
       color: var(--ant-color-text-secondary);

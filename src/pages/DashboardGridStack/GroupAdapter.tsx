@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { Button, Popconfirm } from 'antd';
-import { DeleteOutlined, SettingOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, SettingOutlined } from '@ant-design/icons';
 
 interface GroupAdapterProps {
   groupId: string;
 }
 
 const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
-  const { groups, removeGroup, isEditMode, openConfigPanel } = useStore();
+  const { groups, removeGroup, duplicateGroup, isEditMode, openConfigPanel } = useStore();
   const group = groups.find((g) => g.id === groupId);
 
   // 计算容器样式（背景和边框）
@@ -93,6 +93,10 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
     removeGroup(groupId);
   };
 
+  const handleDuplicate = () => {
+    duplicateGroup(groupId);
+  };
+
 
   // 将背景层和头部层分开，使它们可以有独立的 z-index
   // 背景层: z-index: 0 (在 widgets 下面)
@@ -113,6 +117,13 @@ const GroupAdapter: React.FC<GroupAdapterProps> = ({ groupId }) => {
           )}
           {isEditMode && (
             <div className="group-actions">
+              <Button
+                type="text"
+                icon={<CopyOutlined />}
+                size="small"
+                className="group-config-btn group-copy-btn"
+                onClick={handleDuplicate}
+              />
               <Button
                 type="text"
                 icon={<SettingOutlined />}

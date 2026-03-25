@@ -13,6 +13,7 @@ import {
   WidgetGroup,
   WidgetGroupConfig,
   LayoutSyncOptions,
+  GRID_DENSITY_PRESETS,
 } from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
@@ -70,6 +71,112 @@ const sanitizeLayout = (layout: Layout): Layout => {
     minW: sanitizeLayoutValue(layout.minW, 1, 1),
     minH: sanitizeLayoutValue(layout.minH, 1, 1),
   };
+};
+
+const cloneConfigValue = <T,>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneConfigValue(item)) as T;
+  }
+
+  if (value instanceof Date) {
+    return new Date(value.getTime()) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    if (value.constructor !== Object) {
+      return value;
+    }
+
+    const clonedObject: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, nestedValue]) => {
+      clonedObject[key] = cloneConfigValue(nestedValue);
+    });
+    return clonedObject as T;
+  }
+
+  return value;
+};
+
+const getDuplicatedTitle = (title: string, existingTitles: string[]): string => {
+  const trimmedTitle = title.trim() || '未命名组件';
+  const baseTitle = `${trimmedTitle} 副本`;
+
+  if (!existingTitles.includes(baseTitle)) {
+    return baseTitle;
+  }
+
+  let index = 2;
+  let nextTitle = `${baseTitle} ${index}`;
+  while (existingTitles.includes(nextTitle)) {
+    index += 1;
+    nextTitle = `${baseTitle} ${index}`;
+  }
+
+  return nextTitle;
+};
+
+const isLayoutOverlapping = (
+  target: Pick<Layout, 'x' | 'y' | 'w' | 'h'>,
+  current: Pick<Layout, 'x' | 'y' | 'w' | 'h'>
+) => {
+  return (
+    target.x < current.x + current.w &&
+    target.x + target.w > current.x &&
+    target.y < current.y + current.h &&
+    target.y + target.h > current.y
+  );
+};
+
+const findAvailablePosition = ({
+  startX,
+  startY,
+  width,
+  height,
+  columnCount,
+  occupiedLayouts,
+  maxRows,
+}: {
+  startX: number;
+  startY: number;
+  width: number;
+  height: number;
+  columnCount: number;
+  occupiedLayouts: Array<Pick<Layout, 'x' | 'y' | 'w' | 'h'>>;
+  maxRows?: number;
+}): { x: number; y: number } | null => {
+  const normalizedWidth = Math.max(1, width);
+  const normalizedHeight = Math.max(1, height);
+  const normalizedColumns = Math.max(columnCount, normalizedWidth);
+  const maxX = Math.max(0, normalizedColumns - normalizedWidth);
+  const normalizedStartX = Math.min(Math.max(0, startX), maxX);
+  const normalizedStartY = Math.max(0, startY);
+  const rowLimit = maxRows !== undefined
+    ? Math.max(normalizedStartY, maxRows - normalizedHeight)
+    : normalizedStartY + 200;
+
+  const tryPlace = (x: number, y: number) => {
+    const candidate = { x, y, w: normalizedWidth, h: normalizedHeight };
+    return occupiedLayouts.every((layout) => !isLayoutOverlapping(candidate, layout));
+  };
+
+  for (let y = normalizedStartY; y <= rowLimit; y += 1) {
+    const firstPassStartX = y === normalizedStartY ? normalizedStartX : 0;
+    for (let x = firstPassStartX; x <= maxX; x += 1) {
+      if (tryPlace(x, y)) {
+        return { x, y };
+      }
+    }
+
+    if (y === normalizedStartY && normalizedStartX > 0) {
+      for (let x = 0; x < normalizedStartX; x += 1) {
+        if (tryPlace(x, y)) {
+          return { x, y };
+        }
+      }
+    }
+  }
+
+  return null;
 };
 
 const getDefaultConfig = (type: WidgetType): WidgetConfig => {
@@ -547,6 +654,263 @@ export const useStore = create<AppState>()(
             w.id === id ? { ...w, refreshCount: (w.refreshCount || 0) + 1 } : w
           ),
         }));
+      },
+
+      duplicateWidget: (id: string) => {
+        let duplicatedWidget: Widget | null = null;
+
+        set((state) => {
+          const sourceWidget = state.widgets.find((widget) => widget.id === id);
+          if (!sourceWidget) {
+            return {};
+          }
+
+          const widgetId = uuidv4();
+          const existingTitles = state.widgets.map((widget) => widget.title);
+          const nextTitle = getDuplicatedTitle(sourceWidget.title, existingTitles);
+          const clonedConfig = cloneConfigValue(sourceWidget.config);
+          if (typeof clonedConfig.title === 'string') {
+            clonedConfig.title = nextTitle;
+          }
+
+          const sourceGroup = sourceWidget.groupId
+            ? state.groups.find((group) => group.id === sourceWidget.groupId)
+            : undefined;
+          const sourceLayout = sanitizeLayout(sourceWidget.layout);
+          const sourceX = Number.isFinite(sourceLayout.x) ? sourceLayout.x : 0;
+          const sourceY = Number.isFinite(sourceLayout.y) ? sourceLayout.y : 0;
+          const widgetWidth = sourceLayout.w;
+          const widgetHeight = sourceLayout.h;
+
+          let nextGroupId: string | undefined;
+          let nextPosition: { x: number; y: number } | null = null;
+
+          if (sourceGroup) {
+            const groupX = Number.isFinite(sourceGroup.layout.x) ? sourceGroup.layout.x : 0;
+            const groupY = Number.isFinite(sourceGroup.layout.y) ? sourceGroup.layout.y : 0;
+            const relativeSourceX = Math.max(0, sourceX - groupX);
+            const relativeSourceY = Math.max(0, sourceY - groupY);
+            const occupiedGroupLayouts = state.widgets
+              .filter((widget) => widget.groupId === sourceGroup.id && widget.id !== sourceWidget.id)
+              .map((widget) => {
+                const normalizedLayout = sanitizeLayout(widget.layout);
+                return {
+                  x: Math.max(0, (Number.isFinite(normalizedLayout.x) ? normalizedLayout.x : 0) - groupX),
+                  y: Math.max(0, (Number.isFinite(normalizedLayout.y) ? normalizedLayout.y : 0) - groupY),
+                  w: normalizedLayout.w,
+                  h: normalizedLayout.h,
+                };
+              });
+
+            const groupPosition = findAvailablePosition({
+              startX: relativeSourceX + 1,
+              startY: relativeSourceY + 1,
+              width: widgetWidth,
+              height: widgetHeight,
+              columnCount: Math.max(sourceGroup.layout.w || widgetWidth, widgetWidth),
+              occupiedLayouts: occupiedGroupLayouts,
+              maxRows: Math.max(sourceGroup.layout.h || widgetHeight, widgetHeight),
+            });
+
+            if (groupPosition) {
+              nextGroupId = sourceGroup.id;
+              nextPosition = {
+                x: groupX + groupPosition.x,
+                y: groupY + groupPosition.y,
+              };
+            }
+          }
+
+          if (!nextPosition) {
+            const rootColumnCount = GRID_DENSITY_PRESETS[state.gridDensity].columnCount;
+            const occupiedRootLayouts = [
+              ...state.widgets
+                .filter((widget) => !widget.groupId && widget.id !== sourceWidget.id)
+                .map((widget) => {
+                  const normalizedLayout = sanitizeLayout(widget.layout);
+                  return {
+                    x: Number.isFinite(normalizedLayout.x) ? normalizedLayout.x : 0,
+                    y: Number.isFinite(normalizedLayout.y) ? normalizedLayout.y : 0,
+                    w: normalizedLayout.w,
+                    h: normalizedLayout.h,
+                  };
+                }),
+              ...state.groups.map((group) => {
+                const normalizedLayout = sanitizeLayout(group.layout);
+                return {
+                  x: Number.isFinite(normalizedLayout.x) ? normalizedLayout.x : 0,
+                  y: Number.isFinite(normalizedLayout.y) ? normalizedLayout.y : 0,
+                  w: normalizedLayout.w,
+                  h: normalizedLayout.h,
+                };
+              }),
+            ];
+
+            const rootPosition = findAvailablePosition({
+              startX: sourceWidget.groupId ? 0 : sourceX + 1,
+              startY: sourceWidget.groupId ? 0 : sourceY + 1,
+              width: widgetWidth,
+              height: widgetHeight,
+              columnCount: rootColumnCount,
+              occupiedLayouts: occupiedRootLayouts,
+            }) || {
+              x: 0,
+              y: occupiedRootLayouts.reduce((maxY, layout) => Math.max(maxY, layout.y + layout.h), 0),
+            };
+
+            nextPosition = rootPosition;
+            nextGroupId = undefined;
+          }
+
+          duplicatedWidget = {
+            ...sourceWidget,
+            id: widgetId,
+            title: nextTitle,
+            config: clonedConfig,
+            refreshCount: 0,
+            groupId: nextGroupId,
+            layout: sanitizeLayout({
+              ...sourceLayout,
+              i: widgetId,
+              x: nextPosition.x,
+              y: nextPosition.y,
+            }),
+          };
+
+          return {
+            widgets: [...state.widgets, duplicatedWidget],
+            groups: nextGroupId
+              ? state.groups.map((group) =>
+                group.id === nextGroupId
+                  ? { ...group, widgetIds: [...group.widgetIds, widgetId] }
+                  : group
+              )
+              : state.groups,
+          };
+        });
+
+        return duplicatedWidget;
+      },
+
+      duplicateGroup: (id: string) => {
+        let duplicatedGroup: WidgetGroup | null = null;
+
+        set((state) => {
+          const sourceGroup = state.groups.find((group) => group.id === id);
+          if (!sourceGroup) {
+            return {};
+          }
+
+          const sourceLayout = sanitizeLayout(sourceGroup.layout);
+          const sourceX = Number.isFinite(sourceLayout.x) ? sourceLayout.x : 0;
+          const sourceY = Number.isFinite(sourceLayout.y) ? sourceLayout.y : 0;
+          const rootColumnCount = GRID_DENSITY_PRESETS[state.gridDensity].columnCount;
+          const occupiedRootLayouts = [
+            ...state.widgets
+              .filter((widget) => !widget.groupId)
+              .map((widget) => {
+                const normalizedLayout = sanitizeLayout(widget.layout);
+                return {
+                  x: Number.isFinite(normalizedLayout.x) ? normalizedLayout.x : 0,
+                  y: Number.isFinite(normalizedLayout.y) ? normalizedLayout.y : 0,
+                  w: normalizedLayout.w,
+                  h: normalizedLayout.h,
+                };
+              }),
+            ...state.groups.map((group) => {
+              const normalizedLayout = sanitizeLayout(group.layout);
+              return {
+                x: Number.isFinite(normalizedLayout.x) ? normalizedLayout.x : 0,
+                y: Number.isFinite(normalizedLayout.y) ? normalizedLayout.y : 0,
+                w: normalizedLayout.w,
+                h: normalizedLayout.h,
+              };
+            }),
+          ];
+
+          const nextPosition = findAvailablePosition({
+            startX: sourceX + 1,
+            startY: sourceY + 1,
+            width: sourceLayout.w,
+            height: sourceLayout.h,
+            columnCount: rootColumnCount,
+            occupiedLayouts: occupiedRootLayouts,
+          }) || {
+            x: 0,
+            y: occupiedRootLayouts.reduce((maxY, layout) => Math.max(maxY, layout.y + layout.h), 0),
+          };
+
+          const nextGroupId = `group-${uuidv4()}`;
+          const nextGroupTitle = getDuplicatedTitle(
+            sourceGroup.title,
+            state.groups.map((group) => group.title)
+          );
+          const existingWidgetTitles = state.widgets.map((widget) => widget.title);
+          const duplicatedWidgets: Widget[] = [];
+          const duplicatedWidgetIds: string[] = [];
+
+          sourceGroup.widgetIds.forEach((widgetId) => {
+            const sourceWidget = state.widgets.find((widget) => widget.id === widgetId);
+            if (!sourceWidget) {
+              return;
+            }
+
+            const nextWidgetId = uuidv4();
+            const sourceWidgetLayout = sanitizeLayout(sourceWidget.layout);
+            const relativeX = Math.max(
+              0,
+              (Number.isFinite(sourceWidgetLayout.x) ? sourceWidgetLayout.x : 0) - sourceX
+            );
+            const relativeY = Math.max(
+              0,
+              (Number.isFinite(sourceWidgetLayout.y) ? sourceWidgetLayout.y : 0) - sourceY
+            );
+            const nextWidgetTitle = getDuplicatedTitle(sourceWidget.title, existingWidgetTitles);
+            existingWidgetTitles.push(nextWidgetTitle);
+            const clonedConfig = cloneConfigValue(sourceWidget.config);
+
+            if (typeof clonedConfig.title === 'string') {
+              clonedConfig.title = nextWidgetTitle;
+            }
+
+            duplicatedWidgets.push({
+              ...sourceWidget,
+              id: nextWidgetId,
+              title: nextWidgetTitle,
+              config: clonedConfig,
+              refreshCount: 0,
+              groupId: nextGroupId,
+              layout: sanitizeLayout({
+                ...sourceWidgetLayout,
+                i: nextWidgetId,
+                x: nextPosition.x + relativeX,
+                y: nextPosition.y + relativeY,
+              }),
+            });
+            duplicatedWidgetIds.push(nextWidgetId);
+          });
+
+          duplicatedGroup = {
+            ...sourceGroup,
+            id: nextGroupId,
+            title: nextGroupTitle,
+            widgetIds: duplicatedWidgetIds,
+            layout: sanitizeLayout({
+              ...sourceLayout,
+              i: nextGroupId,
+              x: nextPosition.x,
+              y: nextPosition.y,
+            }),
+            config: cloneConfigValue(sourceGroup.config),
+          };
+
+          return {
+            groups: [...state.groups, duplicatedGroup],
+            widgets: [...state.widgets, ...duplicatedWidgets],
+          };
+        });
+
+        return duplicatedGroup;
       },
 
       updateLayout: (layouts: Layout[], options: LayoutSyncOptions = {}) => {

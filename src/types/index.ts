@@ -209,6 +209,8 @@ export interface AppState {
   removeWidget: (id: string) => void;
   updateWidget: (id: string, updates: Partial<Widget>) => void;
   refreshWidget: (id: string) => void;
+  duplicateWidget: (id: string) => Widget | null;
+  duplicateGroup: (id: string) => WidgetGroup | null;
   updateLayout: (layouts: Layout[], options?: LayoutSyncOptions) => void;
   createWidgetGroup: (title: string, widgetIds: string[]) => void;
   createEmptyGroup: (

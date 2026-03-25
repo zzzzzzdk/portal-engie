@@ -84,9 +84,43 @@
   }
 
   &__name {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__name-display,
+  &__name-editor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__name-text {
     font-size: 18px;
     font-weight: 600;
     color: var(--ant-color-text, #1f1f1f);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__name-input {
+    width: 260px;
+    line-height: 32px;
+    min-height: 32px !important;
+    height: 32px;
+  }
+
+  &__name-trigger,
+  &__name-action {
+    min-width: auto !important;
+    padding-inline: 4px;
+    color: var(--ant-color-text-secondary, #595959);
+  }
+
+  &__name-action.is-confirm {
+    color: var(--ant-color-success, #52c41a);
   }
 
   &__back {

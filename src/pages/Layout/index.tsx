@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
-import type { MenuProps } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined } from '@ant-design/icons';
+import type { MenuProps, InputRef } from 'antd';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -26,6 +26,8 @@ import Logo from '@/assets/images/logo.svg'
 import './index.scss';
 
 const { Header, Content } = AntdLayout;
+const MAX_APP_NAME_LENGTH = 30;
+const getTitleLength = (value: string) => Array.from(value).length;
 const waitForUiPaint = () => new Promise<void>((resolve) => {
   window.requestAnimationFrame(() => resolve());
 });
@@ -76,8 +78,12 @@ const Layout: React.FC = () => {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle')
   const [isCapturingCover, setIsCapturingCover] = useState(false)
   const [globalMaskText, setGlobalMaskText] = useState<string | null>(null)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editingTitle, setEditingTitle] = useState('')
+  const [titleSaving, setTitleSaving] = useState(false)
   const configDialogSaveRef = useRef<(() => Promise<boolean>) | null>(null)
   const currentCoverUrlRef = useRef('')
+  const titleInputRef = useRef<InputRef>(null)
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
   const draftLoading = publishLoading && publishAction === 'draft'
   const publishButtonLoading = publishLoading && publishAction === 'publish'
@@ -123,8 +129,29 @@ const Layout: React.FC = () => {
     if (!isEditMode) {
       setWidgetDrawerOpen(false);
       closeConfigPanel();
+      setIsEditingTitle(false);
     }
   }, [isEditMode, closeConfigPanel])
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setEditingTitle(currentAppName);
+    }
+  }, [currentAppName, isEditingTitle])
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      titleInputRef.current?.focus({
+        cursor: 'all',
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [isEditingTitle])
 
   useEffect(() => {
     if (!editId) {
@@ -364,6 +391,130 @@ const Layout: React.FC = () => {
     configDialogSaveRef.current = handler;
   }, []);
 
+  const syncDashboardEditorParams = useCallback((responseId: string, status: number) => {
+    if (!responseId) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.set('editId', responseId);
+    params.set('status', status === 1 ? '1' : '0');
+    navigate({
+      pathname: location.pathname,
+      search: params.toString(),
+    }, { replace: true });
+  }, [location.pathname, navigate, searchParams]);
+
+  const buildSnapshotPayload = useCallback((title: string) => {
+    const baseDashboardConfig = sanitizeDashboardConfig(dashboardConfig);
+    const { themePreset, baseColors } = useConfigStore.getState();
+    const canvasStyleMode = baseDashboardConfig.styleMode || 'normal';
+    const canvasThemeMode = baseDashboardConfig.themeMode || 'light';
+    const publishConfig = {
+      ...baseDashboardConfig,
+      themeMode: canvasThemeMode,
+      themePreset,
+      styleMode: canvasStyleMode,
+      styleTokens: getStylePreset(canvasStyleMode as 'normal' | 'minimal', canvasThemeMode === 'dark'),
+      baseColors,
+      title,
+    };
+
+    return serializeDashboardSnapshot({
+      widgets,
+      groups,
+      floatingModules,
+      dashboardConfig: publishConfig,
+    });
+  }, [dashboardConfig, widgets, groups, floatingModules]);
+
+  const persistDashboardSnapshot = useCallback(async ({
+    title,
+    status,
+    coverUrl,
+  }: {
+    title: string;
+    status: number;
+    coverUrl: string;
+  }) => {
+    const res = await publishDashboard({
+      id: editId || undefined,
+      title,
+      dashboardConfig: buildSnapshotPayload(title),
+      status,
+      cover_url: coverUrl,
+    });
+
+    if (res.code !== 20000 || !res.data) {
+      throw new Error(res.message || '请求失败');
+    }
+
+    const responseId = res.data.id || editId || '';
+    if (coverUrl) {
+      setCurrentCoverUrl(coverUrl);
+    }
+    if (responseId) {
+      syncDashboardEditorParams(responseId, status);
+    }
+
+    updateDashboardConfig({
+      title,
+    });
+    clearDirty();
+
+    return res.data;
+  }, [buildSnapshotPayload, clearDirty, editId, setCurrentCoverUrl, syncDashboardEditorParams, updateDashboardConfig]);
+
+  const handleStartTitleEdit = useCallback(() => {
+    if (!isEditMode || publishLoading || titleSaving) {
+      return;
+    }
+
+    setEditingTitle(currentAppName);
+    setIsEditingTitle(true);
+  }, [currentAppName, isEditMode, publishLoading, titleSaving]);
+
+  const handleCancelTitleEdit = useCallback(() => {
+    setEditingTitle(currentAppName);
+    setIsEditingTitle(false);
+  }, [currentAppName]);
+
+  const handleSaveTitle = useCallback(async () => {
+    const nextTitle = editingTitle.trim();
+
+    if (!nextTitle) {
+      message.warning('请输入应用名称');
+      return;
+    }
+
+    if (getTitleLength(nextTitle) > MAX_APP_NAME_LENGTH) {
+      message.warning('应用名称最多 30 字');
+      return;
+    }
+
+    if (nextTitle === currentAppName) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    setTitleSaving(true);
+    try {
+      await persistDashboardSnapshot({
+        title: nextTitle,
+        status: dashboardStatus,
+        coverUrl: currentCoverUrl || currentCoverUrlRef.current || '',
+      });
+      publishForm.setFieldsValue({ title: nextTitle });
+      setIsEditingTitle(false);
+      message.success('应用名称已更新');
+    } catch (error: any) {
+      console.error(error);
+      message.error(error?.message || '应用名称保存失败');
+    } finally {
+      setTitleSaving(false);
+    }
+  }, [currentAppName, dashboardStatus, editingTitle, message, persistDashboardSnapshot, publishForm]);
+
   const handlePublishSubmit = async () => {
     let currentAction: 'publish' | 'draft' = publishAction;
     try {
@@ -557,10 +708,11 @@ const Layout: React.FC = () => {
       const timeStr = lastSaveTimeRef.current
         ? lastSaveTimeRef.current.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
         : '';
-      return <span className="auto-save-indicator saved"><CheckCircleOutlined />
-        已自动保存
-        {/* {timeStr} */}
-      </span>;
+      // return <span className="auto-save-indicator saved">
+      //   <CheckCircleOutlined />
+      //   已自动保存
+      //   {timeStr}
+      // </span>;
     }
     if (autoSaveStatus === 'error') {
       return <span className="auto-save-indicator error"><ExclamationCircleOutlined /> 自动保存失败</span>;
@@ -612,7 +764,55 @@ const Layout: React.FC = () => {
                 >
                   {/* 返回应用列表 */}
                 </Button>
-                <span className="app-sub-header__name">{currentAppName}</span>
+                <div className="app-sub-header__name">
+                  {isEditingTitle ? (
+                    <div className="app-sub-header__name-editor">
+                      <Input
+                        ref={titleInputRef}
+                        value={editingTitle}
+                        maxLength={MAX_APP_NAME_LENGTH}
+                        onChange={(event) => setEditingTitle(event.target.value)}
+                        onPressEnter={() => void handleSaveTitle()}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            event.preventDefault();
+                            handleCancelTitleEdit();
+                          }
+                        }}
+                        className="app-sub-header__name-input"
+                        disabled={titleSaving}
+                      />
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CheckOutlined />}
+                        loading={titleSaving}
+                        onClick={() => void handleSaveTitle()}
+                        className="app-sub-header__name-action is-confirm"
+                      />
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        onClick={handleCancelTitleEdit}
+                        className="app-sub-header__name-action"
+                        disabled={titleSaving}
+                      />
+                    </div>
+                  ) : (
+                    <div className="app-sub-header__name-display">
+                      <span className="app-sub-header__name-text">{currentAppName}</span>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={handleStartTitleEdit}
+                        className="app-sub-header__name-trigger"
+                        disabled={!isEditMode || publishLoading}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="app-sub-header__actions">
