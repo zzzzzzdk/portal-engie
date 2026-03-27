@@ -1,5 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Input, Space, Modal, message, Tooltip, Radio, Spin, Pagination, Form } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react'
+import {
+  Table,
+  Button,
+  Input,
+  Space,
+  Modal,
+  message,
+  Tooltip,
+  Radio,
+  Spin,
+  Pagination,
+  Form,
+  Dropdown,
+} from 'antd'
 import {
   PlusOutlined,
   SearchOutlined,
@@ -11,90 +24,92 @@ import {
   BarsOutlined,
   ShareAltOutlined,
   DownloadOutlined,
-} from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import type { ColumnsType } from 'antd/es/table';
-import { getPublishList, deletePublishedDashboard, PublishListItem, publishDashboard, serializeDashboardSnapshot } from '@/services/dashboard';
-import { exportDashboardFromList } from '@/utils/exportHtml';
-import { useStore } from '@/store/useStore';
-import { useTableScroll } from '@/hooks/useTableScroll';
-import './index.scss';
+} from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import type { ColumnsType } from 'antd/es/table'
+import type { MenuProps } from 'antd'
+import {
+  getPublishList,
+  deletePublishedDashboard,
+  type PublishListItem,
+  publishDashboard,
+  serializeDashboardSnapshot,
+} from '@/services/dashboard'
+import { exportDashboardFromList } from '@/utils/exportHtml'
+import { exportInteractiveDashboardFromList } from '@/utils/exportInteractivePackage'
+import { useStore } from '@/store/useStore'
+import { useTableScroll } from '@/hooks/useTableScroll'
+import './index.scss'
 
-const VIEW_MODE_KEY = 'publish_list_view_mode';
+const VIEW_MODE_KEY = 'publish_list_view_mode'
 
 const PublishList: React.FC = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
   const { scrollY } = useTableScroll({ headerHeight: 195, footerHeight: 90 })
-  const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState<PublishListItem[]>([]);
-  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(false)
+  const [dataSource, setDataSource] = useState<PublishListItem[]>([])
+  const [searchText, setSearchText] = useState('')
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
-  });
+  })
   const [viewMode, setViewMode] = useState<'table' | 'card'>(() => {
-    if (typeof window === 'undefined') return 'card';
-    return (localStorage.getItem(VIEW_MODE_KEY) as 'table' | 'card') || 'card';
-  });
-  const [activeShareId, setActiveShareId] = useState<string | null>(null);
-  const { resetDashboard, setEditMode } = useStore();
-  const [exportLoading, setExportLoading] = useState<string | null>(null);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createForm] = Form.useForm();
+    if (typeof window === 'undefined') return 'card'
+    return (localStorage.getItem(VIEW_MODE_KEY) as 'table' | 'card') || 'card'
+  })
+  const [exportLoading, setExportLoading] = useState<string | null>(null)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createForm] = Form.useForm()
+  const { resetDashboard, setEditMode } = useStore()
 
-  // 获取发布列表
-  const fetchList = useCallback(async (page: number, page_size: number, keyword?: string) => {
-    setLoading(true);
+  const fetchList = useCallback(async (page: number, pageSize: number, keyword?: string) => {
+    setLoading(true)
     try {
-      const res = await getPublishList({ page, page_size, keyword });
+      const res = await getPublishList({ page, page_size: pageSize, keyword })
       if (res.code === 20000 && res.data) {
-        const { list, page: currentPage, page_size, total } = res.data;
-        setDataSource(list);
+        const { list, page: currentPage, page_size, total } = res.data
+        setDataSource(list)
         setPagination(prev => ({
           ...prev,
           current: currentPage,
           pageSize: page_size,
           total,
-        }));
+        }))
       }
     } catch (error) {
-      console.error('获取发布列表失败:', error);
-      message.error('获取发布列表失败');
+      console.error('获取发布列表失败:', error)
+      message.error('获取发布列表失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchList(1, pagination.pageSize);
-  }, []);
+    fetchList(1, pagination.pageSize)
+  }, [])
 
   const handlePaginationChange = (page: number, pageSize: number = pagination.pageSize) => {
-    fetchList(page, pageSize, searchText || undefined);
-  };
+    fetchList(page, pageSize, searchText || undefined)
+  }
 
-  // 搜索
   const handleSearch = () => {
-    fetchList(1, pagination.pageSize, searchText || undefined);
-  };
+    fetchList(1, pagination.pageSize, searchText || undefined)
+  }
 
-  // 搜索框回车
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSearch()
     }
-  };
+  }
 
-  // 编辑 - 携带id请求数据跳转到编辑器
   const handleEdit = (record: PublishListItem) => {
-    resetDashboard();
-    setEditMode(true);
-    navigate(`/dashboard-gridstack?editId=${record.id}&status=${Number(record.status) === 1 ? 1 : 0}`);
-  };
+    resetDashboard()
+    setEditMode(true)
+    navigate(`/dashboard-gridstack?editId=${record.id}&status=${Number(record.status) === 1 ? 1 : 0}`)
+  }
 
-  // 删除 - 二次确认
   const handleDelete = (record: PublishListItem) => {
     Modal.confirm({
       title: '确认删除',
@@ -104,83 +119,119 @@ const PublishList: React.FC = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          const res = await deletePublishedDashboard({ id: record.id });
+          const res = await deletePublishedDashboard({ id: record.id })
           if (res.code === 20000) {
-            message.success('删除成功');
-            const { current, pageSize, total } = pagination;
-            const remainingTotal = Math.max(0, total - 1);
-            const currentStartIndex = (current - 1) * pageSize;
-            const shouldGoPrev = current > 1 && currentStartIndex >= remainingTotal;
-            const targetPage = shouldGoPrev ? current - 1 : current;
-            fetchList(targetPage, pageSize, searchText || undefined);
+            message.success('删除成功')
+            const { current, pageSize, total } = pagination
+            const remainingTotal = Math.max(0, total - 1)
+            const currentStartIndex = (current - 1) * pageSize
+            const shouldGoPrev = current > 1 && currentStartIndex >= remainingTotal
+            const targetPage = shouldGoPrev ? current - 1 : current
+            fetchList(targetPage, pageSize, searchText || undefined)
           } else {
-            message.error(res.message || '删除失败');
+            message.error(res.message || '删除失败')
           }
         } catch (error) {
-          console.error('删除失败:', error);
-          message.error('删除失败');
+          console.error('删除失败:', error)
+          message.error('删除失败')
         }
       },
-    });
-  };
+    })
+  }
 
-  // 预览
   const handlePreview = (record: PublishListItem) => {
-    window.open(`${window.location.origin + window.location.pathname}#/preview/${record.id}`, '_blank');
-  };
+    window.open(`${window.location.origin + window.location.pathname}#/preview/${record.id}`, '_blank')
+  }
 
-  // 导出
-  const handleExport = async (record: PublishListItem) => {
-    setExportLoading(record.id);
+  const handleExportStatic = async (record: PublishListItem) => {
+    setExportLoading(`${record.id}:static`)
     try {
-      await exportDashboardFromList(record.id, record.title ? record.title + '_' + record.id + '.html' : '工作台_' + record.id + '.html');
+      await exportDashboardFromList(
+        record.id,
+        record.title ? `${record.title}_${record.id}.html` : `工作台_${record.id}.html`,
+      )
     } catch (error: any) {
-      console.error('导出失败:', error);
-      message.error('导出失败: ' + (error.message || '未知错误'));
+      console.error('静态 HTML 导出失败:', error)
+      message.error('静态 HTML 导出失败: ' + (error.message || '未知错误'))
     } finally {
-      setExportLoading(null);
+      setExportLoading(null)
     }
-  };
+  }
 
-  // 复制访问地址（兼容非 HTTPS 环境）
-  const handleCopyUrl = (record: PublishListItem) => {
-    const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`;
-
-    // 优先使用 navigator.clipboard（需要 HTTPS）
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(url).then(() => {
-        message.success('访问地址已复制到剪贴板');
-      }).catch(() => {
-        fallbackCopy(url);
-      });
-    } else {
-      // 降级方案：使用 execCommand
-      fallbackCopy(url);
-    }
-  };
-
-  // 降级复制方法
-  const fallbackCopy = (text: string) => {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
+  const handleExportInteractive = async (record: PublishListItem) => {
+    setExportLoading(`${record.id}:interactive`)
     try {
-      const successful = document.execCommand('copy');
+      await exportInteractiveDashboardFromList(
+        record.id,
+        record.title ? `${record.title}_${record.id}_交互包.zip` : `工作台_${record.id}_交互包.zip`,
+      )
+    } catch (error: any) {
+      console.error('交互包导出失败:', error)
+      message.error('交互包导出失败: ' + (error.message || '未知错误'))
+    } finally {
+      setExportLoading(null)
+    }
+  }
+
+  const getExportMenu = (record: PublishListItem): MenuProps => ({
+    items: [
+      { key: 'static', label: '导出静态 HTML' },
+      { key: 'interactive', label: '导出交互包 ZIP' },
+    ],
+    onClick: ({ key, domEvent }) => {
+      domEvent.stopPropagation()
+      if (key === 'interactive') {
+        void handleExportInteractive(record)
+        return
+      }
+      void handleExportStatic(record)
+    },
+  })
+
+  const isRecordExporting = (recordId: string) => {
+    return exportLoading?.startsWith(`${recordId}:`) ?? false
+  }
+
+  const handleCopyUrl = (record: PublishListItem) => {
+    const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          message.success('访问地址已复制到剪贴板')
+        })
+        .catch(() => {
+          fallbackCopy(url)
+        })
+      return
+    }
+
+    fallbackCopy(url)
+  }
+
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+
+    try {
+      const successful = document.execCommand('copy')
       if (successful) {
-        message.success('访问地址已复制到剪贴板');
+        message.success('访问地址已复制到剪贴板')
       } else {
-        message.error('复制失败，请手动复制');
+        message.error('复制失败，请手动复制')
       }
     } catch {
-      message.error('复制失败，请手动复制');
+      message.error('复制失败，请手动复制')
     }
-    document.body.removeChild(textarea);
-  };
+
+    document.body.removeChild(textarea)
+  }
 
   const buildEmptyDashboardSnapshot = (title: string) => {
     return serializeDashboardSnapshot({
@@ -194,52 +245,53 @@ const PublishList: React.FC = () => {
         themeMode: 'light',
         styleMode: 'normal',
       },
-    });
-  };
+    })
+  }
 
-  // 新增 - 先创建应用，再带着新 ID 进入工作台
   const handleCreate = () => {
-    createForm.resetFields();
-    setCreateModalOpen(true);
-  };
+    createForm.resetFields()
+    setCreateModalOpen(true)
+  }
 
   const handleCreateSubmit = async () => {
     try {
-      const values = await createForm.validateFields();
-      const title = values.title.trim();
-      setCreateLoading(true);
+      const values = await createForm.validateFields()
+      const title = values.title.trim()
+      setCreateLoading(true)
       const res = await publishDashboard({
         title,
         dashboardConfig: buildEmptyDashboardSnapshot(title),
         status: 1,
         cover_url: '',
-      });
+      })
+
       if (res.code !== 20000 || !res.data?.id) {
-        throw new Error(res.message || '创建应用失败');
+        throw new Error(res.message || '创建应用失败')
       }
-      resetDashboard();
-      setEditMode(true);
-      message.success('应用创建成功');
-      setCreateModalOpen(false);
-      createForm.resetFields();
-      navigate(`/dashboard-gridstack?editId=${res.data.id}&status=1`);
+
+      resetDashboard()
+      setEditMode(true)
+      message.success('应用创建成功')
+      setCreateModalOpen(false)
+      createForm.resetFields()
+      navigate(`/dashboard-gridstack?editId=${res.data.id}&status=1`)
     } catch (error: any) {
       if (error?.errorFields) {
-        return;
+        return
       }
-      console.error('创建应用失败:', error);
-      message.error(error?.message || '创建应用失败');
+      console.error('创建应用失败:', error)
+      message.error(error?.message || '创建应用失败')
     } finally {
-      setCreateLoading(false);
+      setCreateLoading(false)
     }
-  };
+  }
 
   const columns: ColumnsType<PublishListItem> = [
     {
       title: '序号',
       key: 'index',
       width: 80,
-      render: (_: any, __: PublishListItem, index: number) =>
+      render: (_value, _record, index) =>
         (pagination.current - 1) * pagination.pageSize + index + 1,
     },
     {
@@ -265,8 +317,8 @@ const PublishList: React.FC = () => {
       title: '访问地址',
       key: 'url',
       width: 300,
-      render: (_: any, record: PublishListItem) => {
-        const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`;
+      render: (_value, record) => {
+        const url = `${window.location.origin + window.location.pathname}#/preview/${record.id}`
         return (
           <Space>
             <Tooltip title={url}>
@@ -281,23 +333,23 @@ const PublishList: React.FC = () => {
               />
             </Tooltip>
           </Space>
-        );
+        )
       },
     },
     {
       title: '状态',
       key: 'status',
       width: 120,
-      render: (_: any, record: PublishListItem) => {
-        const normalizedStatus = Number(record.status) === 1 ? 1 : 0;
-        const statusLabel = normalizedStatus === 1 ? '已发布' : '暂存';
-        const color = normalizedStatus === 1 ? '#13c26b' : '#999';
+      render: (_value, record) => {
+        const normalizedStatus = Number(record.status) === 1 ? 1 : 0
+        const statusLabel = normalizedStatus === 1 ? '已发布' : '暂存'
+        const color = normalizedStatus === 1 ? '#13c26b' : '#999'
         return (
           <div className="status-dot">
             <span className="status-dot__point" style={{ background: color }} />
             {statusLabel}
           </div>
-        );
+        )
       },
     },
     {
@@ -306,8 +358,8 @@ const PublishList: React.FC = () => {
       key: 'publishedAt',
       width: 180,
       render: (time: string) => {
-        if (!time) return '-';
-        return new Date(time).toLocaleString('zh-CN');
+        if (!time) return '-'
+        return new Date(time).toLocaleString('zh-CN')
       },
     },
     {
@@ -315,7 +367,7 @@ const PublishList: React.FC = () => {
       key: 'action',
       width: 240,
       fixed: 'right',
-      render: (_: any, record: PublishListItem) => (
+      render: (_value, record) => (
         <Space size="small">
           <Tooltip title="预览">
             <Button
@@ -326,13 +378,15 @@ const PublishList: React.FC = () => {
             />
           </Tooltip>
           <Tooltip title="导出">
-            <Button
-              type="text"
-              size="small"
-              icon={<DownloadOutlined />}
-              loading={exportLoading === record.id}
-              onClick={() => handleExport(record)}
-            />
+            <Dropdown menu={getExportMenu(record)} trigger={['click']}>
+              <Button
+                type="text"
+                size="small"
+                icon={<DownloadOutlined />}
+                loading={isRecordExporting(record.id)}
+                onClick={event => event.preventDefault()}
+              />
+            </Dropdown>
           </Tooltip>
           <Tooltip title="编辑">
             <Button
@@ -354,23 +408,16 @@ const PublishList: React.FC = () => {
         </Space>
       ),
     },
-  ];
+  ]
 
   const handleViewModeChange = (mode: 'table' | 'card') => {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_KEY, mode);
-  };
-
-  useEffect(() => {
-    setActiveShareId(null);
-  }, [viewMode, dataSource]);
+    setViewMode(mode)
+    localStorage.setItem(VIEW_MODE_KEY, mode)
+  }
 
   const getCoverSrc = (coverUrl?: string) => {
-    if (!coverUrl) {
-      return '';
-    }
-    return coverUrl;
-  };
+    return coverUrl || ''
+  }
 
   const renderCards = () => {
     return (
@@ -386,7 +433,6 @@ const PublishList: React.FC = () => {
                 <div className="publish-card__create-icon">
                   <PlusOutlined />
                 </div>
-                {/* <div className="publish-card__create-text">新建空白应用</div> */}
               </div>
             </div>
             <div className="publish-card__body">
@@ -394,16 +440,18 @@ const PublishList: React.FC = () => {
                 <div className="title">新建空白应用</div>
               </div>
               <div className="publish-card__info">
-                <span className='info-id'>创建后进入工作台编辑</span>
+                <span className="info-id">创建后进入工作台编辑</span>
                 <span>空白模板</span>
               </div>
             </div>
           </button>
-          {dataSource.map((item) => {
-            const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`;
-            const statusValue = Number(item.status) === 1 ? 1 : 0;
-            const statusLabel = statusValue === 1 ? '已发布' : '暂存';
-            const coverSrc = getCoverSrc(item.cover_url);
+
+          {dataSource.map(item => {
+            const url = `${window.location.origin + window.location.pathname}#/preview/${item.id}`
+            const statusValue = Number(item.status) === 1 ? 1 : 0
+            const statusLabel = statusValue === 1 ? '已发布' : '暂存'
+            const coverSrc = getCoverSrc(item.cover_url)
+
             return (
               <div className="publish-card" key={item.id}>
                 <div className="publish-card__cover">
@@ -425,11 +473,19 @@ const PublishList: React.FC = () => {
                     <div className="title">{item.title || '未命名'}</div>
                     <div className="publish-card__actions">
                       <div className="publish-card__action-row">
-                        <Tooltip title={
-                          <>
-                            <span>{url}</span>
-                            <Button className='copy' type="text" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(item)} />
-                          </>}
+                        <Tooltip
+                          title={(
+                            <>
+                              <span>{url}</span>
+                              <Button
+                                className="copy"
+                                type="text"
+                                size="small"
+                                icon={<CopyOutlined />}
+                                onClick={() => handleCopyUrl(item)}
+                              />
+                            </>
+                          )}
                         >
                           <Button type="text" icon={<ShareAltOutlined />} />
                         </Tooltip>
@@ -437,7 +493,14 @@ const PublishList: React.FC = () => {
                           <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
                         </Tooltip>
                         <Tooltip title="导出">
-                          <Button type="text" icon={<DownloadOutlined />} onClick={() => handleExport(item)} loading={exportLoading === item.id} />
+                          <Dropdown menu={getExportMenu(item)} trigger={['click']}>
+                            <Button
+                              type="text"
+                              icon={<DownloadOutlined />}
+                              loading={isRecordExporting(item.id)}
+                              onClick={event => event.preventDefault()}
+                            />
+                          </Dropdown>
                         </Tooltip>
                         <Tooltip title="编辑">
                           <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(item)} />
@@ -445,34 +508,31 @@ const PublishList: React.FC = () => {
                         <Tooltip title="删除">
                           <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(item)} />
                         </Tooltip>
-
-
                       </div>
                     </div>
                   </div>
                   <div className="publish-card__info">
-                    <span className='info-id' title={item.id}>{item.id ? item.id : '--'}</span>
-                    <span title={item.publishedAt}>{item.publishedAt ? item.publishedAt : '--'}</span>
+                    <span className="info-id" title={item.id}>{item.id || '--'}</span>
+                    <span title={item.publishedAt}>{item.publishedAt || '--'}</span>
                   </div>
-
                 </div>
               </div>
-            );
+            )
           })}
         </div>
       </Spin>
-    );
-  };
+    )
+  }
 
   return (
     <div className="publish-list-page">
       <div className="publish-list-toolbar">
         <div className="publish-list-toolbar__left">
           <Input
-            placeholder="搜索标题或ID"
+            placeholder="搜索标题或 ID"
             prefix={<SearchOutlined />}
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={event => setSearchText(event.target.value)}
             onKeyDown={handleSearchKeyDown}
             maxLength={20}
             allowClear
@@ -482,7 +542,7 @@ const PublishList: React.FC = () => {
         <Space size="small">
           <Radio.Group
             value={viewMode}
-            onChange={(e) => handleViewModeChange(e.target.value as 'table' | 'card')}
+            onChange={event => handleViewModeChange(event.target.value as 'table' | 'card')}
             buttonStyle="solid"
             className="view-switch"
           >
@@ -498,6 +558,7 @@ const PublishList: React.FC = () => {
           </Button>
         </Space>
       </div>
+
       <div className="publish-list-content">
         {viewMode === 'table' ? (
           <Table
@@ -512,19 +573,21 @@ const PublishList: React.FC = () => {
           renderCards()
         )}
       </div>
+
       <div className="publish-list-pagination">
         <Pagination
           current={pagination.current}
           pageSize={pagination.pageSize}
           total={pagination.total}
-          showSizeChanger={true}
-          showQuickJumper={true}
+          showSizeChanger
+          showQuickJumper
           pageSizeOptions={['10', '20', '50', '100']}
-          showTotal={(total) => `共 ${total} 条`}
+          showTotal={total => `共 ${total} 条`}
           onChange={handlePaginationChange}
           onShowSizeChange={handlePaginationChange}
         />
       </div>
+
       <Modal
         title="新增应用"
         open={createModalOpen}
@@ -552,7 +615,7 @@ const PublishList: React.FC = () => {
         </Form>
       </Modal>
     </div>
-  );
-};
+  )
+}
 
-export default PublishList;
+export default PublishList

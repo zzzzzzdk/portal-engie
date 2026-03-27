@@ -1,0 +1,27 @@
+.export-runtime-page {
+  min-height: 100vh;
+  background: var(--ant-color-bg-layout, #f5f5f5);
+}
+
+.export-runtime-page__content {
+  min-height: calc(100vh - 48px);
+  background: var(--ant-color-bg-container, #fff);
+}
+
+.export-runtime-page__content .dashboard-preview-container {
+  min-height: calc(100vh - 48px);
+}
+
+@media (max-width: 767px) {
+  .export-runtime-page {
+    padding: 12px;
+  }
+
+  .export-runtime-page__content {
+    min-height: calc(100vh);
+  }
+
+  .export-runtime-page__content .dashboard-preview-container {
+    min-height: calc(100vh);
+  }
+}

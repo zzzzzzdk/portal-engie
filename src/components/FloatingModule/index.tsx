@@ -21,9 +21,11 @@ import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { isValidCssGradient } from '@/components/BackgroundSettings';
 import MicroAppWidget from '../widgets/MicroAppWidget';
+import MicroAppDegradeCard from '../MicroAppDegradeCard';
 import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
 import type { DashboardConfig, Widget, FloatingModuleConfig } from '@/types';
+import { usePortalRuntime } from '@/runtime/portal-runtime-context';
 import './index.scss';
 
 const { confirm } = Modal;
@@ -185,6 +187,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
     openConfigPanel,
   } = useStore();
   const { themeMode } = useCanvasTheme();
+  const { microAppMode } = usePortalRuntime();
   const [containerEl, setContainerEl] = useState<ContainerElement>(initialContainer);
   const [viewport, setViewport] = useState<Viewport>(initialViewport);
   const [containerOffset, setContainerOffset] = useState<ContainerOffset>(initialOffset);
@@ -686,6 +689,19 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
 
   const renderContent = useMemo(() => {
     if (config.contentType === 'microApp') {
+      if (microAppMode === 'degrade') {
+        return (
+          <MicroAppDegradeCard
+            title={widget.title}
+            systemId={config.microApp?.systemId}
+            moduleId={config.microApp?.moduleId}
+            url={config.microApp?.url}
+            entry={config.microApp?.entry}
+            compact
+          />
+        );
+      }
+
       return (
         <MicroAppWidget
           config={{
@@ -709,7 +725,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       return <Component {...(config.localComponent?.componentProps || {})} />;
     }
     return <div className="error-message">未知内容类型</div>;
-  }, [config]);
+  }, [config, dashboardConfig, microAppMode, widget.title]);
 
   return (
     <>

@@ -28,6 +28,8 @@ import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget';
 import IconNavWidget from '@/components/widgets/IconNavWidget';
 import NavGroupWidget from '@/components/widgets/NavGroupWidget';
 import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
+import MicroAppDegradeCard from '@/components/MicroAppDegradeCard';
+import { usePortalRuntime } from '@/runtime/portal-runtime-context';
 import { WidgetType } from '@/types';
 
 interface PreviewWidgetAdapterProps {
@@ -38,6 +40,7 @@ interface PreviewWidgetAdapterProps {
 const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, type }) => {
   const widget = usePreviewWidget(widgetId);
   const { dashboardConfig } = usePreviewData();
+  const { microAppMode } = usePortalRuntime();
 
   const resolvedWidget = useMemo(() => widget, [widget]);
 
@@ -94,7 +97,17 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
       case 'typography':
         return <TypographyWidget {...commonProps} />;
       case 'microApp':
-        return <MicroAppWidget {...commonProps} dashboardConfig={dashboardConfig} />;
+        return microAppMode === 'degrade'
+          ? (
+            <MicroAppDegradeCard
+              title={resolvedWidget.title}
+              systemId={resolvedWidget.config.systemId}
+              moduleId={resolvedWidget.config.moduleId}
+              url={resolvedWidget.config.microAppUrl}
+              entry={resolvedWidget.config.microAppEntry}
+            />
+          )
+          : <MicroAppWidget {...commonProps} dashboardConfig={dashboardConfig} />;
       case 'pageNavigator':
         return <PageNavigatorWidget {...commonProps} />;
       case 'iconNav':

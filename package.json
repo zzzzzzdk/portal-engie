@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ./scripts/sync-release.mjs && tsc && vite build && node ./scripts/sync-release.mjs dist/static",
+    "build": "node ./scripts/sync-release.mjs && tsc && vite build && vite build --config vite.export-runtime.config.ts && node ./scripts/sync-release.mjs dist/static && node ./scripts/sync-release.mjs dist/export-runtime",
+    "build:export-runtime": "vite build --config vite.export-runtime.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "concurrently \"npm run mock\" \"npm run dev\"",
