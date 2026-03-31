@@ -11,6 +11,7 @@ export interface WidgetApiFieldMeta {
 const WIDGET_API_ENDPOINT_PLACEHOLDERS: Partial<Record<WidgetType, string>> = {
   chart: '/api/chart-data',
   stats: '/api/stats',
+  indicatorCard: '/api/indicator-card',
   dataTable: '/api/table-data',
   news: '/api/news',
   topList: '/api/top-list',
@@ -32,6 +33,13 @@ const WIDGET_API_FIELD_META_MAP: Partial<Record<WidgetType, WidgetApiFieldMeta>>
     defaultValue: 'payload.metrics',
     placeholder: 'payload.metrics',
     tooltip: '默认按 payload.metrics 取值；修改后按填写路径取值。',
+  },
+  indicatorCard: {
+    name: 'apiDataField',
+    label: '数据字段路径',
+    defaultValue: 'payload.metric',
+    placeholder: 'payload.metric',
+    tooltip: '默认按 payload.metric 取值；修改后按填写路径取值。',
   },
   dataTable: {
     name: 'apiListField',

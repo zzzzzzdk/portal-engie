@@ -11,6 +11,7 @@ export type GridDensityKey = keyof typeof GRID_DENSITY_PRESETS;
 export type WidgetType =
   | 'clock'
   | 'stats'
+  | 'indicatorCard'
   | 'chart'
   | 'carousel'
   | 'link'

@@ -9,7 +9,8 @@ import { Button, Tooltip } from 'antd';
 import { FullscreenExitOutlined } from '@ant-design/icons';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
-import ChartWidget from '@/components/widgets/ChartWidget';
+import IndicatorCardWidget from '@/components/widgets/IndicatorCardWidget';
+import ChartWidget from '@/components/widgets/ChartWidget/index.';
 import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
 import TopListWidget from '@/components/widgets/TopListWidget';
@@ -61,6 +62,8 @@ const Dashboard: React.FC = () => {
         return <ClockWidget {...commonProps} />;
       case 'stats':
         return <StatsWidget {...commonProps} />;
+      case 'indicatorCard':
+        return <IndicatorCardWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
       case 'link':

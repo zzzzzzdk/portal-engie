@@ -15,6 +15,7 @@ import { CanvasThemeProvider } from '@/theme/CanvasThemeProvider';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashboard';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { createChartWidgetByPreset, isChartPresetWidgetKey } from '@/utils/chartWidgetPreset';
 import { isValidCssGradient } from '@/components/BackgroundSettings';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
@@ -49,6 +50,7 @@ const DashboardInner: React.FC = () => {
     floatingModules,
     updateLayout,
     addWidget,
+    updateWidget,
     createEmptyGroup,
     addFloatingModuleLocal,
     setPendingMicroAppDrop,
@@ -226,6 +228,7 @@ const DashboardInner: React.FC = () => {
     }
 
     if (!widgetType) return;
+    const resolvedWidgetType = widgetType as string;
 
     const targetGroupId = findParentGroupIdByGrid(ownerGrid);
     const targetGroup = targetGroupId ? groupMap.get(targetGroupId) : undefined;
@@ -239,7 +242,7 @@ const DashboardInner: React.FC = () => {
       }
       : { x: dropX, y: dropY };
 
-    if (widgetType === 'create-group') {
+    if (resolvedWidgetType === 'create-group') {
       createEmptyGroup(undefined, {
         x: widgetPosition.x,
         y: widgetPosition.y,
@@ -247,7 +250,7 @@ const DashboardInner: React.FC = () => {
       return;
     }
 
-    if (widgetType === 'microApp') {
+    if (resolvedWidgetType === 'microApp') {
       setPendingMicroAppDrop({
         x: widgetPosition.x,
         y: widgetPosition.y,
@@ -257,12 +260,12 @@ const DashboardInner: React.FC = () => {
       return;
     }
 
-    if (widgetType.startsWith('floating-')) {
+    if (resolvedWidgetType.startsWith('floating-')) {
       const containerRect = canvasContainerRef.current?.getBoundingClientRect();
       const pixelX = lastMousePosRef.current.x - (containerRect?.left || 0);
       const pixelY = lastMousePosRef.current.y - (containerRect?.top || 0);
 
-      if (widgetType === 'floating-assistantHub') {
+      if (resolvedWidgetType === 'floating-assistantHub') {
         addFloatingModuleLocal(
           'assistantHub',
           '鍔╂墜涓績',
@@ -275,16 +278,27 @@ const DashboardInner: React.FC = () => {
             position: { x: pixelX, y: pixelY },
           }
         );
-      } else if (widgetType === 'floating-microApp') {
+      } else if (resolvedWidgetType === 'floating-microApp') {
         setPendingMicroAppDrop({ x: pixelX, y: pixelY, mode: 'floating' });
       }
       return;
     }
 
-    addWidget(widgetType as WidgetType, widgetPosition);
+    if (isChartPresetWidgetKey(resolvedWidgetType)) {
+      createChartWidgetByPreset({
+        widgetKey: resolvedWidgetType,
+        addWidget,
+        updateWidget,
+        position: widgetPosition,
+      });
+      return;
+    }
+
+    addWidget(resolvedWidgetType as WidgetType, widgetPosition);
   }, [
     addFloatingModuleLocal,
     addWidget,
+    updateWidget,
     canvasContainerRef,
     createEmptyGroup,
     findParentGroupIdByGrid,
@@ -790,6 +804,7 @@ const DashboardInner: React.FC = () => {
       }
 
       if (!widgetType) return;
+      const resolvedWidgetType = widgetType as string;
 
       // 只传 x/y 位置，w/h 让 addWidget 使用 store 中各组件类型的默认尺寸
       // 这样拖拽放置和点击添加的组件大小保持一致
@@ -797,26 +812,26 @@ const DashboardInner: React.FC = () => {
       const dropY = newNode.y ?? 0;
 
       // 分组
-      if (widgetType === 'create-group') {
+      if (resolvedWidgetType === 'create-group') {
         createEmptyGroup();
         return;
       }
 
       // 微应用：暂存拖放位置，由 Layout 打开市场选择器
-      if (widgetType === 'microApp') {
+      if (resolvedWidgetType === 'microApp') {
         setPendingMicroAppDrop({ x: dropX, y: dropY, mode: 'widget' });
         return;
       }
 
       // 悬浮模块：直接添加到鼠标释放位置（使用实际鼠标坐标，比网格坐标转换更精确）
-      if (widgetType?.startsWith('floating-')) {
+      if (resolvedWidgetType.startsWith('floating-')) {
         // 鼠标坐标是 viewport-relative (clientX/Y)，但 FloatingModule 使用 position:fixed
         // 并以容器偏移为基准，所以需要减去容器偏移，避免位置偏移到右下方
         const containerRect = canvasContainerRef.current?.getBoundingClientRect();
         const pixelX = lastMousePosRef.current.x - (containerRect?.left || 0);
         const pixelY = lastMousePosRef.current.y - (containerRect?.top || 0);
 
-        if (widgetType === 'floating-assistantHub') {
+        if (resolvedWidgetType === 'floating-assistantHub') {
           addFloatingModuleLocal(
             'assistantHub',
             '助手中心',
@@ -829,7 +844,7 @@ const DashboardInner: React.FC = () => {
               position: { x: pixelX, y: pixelY },
             }
           );
-        } else if (widgetType === 'floating-microApp') {
+        } else if (resolvedWidgetType === 'floating-microApp') {
           // 悬浮微应用需要打开市场选择器
           setPendingMicroAppDrop({ x: pixelX, y: pixelY, mode: 'floating' });
         }
@@ -837,7 +852,17 @@ const DashboardInner: React.FC = () => {
       }
 
       // 普通组件：通过 store 创建 widget（带拖放位置）
-      addWidget(widgetType as WidgetType, { x: dropX, y: dropY });
+      if (isChartPresetWidgetKey(resolvedWidgetType)) {
+        createChartWidgetByPreset({
+          widgetKey: resolvedWidgetType,
+          addWidget,
+          updateWidget,
+          position: { x: dropX, y: dropY },
+        });
+        return;
+      }
+
+      addWidget(resolvedWidgetType as WidgetType, { x: dropX, y: dropY });
     };
 
     gridStack.on('dropped', handleDropped as any);
@@ -845,7 +870,7 @@ const DashboardInner: React.FC = () => {
     return () => {
       gridStack.off('dropped');
     };
-  }, [gridStack, isEditMode, addWidget, createEmptyGroup, addFloatingModuleLocal, setPendingMicroAppDrop, handleExternalDrop]);
+  }, [gridStack, isEditMode, addWidget, updateWidget, createEmptyGroup, addFloatingModuleLocal, setPendingMicroAppDrop, handleExternalDrop]);
 
   useEffect(() => {
     if (!gridStack) return;

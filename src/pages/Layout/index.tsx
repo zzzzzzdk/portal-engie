@@ -21,6 +21,7 @@ import { useConfigStore } from '@/store/useConfigStore'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import captureDashboardCover from '@/utils/captureDashboardCover'
+import { createChartWidgetByPreset, isChartPresetWidgetKey } from '@/utils/chartWidgetPreset'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
 import Logo from '@/assets/images/logo.svg'
 import './index.scss';
@@ -37,6 +38,7 @@ const Layout: React.FC = () => {
     isEditMode,
     setEditMode,
     addWidget,
+    updateWidget,
     addMicroAppWidget,
     addFloatingModuleLocal,
     addFloatingModuleMicroApp,
@@ -294,6 +296,19 @@ const Layout: React.FC = () => {
         }
       );
       message.success('已添加助手中心悬浮模块');
+      return;
+    }
+
+    if (isChartPresetWidgetKey(key)) {
+      const result = createChartWidgetByPreset({
+        widgetKey: key,
+        addWidget,
+        updateWidget,
+      });
+
+      if (result) {
+        message.success(`已添加 ${result.definition.title} 组件`);
+      }
       return;
     }
 

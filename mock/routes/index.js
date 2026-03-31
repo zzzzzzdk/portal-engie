@@ -589,6 +589,158 @@ const DEMO_CHART_MAP = {
   },
 };
 
+const DEMO_INDICATOR_CARD_MAP = {
+  contract: {
+    value: 22522.75,
+    description: '总签约（万元）',
+  },
+  devicesOnline: {
+    value: 98.4,
+    description: '设备在线率（%）',
+  },
+  dailyAlerts: {
+    value: 138,
+    description: '今日告警数',
+  },
+  completedTasks: {
+    value: 862,
+    description: '本周完成任务',
+  },
+};
+
+const DEMO_CHART_PRESET_MAP = {
+  'basic-line': [
+    { name: '周一', value: 120 },
+    { name: '周二', value: 168 },
+    { name: '周三', value: 142 },
+    { name: '周四', value: 186 },
+    { name: '周五', value: 210 },
+  ],
+  'basic-bar': [
+    { name: '一月', value: 320 },
+    { name: '二月', value: 280 },
+    { name: '三月', value: 356 },
+    { name: '四月', value: 410 },
+  ],
+  'stacked-bar': [
+    { category: '华东', series: '已完成', value: 320 },
+    { category: '华东', series: '处理中', value: 180 },
+    { category: '华南', series: '已完成', value: 280 },
+    { category: '华南', series: '处理中', value: 160 },
+    { category: '华北', series: '已完成', value: 350 },
+    { category: '华北', series: '处理中', value: 140 },
+  ],
+  'percent-bar': [
+    { category: '安全', series: '完成', value: 80 },
+    { category: '安全', series: '未完成', value: 20 },
+    { category: '巡检', series: '完成', value: 72 },
+    { category: '巡检', series: '未完成', value: 28 },
+    { category: '处置', series: '完成', value: 66 },
+    { category: '处置', series: '未完成', value: 34 },
+  ],
+  'grouped-bar': [
+    { category: '一季度', series: '今年', value: 320 },
+    { category: '一季度', series: '去年', value: 280 },
+    { category: '二季度', series: '今年', value: 356 },
+    { category: '二季度', series: '去年', value: 310 },
+    { category: '三季度', series: '今年', value: 410 },
+    { category: '三季度', series: '去年', value: 365 },
+  ],
+  'basic-horizontal-bar': [
+    { name: '事项 A', value: 420 },
+    { name: '事项 B', value: 360 },
+    { name: '事项 C', value: 300 },
+    { name: '事项 D', value: 240 },
+  ],
+  'stacked-horizontal-bar': [
+    { category: '港区 A', series: '正常', value: 300 },
+    { category: '港区 A', series: '异常', value: 55 },
+    { category: '港区 B', series: '正常', value: 280 },
+    { category: '港区 B', series: '异常', value: 72 },
+    { category: '港区 C', series: '正常', value: 260 },
+    { category: '港区 C', series: '异常', value: 48 },
+  ],
+  'progress-bar': [
+    { name: '巡检任务', value: 78, target: 100 },
+    { name: '隐患整改', value: 63, target: 100 },
+    { name: '船舶靠泊', value: 92, target: 100 },
+  ],
+  gauge: {
+    name: '完成率',
+    value: 76,
+    min: 0,
+    max: 100,
+  },
+  pie: [
+    { name: '正常', value: 68 },
+    { name: '预警', value: 18 },
+    { name: '异常', value: 14 },
+  ],
+  donut: [
+    { name: '完成', value: 54 },
+    { name: '处理中', value: 26 },
+    { name: '未开始', value: 20 },
+  ],
+  radar: {
+    indicators: [
+      { name: '响应速度', max: 100 },
+      { name: '处置效率', max: 100 },
+      { name: '协同能力', max: 100 },
+      { name: '安全质量', max: 100 },
+      { name: '资源保障', max: 100 },
+    ],
+    series: [
+      { name: '本月', value: [82, 76, 88, 90, 74] },
+      { name: '上月', value: [74, 68, 80, 86, 70] },
+    ],
+  },
+  'area-map': [
+    { name: '黄岛区', value: 120 },
+    { name: '市南区', value: 90 },
+    { name: '市北区', value: 56 },
+  ],
+  'flow-map': {
+    nodes: [
+      { name: '市南区', lng: 120.3512, lat: 36.0666, value: 92 },
+      { name: '市北区', lng: 120.3646, lat: 36.114, value: 108 },
+      { name: '李沧区', lng: 120.4244, lat: 36.1861, value: 86 },
+      { name: '城阳区', lng: 120.3385, lat: 36.2861, value: 96 },
+    ],
+    links: [
+      { source: '市南区', target: '市北区', value: 36 },
+      { source: '市南区', target: '城阳区', value: 28 },
+      { source: '市北区', target: '李沧区', value: 32 },
+      { source: '李沧区', target: '城阳区', value: 24 },
+    ],
+  },
+  funnel: [
+    { name: '受理', value: 1000 },
+    { name: '审核', value: 760 },
+    { name: '派发', value: 520 },
+    { name: '完成', value: 380 },
+  ],
+  scatter: [
+    { name: '样本 A', x: 12, y: 68, size: 18 },
+    { name: '样本 B', x: 18, y: 58, size: 14 },
+    { name: '样本 C', x: 28, y: 84, size: 22 },
+    { name: '样本 D', x: 34, y: 46, size: 12 },
+  ],
+  'dual-axis': [
+    { name: '一月', barValue: 320, lineValue: 72 },
+    { name: '二月', barValue: 360, lineValue: 78 },
+    { name: '三月', barValue: 400, lineValue: 84 },
+    { name: '四月', barValue: 380, lineValue: 76 },
+  ],
+  'grouped-dual-axis': [
+    { category: '一月', series: 'A 组', barValue: 160, lineValue: 72 },
+    { category: '一月', series: 'B 组', barValue: 120, lineValue: 65 },
+    { category: '二月', series: 'A 组', barValue: 182, lineValue: 78 },
+    { category: '二月', series: 'B 组', barValue: 136, lineValue: 70 },
+    { category: '三月', series: 'A 组', barValue: 196, lineValue: 84 },
+    { category: '三月', series: 'B 组', barValue: 150, lineValue: 74 },
+  ],
+};
+
 const normalizePositiveNumber = (value, fallbackValue) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -941,6 +1093,27 @@ router.post("/api/demo/chart", async (req, res) => {
 
   res.json(req.json);
 });
+
+const respondWidgetSummary = async (req, res) => {
+  await req.sleep(0.15);
+
+  req.json.data = {
+    endpoint: '/api/demo/widget-summary',
+    generatedAt: '2026-03-31 12:00:00',
+    usage: {
+      chartDataFieldExample: 'data.charts.basic-line',
+      gaugeDataFieldExample: 'data.charts.gauge',
+      indicatorDataFieldExample: 'data.indicatorCards.contract',
+    },
+    indicatorCards: DEMO_INDICATOR_CARD_MAP,
+    charts: DEMO_CHART_PRESET_MAP,
+  };
+
+  res.json(req.json);
+};
+
+router.get("/api/demo/widget-summary", respondWidgetSummary);
+router.post("/api/demo/widget-summary", respondWidgetSummary);
 
 module.exports = {
   router,

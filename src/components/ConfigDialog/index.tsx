@@ -17,7 +17,7 @@ import IconPicker from '@/components/IconPicker';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
 import { getIconValueType } from '@/components/IconPicker/types';
-import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig } from './configs';
+import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig, ChartConfig, ChartDataConfig, IndicatorCardConfig } from './configs';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import {
   DEFAULT_NAV_GROUP_LIST_FIELD,
@@ -26,6 +26,7 @@ import {
   getWidgetPaginationDefaults,
 } from '@/utils/widgetApiDefaults';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
+import { getChartPresetDefinition, resolveChartLegacyPreset } from '@/components/widgets/chart/presets';
 import './index.scss';
 
 interface ConfigDialogProps {
@@ -119,6 +120,7 @@ const getStaticDataEditorMeta = (
   widgetType: WidgetType,
   options: {
     statsItems?: Array<{ key?: string; label?: string }>;
+    chartPreset?: string;
     rowKey?: string;
     columns?: Array<{ dataIndex?: string; title?: string; type?: string }>;
     xAxisField?: string;
@@ -135,6 +137,13 @@ const getStaticDataEditorMeta = (
 ): StaticDataEditorMeta => {
   switch (widgetType) {
     case 'chart': {
+      const definition = getChartPresetDefinition(options.chartPreset);
+      if (definition.key === 'gauge') {
+        return {
+          extra: '仪表盘组件支持对象或单条数组数据，字段名建议与名称、数值、最小值、最大值映射保持一致。',
+          placeholder: buildJsonPlaceholder(definition.staticDataExample),
+        };
+      }
       const xAxisField = options.xAxisField || 'xAxis';
       const yAxisField = options.yAxisField || 'series';
       return {
@@ -284,6 +293,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const statsItemsValue = Form.useWatch('statsItems', form);
   const columnsValue = Form.useWatch('columns', form);
   const rowKeyValue = Form.useWatch('rowKey', form);
+  const chartPresetValue = Form.useWatch('chartPreset', form);
   const xAxisFieldValue = Form.useWatch('xAxisField', form);
   const yAxisFieldValue = Form.useWatch('yAxisField', form);
   const titleFieldValue = Form.useWatch('titleField', form);
@@ -307,6 +317,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     () =>
       getStaticDataEditorMeta(widget.type, {
         statsItems: statsItemsValue,
+        chartPreset: chartPresetValue,
         rowKey: rowKeyValue,
         columns: columnsValue,
         xAxisField: xAxisFieldValue,
@@ -322,6 +333,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       }),
     [
       avatarFieldValue,
+      chartPresetValue,
       changeFieldValue,
       columnsValue,
       descriptionFieldValue,
@@ -551,6 +563,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           itemBgColor: normalizeColorForForm(widget.config.itemBgColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemBgColor : undefined),
           itemTextColor: normalizeColorForForm(widget.config.itemTextColor, widget.type === 'navGroup' ? navGroupItemDefaults.itemTextColor : undefined),
           overlayColor: normalizeColorForForm(widget.config.overlayColor),
+          mapAreaColor: normalizeColorForForm(widget.config.mapAreaColor),
+          mapBorderColor: normalizeColorForForm(widget.config.mapBorderColor),
+          mapEmphasisAreaColor: normalizeColorForForm(widget.config.mapEmphasisAreaColor),
+          flowLineColor: normalizeColorForForm(widget.config.flowLineColor),
+          flowNodeColor: normalizeColorForForm(widget.config.flowNodeColor),
+          visualMapStartColor: normalizeColorForForm(widget.config.visualMapStartColor),
+          visualMapEndColor: normalizeColorForForm(widget.config.visualMapEndColor),
+          indicatorValueColor: normalizeColorForForm(widget.config.indicatorValueColor),
+          indicatorDescriptionColor: normalizeColorForForm(widget.config.indicatorDescriptionColor),
           displayMode: widget.config.displayMode || 'text',
           navDataSource: widget.config.navDataSource || (widget.config.navItems?.length ? 'static' : 'api'),
           navItems: widget.config.navItems || [],
@@ -590,8 +611,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
         if (widget.type === 'chart') {
           form.setFieldsValue({
+            chartPreset: resolveChartLegacyPreset(widget.config),
             xAxisField: widget.config.xAxisField || 'xAxis',
             yAxisField: widget.config.yAxisField || 'series',
+            legendPosition: widget.config.legendPosition || 'top',
+            showAxisLabel: widget.config.showAxisLabel !== false,
+            showSplitLine: widget.config.showSplitLine !== false,
           });
         }
 
@@ -600,6 +625,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             ? widget.config.statsItems
             : DEFAULT_STATS_ITEMS;
           form.setFieldsValue({ statsItems });
+        }
+
+        if (widget.type === 'indicatorCard') {
+          form.setFieldsValue({
+            dataSource: widget.config.dataSource || (widget.config.apiEndpoint ? 'customApi' : 'static'),
+            apiMethod: widget.config.apiMethod || 'GET',
+            valueField: widget.config.valueField || 'value',
+            descriptionField: widget.config.descriptionField || 'description',
+          });
         }
 
         // navGroup 特有配置：数据来源和静态导航项
@@ -628,7 +662,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         }
 
         // 通用接口请求头初始化（dataTable/topList/news/navGroup/chart/stats）
-        if (['chart', 'stats', 'dataTable', 'news', 'topList', 'navGroup'].includes(widget.type) && widget.config.apiHeaders) {
+        if (['chart', 'stats', 'indicatorCard', 'dataTable', 'news', 'topList', 'navGroup'].includes(widget.type) && widget.config.apiHeaders) {
           form.setFieldsValue({
             apiHeadersList: Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value })),
           });
@@ -1283,6 +1317,93 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             }
           }
 
+          if (widget.type === 'indicatorCard') {
+            normalizedRestConfig.indicatorValueColor = normalizeColorValue(normalizedRestConfig.indicatorValueColor);
+            normalizedRestConfig.indicatorDescriptionColor = normalizeColorValue(normalizedRestConfig.indicatorDescriptionColor);
+            normalizedRestConfig.indicatorValueFontSize = typeof normalizedRestConfig.indicatorValueFontSize === 'number'
+              ? normalizedRestConfig.indicatorValueFontSize
+              : undefined;
+            normalizedRestConfig.indicatorDescriptionFontSize = typeof normalizedRestConfig.indicatorDescriptionFontSize === 'number'
+              ? normalizedRestConfig.indicatorDescriptionFontSize
+              : undefined;
+            normalizedRestConfig.staticValue = typeof normalizedRestConfig.staticValue === 'string'
+              ? normalizedRestConfig.staticValue.trim() || undefined
+              : normalizedRestConfig.staticValue;
+            normalizedRestConfig.staticDescription = typeof normalizedRestConfig.staticDescription === 'string'
+              ? normalizedRestConfig.staticDescription.trim() || undefined
+              : normalizedRestConfig.staticDescription;
+            normalizedRestConfig.valueField = typeof normalizedRestConfig.valueField === 'string'
+              ? normalizedRestConfig.valueField.trim() || undefined
+              : normalizedRestConfig.valueField;
+            normalizedRestConfig.descriptionField = typeof normalizedRestConfig.descriptionField === 'string'
+              ? normalizedRestConfig.descriptionField.trim() || undefined
+              : normalizedRestConfig.descriptionField;
+
+            if ((normalizedRestConfig.dataSource || 'static') === 'static') {
+              normalizedRestConfig.apiEndpoint = undefined;
+              normalizedRestConfig.apiMethod = undefined;
+              normalizedRestConfig.apiHeaders = undefined;
+              normalizedRestConfig.apiQuery = undefined;
+              normalizedRestConfig.apiBody = undefined;
+              normalizedRestConfig.apiDataField = undefined;
+            } else {
+              normalizedRestConfig.staticValue = undefined;
+              normalizedRestConfig.staticDescription = undefined;
+
+              if (normalizedRestConfig.apiMethod !== 'POST') {
+                normalizedRestConfig.apiBody = undefined;
+              }
+            }
+          }
+
+          if (widget.type === 'chart') {
+            normalizedRestConfig.emitInteraction = undefined;
+            normalizedRestConfig.listenInteraction = undefined;
+            normalizedRestConfig.gridTop = typeof normalizedRestConfig.gridTop === 'string'
+              ? normalizedRestConfig.gridTop.trim() || undefined
+              : normalizedRestConfig.gridTop;
+            normalizedRestConfig.gridBottom = typeof normalizedRestConfig.gridBottom === 'string'
+              ? normalizedRestConfig.gridBottom.trim() || undefined
+              : normalizedRestConfig.gridBottom;
+            normalizedRestConfig.gridLeft = typeof normalizedRestConfig.gridLeft === 'string'
+              ? normalizedRestConfig.gridLeft.trim() || undefined
+              : normalizedRestConfig.gridLeft;
+            normalizedRestConfig.gridRight = typeof normalizedRestConfig.gridRight === 'string'
+              ? normalizedRestConfig.gridRight.trim() || undefined
+              : normalizedRestConfig.gridRight;
+            normalizedRestConfig.geoJsonText = typeof normalizedRestConfig.geoJsonText === 'string'
+              ? normalizedRestConfig.geoJsonText.trim() || undefined
+              : normalizedRestConfig.geoJsonText;
+            normalizedRestConfig.geoJsonUrl = typeof normalizedRestConfig.geoJsonUrl === 'string'
+              ? normalizedRestConfig.geoJsonUrl.trim() || undefined
+              : normalizedRestConfig.geoJsonUrl;
+            normalizedRestConfig.geoJsonNameProperty = typeof normalizedRestConfig.geoJsonNameProperty === 'string'
+              ? normalizedRestConfig.geoJsonNameProperty.trim() || 'name'
+              : normalizedRestConfig.geoJsonNameProperty;
+            normalizedRestConfig.xAxisName = typeof normalizedRestConfig.xAxisName === 'string'
+              ? normalizedRestConfig.xAxisName.trim() || undefined
+              : normalizedRestConfig.xAxisName;
+            normalizedRestConfig.yAxisName = typeof normalizedRestConfig.yAxisName === 'string'
+              ? normalizedRestConfig.yAxisName.trim() || undefined
+              : normalizedRestConfig.yAxisName;
+            normalizedRestConfig.yAxisName2 = typeof normalizedRestConfig.yAxisName2 === 'string'
+              ? normalizedRestConfig.yAxisName2.trim() || undefined
+              : normalizedRestConfig.yAxisName2;
+            normalizedRestConfig.mapAreaColor = normalizeColorValue(normalizedRestConfig.mapAreaColor);
+            normalizedRestConfig.mapBorderColor = normalizeColorValue(normalizedRestConfig.mapBorderColor);
+            normalizedRestConfig.mapEmphasisAreaColor = normalizeColorValue(normalizedRestConfig.mapEmphasisAreaColor);
+            normalizedRestConfig.flowLineColor = normalizeColorValue(normalizedRestConfig.flowLineColor);
+            normalizedRestConfig.flowNodeColor = normalizeColorValue(normalizedRestConfig.flowNodeColor);
+            normalizedRestConfig.visualMapStartColor = normalizeColorValue(normalizedRestConfig.visualMapStartColor);
+            normalizedRestConfig.visualMapEndColor = normalizeColorValue(normalizedRestConfig.visualMapEndColor);
+
+            if (normalizedRestConfig.geoJsonSource === 'url') {
+              normalizedRestConfig.geoJsonText = undefined;
+            } else {
+              normalizedRestConfig.geoJsonUrl = undefined;
+            }
+          }
+
           if (['news', 'topList'].includes(widget.type)) {
             normalizedRestConfig.paginationMode = undefined;
             normalizedRestConfig.paginationConfig = undefined;
@@ -1547,7 +1668,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const renderComponentTab = () => {
     // 检查是否有特定组件配置
     const hasComponentConfig = [
-      'typography', 'headerBar', 'link', 'dataTable',
+      'typography', 'headerBar', 'link', 'dataTable', 'chart', 'indicatorCard',
       'customForm', 'pageNavigator', 'microApp',
       'iconNav', 'navGroup', 'carousel', 'myDocuments'
     ].includes(widget.type) || isAssistantHub;
@@ -1709,6 +1830,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         )}
 
         {widget.type === 'link' && <LinkConfig form={form} widget={widget} />}
+        {widget.type === 'chart' && <ChartConfig form={form} widget={widget} />}
+        {widget.type === 'indicatorCard' && <IndicatorCardConfig form={form} widget={widget} />}
         {widget.type === 'carousel' && <CarouselConfig form={form} widget={widget} />}
 
         {widget.type === 'dataTable' && <DataTableConfig form={form} widget={widget} />}
@@ -2375,7 +2498,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
   const renderDataTab = () => {
     const hasDataConfig = [
-      'chart', 'stats', 'customForm', 'dataTable',
+      'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
       'microApp', 'search', 'navGroup', 'carousel',
       'news', 'topList'
     ].includes(widget.type);
@@ -2426,7 +2549,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                   <Input.TextArea
                     rows={10}
                     placeholder={genericStaticDataEditorMeta.placeholder}
-                    autoSize={{minRows: 6}} />
+                    autoSize={{minRows: 6, maxRows: 16}} />
                 </Form.Item>
                 <div className="static-data-preview">
                   <div className="static-data-preview__summary">{genericStaticDataPreview.title}</div>
@@ -2701,7 +2824,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           </>
         )}
 
-        {widget.type === 'chart' && (
+        {false && widget.type === 'chart' && (
           <>
             <div className="empty-hint" style={{ marginBottom: 12 }}>
               接口需返回包含 X 轴类目数组与数值数组的对象（可在下方指定字段），示例：{`{ xAxis: ['一月'], series: [120] }`}
@@ -2714,6 +2837,110 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 <Input placeholder="series" />
               </Form.Item>
             </div>
+          </>
+        )}
+
+        {widget.type === 'chart' && <ChartDataConfig form={form} widget={widget} />}
+
+        {widget.type === 'indicatorCard' && (
+          <>
+            <Form.Item
+              name="dataSource"
+              label="数据来源"
+              initialValue="static"
+              rules={[{ required: true, message: '请选择数据来源' }]}
+            >
+              <Select
+                options={[
+                  { label: '手动输入', value: 'static' },
+                  { label: '自定义接口', value: 'customApi' },
+                ]}
+              />
+            </Form.Item>
+
+            {genericDataSourceValue === 'static' ? (
+              <div className="form-row-2">
+                <Form.Item
+                  name="staticValue"
+                  label="数值内容"
+                  rules={[{ required: true, message: '请输入数值内容' }]}
+                >
+                  <Input placeholder="例如 22,522.75万" />
+                </Form.Item>
+                <Form.Item name="staticDescription" label="描述内容">
+                  <Input placeholder="例如 总签约" />
+                </Form.Item>
+              </div>
+            ) : (
+              <>
+                <div className="empty-hint" style={{ marginBottom: 12 }}>
+                  接口返回对象示例：{`{ value: 22522.75, description: '总签约' }`}
+                </div>
+                <Form.Item
+                  label="接口地址"
+                  required
+                  className="widget-api-form-item"
+                >
+                  <div className="widget-api-endpoint-row">
+                    <Form.Item name="apiMethod" noStyle initialValue="GET">
+                      <Select
+                        className="widget-api-endpoint-row__method"
+                        options={[
+                          { value: 'GET', label: 'GET' },
+                          { value: 'POST', label: 'POST' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="apiEndpoint"
+                      noStyle
+                      rules={[{ required: true, message: '请输入接口地址' }]}
+                    >
+                      <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
+                    </Form.Item>
+                  </div>
+                </Form.Item>
+                {apiFieldMeta ? (
+                  <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
+                    <Input placeholder={apiFieldMeta.placeholder} />
+                  </Form.Item>
+                ) : null}
+                <Form.Item label="参数配置" className="widget-api-form-item">
+                  <WidgetApiConfigTabs
+                    form={form}
+                    methodName="apiMethod"
+                    headersName="apiHeadersList"
+                    queryName="apiQueryList"
+                    bodyName="apiBodyList"
+                    debugContent={
+                      <WidgetApiDebugButton
+                        form={form}
+                        buildConfig={formValues => ({
+                          endpoint: formValues.apiEndpoint,
+                          method: formValues.apiMethod || 'GET',
+                          headers: buildHeaderMap(formValues.apiHeadersList),
+                          query: keyValueListToObject(formValues.apiQueryList),
+                          body: keyValueListToObject(formValues.apiBodyList),
+                          dataField:
+                            apiFieldMeta?.name === 'apiDataField'
+                              ? (formValues.apiDataField || apiFieldMeta.defaultValue)
+                              : undefined,
+                        })}
+                      />
+                    }
+                    debugHint="调试时将使用当前表单中的接口地址、参数配置和数据字段路径。"
+                  />
+                </Form.Item>
+                <div className="form-row-2">
+                  <Form.Item name="valueField" label="数值字段" initialValue="value">
+                    <Input placeholder="value" />
+                  </Form.Item>
+                  <Form.Item name="descriptionField" label="描述字段" initialValue="description">
+                    <Input placeholder="description" />
+                  </Form.Item>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -3118,14 +3345,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
   // 判断是否有组件配置
   const hasComponentConfig = [
-    'typography', 'headerBar', 'link', 'dataTable',
+    'typography', 'headerBar', 'link', 'chart', 'dataTable', 'indicatorCard',
     'customForm', 'pageNavigator', 'microApp',
     'iconNav', 'navGroup', 'carousel', 'myDocuments'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置
   const hasDataConfig = [
-    'chart', 'stats', 'customForm', 'dataTable',
+    'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
     'microApp', 'search', 'navGroup', 'carousel',
     'news', 'topList'
   ].includes(widget.type);

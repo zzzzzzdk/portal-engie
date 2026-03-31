@@ -30,4 +30,9 @@ declare module 'pdfjs-dist/build/pdf.worker.min.mjs?url' {
   export default url;
 }
 
+declare module '*.geojson?raw' {
+  const content: string;
+  export default content;
+}
+
 export {};

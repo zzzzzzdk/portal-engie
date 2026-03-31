@@ -47,6 +47,7 @@ const getColorFromString = (str: string): string => {
 const WIDGET_TYPE_ICON_MAP: Record<WidgetType, React.ComponentType<any> | null> = {
   clock: Icons.Clock,
   stats: Icons.BarChart3,
+  indicatorCard: Icons.Hash,
   chart: Icons.LineChart,
   carousel: Icons.Image,
   link: Icons.Link,
@@ -155,6 +156,7 @@ export const getWidgetDefaultSize = (type: WidgetType, module?: MicroAppModule):
   const defaultSizes: Record<WidgetType, GridSize> = {
     clock: { columns: 2, rows: 2 },
   stats: { columns: 3, rows: 2 },
+  indicatorCard: { columns: 8, rows: 5 },
   chart: { columns: 6, rows: 4 },
   carousel: { columns: 6, rows: 3 },
   link: { columns: 2, rows: 1 },

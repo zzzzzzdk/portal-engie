@@ -18,12 +18,14 @@ import {
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
+import { createChartPresetConfig } from '@/components/widgets/chart/presets';
 
 // cellHeight=30 时的默认布局尺寸
 // 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
 const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: number; minH?: number }> = {
   clock: { w: 4, h: 6, minW: 2, minH: 3 },
   stats: { w: 10, h: 6, minW: 4, minH: 3 },
+  indicatorCard: { w: 8, h: 5, minW: 2, minH: 2 },
   chart: { w: 8, h: 9, minW: 4, minH: 4 },
   carousel: { w: 40, h: 12, minW: 4, minH: 3 },
   link: { w: 5, h: 5, minW: 2, minH: 2 },
@@ -190,8 +192,26 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       return { ...baseConfig, title: 'Clock', refreshInterval: 0 };
     case 'stats':
       return { ...baseConfig, title: 'Statistics' };
+    case 'indicatorCard':
+      return {
+        ...baseConfig,
+        title: '指标卡',
+        dataSource: 'static',
+        staticValue: '22,522.75万',
+        staticDescription: '总签约',
+        valueField: 'value',
+        descriptionField: 'description',
+        indicatorValueFontSize: 38,
+        indicatorDescriptionFontSize: 18,
+        indicatorValueColor: '#1890ff',
+        indicatorDescriptionColor: '#95de64',
+      };
     case 'chart':
-      return { ...baseConfig, title: 'Chart' };
+      return {
+        ...baseConfig,
+        title: '基础折线图',
+        ...createChartPresetConfig('basic-line'),
+      };
     case 'carousel':
       return {
         ...baseConfig,

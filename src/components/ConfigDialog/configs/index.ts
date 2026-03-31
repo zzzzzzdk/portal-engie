@@ -5,4 +5,7 @@ export { default as CustomFormStyleConfig } from './CustomFormStyleConfig';
 export { default as DataTableConfig } from './DataTableConfig';
 export { default as CarouselConfig } from './CarouselConfig';
 export { default as CarouselDataConfig } from './CarouselDataConfig';
+export { default as ChartConfig } from './ChartConfig';
+export { default as ChartDataConfig } from './ChartDataConfig';
+export { default as IndicatorCardConfig } from './IndicatorCardConfig';
 export type { WidgetConfigProps } from './types';

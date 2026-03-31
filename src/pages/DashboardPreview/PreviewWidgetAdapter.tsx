@@ -12,7 +12,8 @@ import { isIconOnlyMode } from '@/utils/widgetHelpers';
 import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
-import ChartWidget from '@/components/widgets/ChartWidget';
+import IndicatorCardWidget from '@/components/widgets/IndicatorCardWidget';
+import ChartWidget from '@/components/widgets/ChartWidget/index.';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
 import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
@@ -74,6 +75,8 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <ClockWidget {...commonProps} />;
       case 'stats':
         return <StatsWidget {...commonProps} />;
+      case 'indicatorCard':
+        return <IndicatorCardWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
       case 'carousel':
