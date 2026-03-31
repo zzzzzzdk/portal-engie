@@ -211,7 +211,7 @@ export const buildWidgetApiRequest = (
       ...(method === 'GET' ? paginationPayload : {}),
     },
     data:
-      method === 'POST'
+      method !== 'GET'
         ? mergeObjectPayload(config.body, paginationPayload)
         : undefined,
   }

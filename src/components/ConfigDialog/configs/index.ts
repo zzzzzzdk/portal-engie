@@ -1,5 +1,7 @@
 export { default as LinkConfig } from './LinkConfig';
 export { default as SearchConfig } from './SearchConfig';
+export { default as QueryFilterConfig } from './QueryFilterConfig';
+export { default as QueryFilterDataConfig } from './QueryFilterDataConfig';
 export { default as CustomFormConfig } from './CustomFormConfig';
 export { default as CustomFormStyleConfig } from './CustomFormStyleConfig';
 export { default as DataTableConfig } from './DataTableConfig';

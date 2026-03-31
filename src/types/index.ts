@@ -18,11 +18,13 @@ export type WidgetType =
   | 'news'
   | 'topList'
   | 'search'
+  | 'queryFilter'
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
   | 'headerBar'        // 导航栏组件
   | 'typography'       // 文本/标题组件
+  | 'richText'         // 富文本组件
   | 'microApp'         // 微应用小部件类型
   | 'floatingModule'   // 悬浮模块
   | 'pageNavigator'    // 页面切换工具
@@ -88,6 +90,13 @@ export interface WidgetConfig {
   navTextColor?: string;       // 导航文字颜色
   showNavMenu?: boolean;       // 是否显示导航区域
   [key: string]: any; // Allow custom properties for different widgets
+}
+
+export interface RichTextWidgetConfig extends WidgetConfig {
+  html?: string;
+  placeholder?: string;
+  minHeight?: number;
+  allowImageUpload?: boolean;
 }
 
 export interface Widget {
@@ -389,6 +398,78 @@ export interface FormConfig extends WidgetConfig {
   submitUrl?: string;
   successAction?: 'none' | 'resetForm';
   failureAction?: 'none' | 'resetForm';
+}
+
+export type QueryFilterFieldType =
+  | 'input'
+  | 'checkboxGroup'
+  | 'cascader'
+  | 'datePicker'
+  | 'inputNumber'
+  | 'radioGroup'
+  | 'select';
+
+export type QueryFilterLayoutCols = 1 | 2 | 3 | 4;
+export type QueryFilterDataSourceType = 'manual' | 'request';
+
+export interface QueryFilterOptionItem {
+  label: string;
+  value: string | number;
+}
+
+export interface QueryFilterRequestConfig {
+  endpoint?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+  headers?: Record<string, string>;
+  query?: Record<string, any> | string;
+  body?: Record<string, any> | string;
+  listField?: string;
+  labelField?: string;
+  valueField?: string;
+  childrenField?: string;
+  headersList?: Array<{ key?: string; value?: string }>;
+  queryList?: Array<{ key?: string; value?: string }>;
+  bodyList?: Array<{ key?: string; value?: string }>;
+}
+
+export interface QueryFilterFieldConfig {
+  id: string;
+  type: QueryFilterFieldType;
+  label: string;
+  field: string;
+  required?: boolean;
+  layoutCols?: QueryFilterLayoutCols;
+  defaultValue?: any;
+  placeholder?: string;
+  maxLength?: number;
+  addonBefore?: string;
+  addonAfter?: string;
+  min?: number;
+  max?: number;
+  precision?: number;
+  unit?: string;
+  direction?: 'horizontal' | 'vertical';
+  mode?: 'single' | 'multiple';
+  showSearch?: boolean;
+  pickerType?: 'date' | 'range';
+  disablePastDates?: boolean;
+  dataSourceType?: QueryFilterDataSourceType;
+  manualOptions?: QueryFilterOptionItem[];
+  dataMode?: 'json' | 'request';
+  jsonData?: string;
+  requestConfig?: QueryFilterRequestConfig;
+}
+
+export interface QueryFilterWidgetConfig extends WidgetConfig {
+  queryFields?: QueryFilterFieldConfig[];
+  layoutCols?: QueryFilterLayoutCols;
+  submitButtonText?: string;
+  resetButtonText?: string;
+  showResetButton?: boolean;
+  buttonAlign?: 'left' | 'center' | 'right';
+  fieldSpacing?: number;
+  submitMethod?: 'api' | 'eventRoute';
+  eventRoutes?: EventRouteConfig[];
 }
 
 // 微应用可发送的事件定义

@@ -12,6 +12,7 @@ const WIDGET_API_ENDPOINT_PLACEHOLDERS: Partial<Record<WidgetType, string>> = {
   chart: '/api/chart-data',
   stats: '/api/stats',
   indicatorCard: '/api/indicator-card',
+  queryFilter: '/api/query-filter',
   dataTable: '/api/table-data',
   news: '/api/news',
   topList: '/api/top-list',

@@ -314,6 +314,7 @@ const Layout: React.FC = () => {
 
     addWidget(key as WidgetType);
     const widgetNames: Record<string, string> = {
+      richText: '富文本',
       clock: '时钟',
       stats: '统计卡片',
       chart: '图表',
@@ -321,6 +322,7 @@ const Layout: React.FC = () => {
       news: '新闻动态',
       topList: '排行榜',
       search: '搜索',
+      queryFilter: '查询筛选',
       dataTable: '数据表格',
       cardGrid: '卡片网格',
       customForm: '自定义表单',

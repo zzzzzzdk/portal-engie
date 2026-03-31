@@ -15,12 +15,14 @@ import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
 import TopListWidget from '@/components/widgets/TopListWidget';
 import SearchWidget from '@/components/widgets/SearchWidget';
+import QueryFilterWidget from '@/components/widgets/QueryFilterWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
+import RichTextWidget from '@/components/widgets/RichTextWidget';
 import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import FloatingModule from '@/components/FloatingModule';
 import './index.scss';
@@ -74,6 +76,8 @@ const Dashboard: React.FC = () => {
         return <TopListWidget {...commonProps} />;
       case 'search':
         return <SearchWidget {...commonProps} />;
+      case 'queryFilter':
+        return <QueryFilterWidget {...commonProps} />;
       case 'dataTable':
         return <DataTableWidget {...commonProps} />;
       case 'cardGrid':
@@ -86,6 +90,8 @@ const Dashboard: React.FC = () => {
         return <MyDocumentsWidget {...commonProps} />;
       case 'carousel':
         return <CarouselWidget {...commonProps} />;
+      case 'richText':
+        return <RichTextWidget {...commonProps} />;
       default:
         return <div>{widget.type} Widget</div>;
     }

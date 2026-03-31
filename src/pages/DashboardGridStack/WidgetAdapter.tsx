@@ -19,12 +19,14 @@ import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
 import TopListWidget from '@/components/widgets/TopListWidget';
 import SearchWidget from '@/components/widgets/SearchWidget';
+import QueryFilterWidget from '@/components/widgets/QueryFilterWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
 import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
+import RichTextWidget from '@/components/widgets/RichTextWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import PageNavigatorWidget from '@/components/widgets/PageNavigatorWidget';
 import IconNavWidget from '@/components/widgets/IconNavWidget';
@@ -85,7 +87,7 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
   // - typography: 文本组件，缩小时仍需显示内容
   // - navGroup: 导航组组件，缩小时仍需显示导航项
   // - headerBar: 导航栏组件，通常不会缩小到 icon 尺寸
-  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'navGroup', 'headerBar', 'carousel'];
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'richText', 'navGroup', 'headerBar', 'carousel'];
   const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
@@ -122,6 +124,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <TopListWidget {...commonProps} />;
       case 'search':
         return <SearchWidget {...commonProps} />;
+      case 'queryFilter':
+        return <QueryFilterWidget {...commonProps} />;
       case 'dataTable':
         return <DataTableWidget {...commonProps} />;
       case 'cardGrid':
@@ -132,6 +136,8 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <HeaderBarWidget {...commonProps} />;
       case 'typography':
         return <TypographyWidget {...commonProps} />;
+      case 'richText':
+        return <RichTextWidget {...commonProps} />;
       case 'microApp':
         return <MicroAppWidget {...commonProps} />;
       case 'pageNavigator':

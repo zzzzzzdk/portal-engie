@@ -92,6 +92,7 @@ const widgetCategories: WidgetCategory[] = [
     title: '基础组件',
     items: [
       { key: 'typography', label: '文本', icon: <FontSizeOutlined />, description: '文本或标题展示', gsW: 4, gsH: 3, gsMinW: 2, gsMinH: 1, draggable: true },
+      { key: 'richText', label: '富文本', icon: <FileTextOutlined />, description: '富文本内容编辑与展示', gsW: 8, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'clock', label: '时钟', icon: <ClockCircleOutlined />, description: '实时日期时间', gsW: 4, gsH: 6, gsMinW: 2, gsMinH: 3, draggable: true },
       { key: 'stats', label: '统计卡片', icon: <BarChartOutlined />, description: '多指标统计展示', gsW: 10, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'indicatorCard', label: '指标卡', icon: <BarChartOutlined />, description: '单个指标值与描述展示', gsW: 8, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
@@ -101,6 +102,7 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'news', label: '新闻动态', icon: <FileTextOutlined />, description: '新闻资讯列表', gsW: 6, gsH: 10, gsMinW: 4, gsMinH: 4, draggable: true },
       { key: 'topList', label: '排行榜', icon: <OrderedListOutlined />, description: '排行列表展示', gsW: 5, gsH: 9, gsMinW: 3, gsMinH: 4, draggable: true },
       { key: 'search', label: '搜索', icon: <SearchOutlined />, description: '搜索条件提交', gsW: 8, gsH: 4, gsMinW: 4, gsMinH: 2, draggable: true },
+      { key: 'queryFilter', label: '查询筛选', icon: <SearchOutlined />, description: '多条件筛选查询', gsW: 12, gsH: 5, gsMinW: 6, gsMinH: 3, draggable: true },
       { key: 'dataTable', label: '数据表格', icon: <TableOutlined />, description: '表格数据展示', gsW: 10, gsH: 8, gsMinW: 6, gsMinH: 4, draggable: true },
       { key: 'customForm', label: '自定义表单', icon: <FormOutlined />, description: '自定义表单录入', gsW: 8, gsH: 11, gsMinW: 4, gsMinH: 4, draggable: true },
       { key: 'myDocuments', label: '我的文档', icon: <FolderOpenOutlined />, description: '文档管理入口', gsW: 4, gsH: 3, gsMinW: 1, gsMinH: 1, draggable: true },

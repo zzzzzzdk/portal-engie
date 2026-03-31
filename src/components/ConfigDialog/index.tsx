@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
-import { Widget, WidgetType, MicroAppModule, FloatingModuleConfig, FormField } from '@/types';
+import { Widget, WidgetType, MicroAppModule, FloatingModuleConfig, FormField, QueryFilterFieldConfig } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { REFRESHABLE_WIDGET_TYPES, MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
@@ -16,8 +16,9 @@ import AssistantHubConfig from '@/components/AssistantHubConfig';
 import IconPicker from '@/components/IconPicker';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
+import RichTextEditor from '@/components/RichTextEditor';
 import { getIconValueType } from '@/components/IconPicker/types';
-import { LinkConfig, SearchConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig, ChartConfig, ChartDataConfig, IndicatorCardConfig } from './configs';
+import { LinkConfig, SearchConfig, QueryFilterConfig, QueryFilterDataConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig, ChartConfig, ChartDataConfig, IndicatorCardConfig } from './configs';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import {
   DEFAULT_NAV_GROUP_LIST_FIELD,
@@ -26,6 +27,7 @@ import {
   getWidgetPaginationDefaults,
 } from '@/utils/widgetApiDefaults';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
+import { normalizeQueryFilterFields } from '@/utils/queryFilter';
 import { getChartPresetDefinition, resolveChartLegacyPreset } from '@/components/widgets/chart/presets';
 import './index.scss';
 
@@ -62,6 +64,31 @@ const stringifyJsonValue = (value: any): string => {
   } catch {
     return '';
   }
+};
+
+const getQueryFilterFieldsFormValue = (fields?: QueryFilterFieldConfig[]) => {
+  if (!Array.isArray(fields)) {
+    return [];
+  }
+
+  return fields.map(field => ({
+    ...field,
+    manualOptions: Array.isArray(field.manualOptions)
+      ? field.manualOptions.map(option => ({ ...option }))
+      : field.manualOptions,
+    defaultValue:
+      typeof field.defaultValue === 'number'
+        ? field.defaultValue
+        : stringifyJsonValue(field.defaultValue),
+    requestConfig: field.requestConfig
+      ? {
+        ...field.requestConfig,
+        headersList: objectToKeyValueList(field.requestConfig.headers),
+        queryList: objectToKeyValueList(field.requestConfig.query),
+        bodyList: objectToKeyValueList(field.requestConfig.body),
+      }
+      : field.requestConfig,
+  }));
 };
 
 const COMMON_STATIC_DATA_WIDGET_TYPES = ['chart', 'stats', 'dataTable', 'news', 'topList'];
@@ -304,6 +331,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const valueFieldValue = Form.useWatch('valueField', form);
   const changeFieldValue = Form.useWatch('changeField', form);
   const unitFieldValue = Form.useWatch('unitField', form);
+  const richTextPlaceholderValue = Form.useWatch('placeholder', form);
+  const richTextMinHeightValue = Form.useWatch('minHeight', form);
   const genericDataSourceValue = Form.useWatch('dataSource', form) || 'customApi';
   const genericStaticDataValue = Form.useWatch('staticData', form) || '';
   const genericStaticDataText =
@@ -746,6 +775,27 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           });
         }
 
+        if (widget.type === 'queryFilter') {
+          form.setFieldsValue({
+            queryFields: getQueryFilterFieldsFormValue(widget.config.queryFields),
+            layoutCols: widget.config.layoutCols || 4,
+            submitButtonText: widget.config.submitButtonText || '查询',
+            showResetButton: widget.config.showResetButton ?? true,
+            resetButtonText: widget.config.resetButtonText || '重置',
+            buttonAlign: widget.config.buttonAlign || 'right',
+            fieldSpacing: widget.config.fieldSpacing ?? 16,
+            submitMethod: widget.config.submitMethod === 'both' ? 'eventRoute' : (widget.config.submitMethod || 'eventRoute'),
+            apiMethod: widget.config.apiMethod || 'GET',
+            apiQuery: stringifyJsonValue(widget.config.apiQuery),
+            apiQueryList: objectToKeyValueList(widget.config.apiQuery),
+            apiBody: stringifyJsonValue(widget.config.apiBody),
+            apiBodyList: objectToKeyValueList(widget.config.apiBody),
+            apiHeadersList: widget.config.apiHeaders
+              ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
+              : [],
+          });
+        }
+
         if (COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
           const hasLegacyStaticData =
             (widget.type === 'dataTable' && Array.isArray((widget.config as any).tableData) && (widget.config as any).tableData.length > 0) ||
@@ -803,6 +853,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const handleOk = useCallback(async (): Promise<boolean> => {
     try {
       const values = await form.validateFields();
+      if (widget?.type === 'queryFilter') {
+        const rawQueryFields = form.getFieldValue('queryFields') || values.queryFields;
+        values.queryFields = Array.isArray(rawQueryFields)
+          ? rawQueryFields.map((field: QueryFilterFieldConfig) => ({
+            ...field,
+            manualOptions: Array.isArray(field.manualOptions)
+              ? field.manualOptions.map(option => ({ ...option }))
+              : field.manualOptions,
+          }))
+          : rawQueryFields;
+      }
 
       // customForm: 校验字段名及 Select/Radio 选项
       if (widget?.type === 'customForm' && values.fields) {
@@ -837,6 +898,61 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               const vals = field.options.map((o: { label: string; value: string | number }) => String(o.value));
               if (vals.length !== new Set(vals).size) {
                 fieldError = `字段「${field.label}」的选项值不能重复`;
+                break;
+              }
+            }
+          }
+        }
+
+        if (fieldError) {
+          message.warning(fieldError);
+          return false;
+        }
+      }
+
+      if (widget?.type === 'queryFilter' && values.queryFields) {
+        const queryFields = values.queryFields as QueryFilterFieldConfig[];
+        let fieldError = '';
+        const fieldNameCountMap: Record<string, number> = {};
+
+        for (const field of queryFields) {
+          if (!field.field || !field.field.trim()) {
+            fieldError = `字段「${field.label || '未命名字段'}」的 field 名不能为空`;
+            break;
+          }
+          fieldNameCountMap[field.field.trim()] = (fieldNameCountMap[field.field.trim()] || 0) + 1;
+        }
+
+        if (!fieldError) {
+          const duplicatedField = Object.keys(fieldNameCountMap).find(key => fieldNameCountMap[key] > 1);
+          if (duplicatedField) {
+            fieldError = `字段名「${duplicatedField}」重复，请修改`;
+          }
+        }
+
+        if (!fieldError) {
+          for (const field of queryFields) {
+            if (['checkboxGroup', 'radioGroup', 'select'].includes(field.type)) {
+              const options = field.manualOptions || [];
+              if (field.dataSourceType === 'manual' && options.length > 0) {
+                const hasEmpty = options.some(option => !String(option.value ?? '').trim());
+                if (hasEmpty) {
+                  fieldError = `字段「${field.label}」的选项值不能为空`;
+                  break;
+                }
+                const valuesSet = options.map(option => String(option.value));
+                if (valuesSet.length !== new Set(valuesSet).size) {
+                  fieldError = `字段「${field.label}」的选项值不能重复`;
+                  break;
+                }
+              }
+            }
+
+            if (field.type === 'cascader' && field.dataMode === 'json' && field.jsonData?.trim()) {
+              try {
+                JSON.parse(field.jsonData);
+              } catch {
+                fieldError = `字段「${field.label}」的级联 JSON 格式不正确`;
                 break;
               }
             }
@@ -1262,6 +1378,27 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             normalizedRestConfig.apiListField = normalizedRestConfig.apiListField.trim() || undefined;
           }
 
+          if (widget.type === 'queryFilter') {
+            normalizedRestConfig.queryFields = normalizeQueryFilterFields(normalizedRestConfig.queryFields);
+            normalizedRestConfig.layoutCols = [1, 2, 3, 4].includes(normalizedRestConfig.layoutCols)
+              ? normalizedRestConfig.layoutCols
+              : 4;
+            normalizedRestConfig.submitButtonText = typeof normalizedRestConfig.submitButtonText === 'string'
+              ? normalizedRestConfig.submitButtonText.trim() || '查询'
+              : '查询';
+            normalizedRestConfig.resetButtonText = typeof normalizedRestConfig.resetButtonText === 'string'
+              ? normalizedRestConfig.resetButtonText.trim() || '重置'
+              : '重置';
+            normalizedRestConfig.buttonAlign = normalizedRestConfig.buttonAlign || 'right';
+            normalizedRestConfig.fieldSpacing = typeof normalizedRestConfig.fieldSpacing === 'number'
+              ? normalizedRestConfig.fieldSpacing
+              : 16;
+
+            if (normalizedRestConfig.apiMethod === 'GET') {
+              normalizedRestConfig.apiBody = undefined;
+            }
+          }
+
           if (COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
             const dataSource = normalizedRestConfig.dataSource || 'customApi';
             const staticDataText =
@@ -1669,7 +1806,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     // 检查是否有特定组件配置
     const hasComponentConfig = [
       'typography', 'headerBar', 'link', 'dataTable', 'chart', 'indicatorCard',
-      'customForm', 'pageNavigator', 'microApp',
+      'customForm', 'queryFilter', 'pageNavigator', 'microApp', 'richText',
       'iconNav', 'navGroup', 'carousel', 'myDocuments'
     ].includes(widget.type) || isAssistantHub;
 
@@ -1733,6 +1870,30 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 </Select>
               </Form.Item>
             </div>
+          </>
+        )}
+
+        {widget.type === 'richText' && (
+          <>
+            <Form.Item
+              name="html"
+              label="内容"
+              rules={[{ required: true, message: '请输入富文本内容' }]}
+            >
+              <RichTextEditor
+                key={`${richTextPlaceholderValue || 'default'}-${richTextMinHeightValue || 220}`}
+                placeholder={richTextPlaceholderValue || '请输入富文本内容'}
+                minHeight={richTextMinHeightValue || 220}
+              />
+            </Form.Item>
+            <div className="form-row-2">
+              <Form.Item name="minHeight" label="编辑区最小高度">
+                <InputNumber min={160} max={600} style={{ width: '100%' }} addonAfter="px" />
+              </Form.Item>
+            </div>
+            <Form.Item name="placeholder" label="占位提示">
+              <Input placeholder="请输入富文本内容" />
+            </Form.Item>
           </>
         )}
 
@@ -1844,6 +2005,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             </Form.Item>
             <CustomFormStyleConfig form={form} widget={widget} />
           </>
+        )}
+
+        {widget.type === 'queryFilter' && (
+          <QueryFilterConfig form={form} widget={widget} />
         )}
 
         {widget.type === 'pageNavigator' && (
@@ -2499,7 +2664,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const renderDataTab = () => {
     const hasDataConfig = [
       'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
-      'microApp', 'search', 'navGroup', 'carousel',
+      'microApp', 'search', 'queryFilter', 'navGroup', 'carousel',
       'news', 'topList'
     ].includes(widget.type);
 
@@ -3218,6 +3383,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         )}
 
         {widget.type === 'search' && <SearchConfig form={form} widget={widget} />}
+        {widget.type === 'queryFilter' && <QueryFilterDataConfig form={form} widget={widget} />}
         {widget.type === 'customForm' && <CustomFormConfig form={form} widget={widget} />}
       </>
     );
@@ -3346,14 +3512,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   // 判断是否有组件配置
   const hasComponentConfig = [
     'typography', 'headerBar', 'link', 'chart', 'dataTable', 'indicatorCard',
-    'customForm', 'pageNavigator', 'microApp',
+    'customForm', 'queryFilter', 'pageNavigator', 'microApp', 'richText',
     'iconNav', 'navGroup', 'carousel', 'myDocuments'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置
   const hasDataConfig = [
     'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
-    'microApp', 'search', 'navGroup', 'carousel',
+    'microApp', 'search', 'queryFilter', 'navGroup', 'carousel',
     'news', 'topList'
   ].includes(widget.type);
 

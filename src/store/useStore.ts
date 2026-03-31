@@ -32,9 +32,11 @@ const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: numb
   news: { w: 6, h: 10, minW: 4, minH: 4 },
   topList: { w: 5, h: 9, minW: 3, minH: 4 },
   search: { w: 8, h: 4, minW: 4, minH: 2 },
+  queryFilter: { w: 12, h: 5, minW: 6, minH: 3 },
   dataTable: { w: 10, h: 8, minW: 6, minH: 4 },
   customForm: { w: 8, h: 11, minW: 4, minH: 4 },
   typography: { w: 4, h: 3, minW: 2, minH: 1 },
+  richText: { w: 8, h: 6, minW: 4, minH: 3 },
   cardGrid: { w: 8, h: 6, minW: 4, minH: 3 },
 };
 
@@ -283,6 +285,17 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
       };
     case 'typography':
       return { ...baseConfig, title: '文本组件', content: '这是一段文本', showTitle: false };
+    case 'richText':
+      return {
+        ...baseConfig,
+        title: '富文本',
+        showTitle: false,
+        html: '<h2>富文本组件</h2><p>编辑标题、列表、链接和代码块。</p><ul><li>支持基础排版</li><li>支持对齐和引用</li></ul>',
+        placeholder: '请输入富文本内容',
+        minHeight: 220,
+        allowImageUpload: false,
+        contentPadding: 12,
+      };
     case 'myDocuments':
       return {
         ...baseConfig,
@@ -332,6 +345,37 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         iconSize: 32,
         itemIconColor: '#ffffff',
         itemGap: 12,
+      };
+    case 'queryFilter':
+      return {
+        ...baseConfig,
+        title: '查询筛选',
+        showTitle: false,
+        contentPadding: 12,
+        layoutCols: 4,
+        submitButtonText: '查询',
+        resetButtonText: '重置',
+        showResetButton: true,
+        buttonAlign: 'right',
+        fieldSpacing: 16,
+        queryFields: [
+          {
+            id: 'query-filter-field-keyword',
+            type: 'input',
+            label: '关键字',
+            field: 'keyword',
+            placeholder: '请输入关键字',
+          },
+          {
+            id: 'query-filter-field-name',
+            type: 'input',
+            label: '名称',
+            field: 'name',
+            placeholder: '请输入名称',
+          },
+        ],
+        submitMethod: 'eventRoute',
+        apiMethod: 'GET',
       };
     default:
       return baseConfig;
