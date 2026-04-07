@@ -411,6 +411,8 @@ export type QueryFilterFieldType =
 
 export type QueryFilterLayoutCols = 1 | 2 | 3 | 4;
 export type QueryFilterDataSourceType = 'manual' | 'request';
+export type QueryFilterLabelVerticalAlign = 'top' | 'center' | 'bottom';
+export type QueryFilterLabelTextAlign = 'left' | 'center' | 'right';
 
 export interface QueryFilterOptionItem {
   label: string;
@@ -462,6 +464,10 @@ export interface QueryFilterFieldConfig {
 
 export interface QueryFilterWidgetConfig extends WidgetConfig {
   queryFields?: QueryFilterFieldConfig[];
+  formLayout?: 'horizontal' | 'vertical' | 'inline';
+  labelVerticalAlign?: QueryFilterLabelVerticalAlign;
+  labelTextAlign?: QueryFilterLabelTextAlign;
+  labelWidth?: number;
   layoutCols?: QueryFilterLayoutCols;
   submitButtonText?: string;
   resetButtonText?: string;

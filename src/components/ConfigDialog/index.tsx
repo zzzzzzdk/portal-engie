@@ -27,7 +27,7 @@ import {
   getWidgetPaginationDefaults,
 } from '@/utils/widgetApiDefaults';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
-import { normalizeQueryFilterFields } from '@/utils/queryFilter';
+import { hydrateQueryFilterFields, normalizeQueryFilterFields } from '@/utils/queryFilter';
 import { getChartPresetDefinition, resolveChartLegacyPreset } from '@/components/widgets/chart/presets';
 import './index.scss';
 
@@ -67,11 +67,13 @@ const stringifyJsonValue = (value: any): string => {
 };
 
 const getQueryFilterFieldsFormValue = (fields?: QueryFilterFieldConfig[]) => {
-  if (!Array.isArray(fields)) {
+  const hydratedFields = hydrateQueryFilterFields(fields);
+
+  if (!hydratedFields.length) {
     return [];
   }
 
-  return fields.map(field => ({
+  return hydratedFields.map(field => ({
     ...field,
     manualOptions: Array.isArray(field.manualOptions)
       ? field.manualOptions.map(option => ({ ...option }))
@@ -778,6 +780,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         if (widget.type === 'queryFilter') {
           form.setFieldsValue({
             queryFields: getQueryFilterFieldsFormValue(widget.config.queryFields),
+            formLayout: widget.config.formLayout || 'vertical',
+            labelVerticalAlign: widget.config.labelVerticalAlign || 'top',
+            labelTextAlign: widget.config.labelTextAlign || 'left',
+            labelWidth: typeof widget.config.labelWidth === 'number' ? widget.config.labelWidth : 96,
             layoutCols: widget.config.layoutCols || 4,
             submitButtonText: widget.config.submitButtonText || '查询',
             showResetButton: widget.config.showResetButton ?? true,
@@ -1380,6 +1386,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
           if (widget.type === 'queryFilter') {
             normalizedRestConfig.queryFields = normalizeQueryFilterFields(normalizedRestConfig.queryFields);
+            normalizedRestConfig.formLayout = ['vertical', 'horizontal', 'inline'].includes(normalizedRestConfig.formLayout)
+              ? normalizedRestConfig.formLayout
+              : 'vertical';
+            normalizedRestConfig.labelVerticalAlign = ['top', 'center', 'bottom'].includes(normalizedRestConfig.labelVerticalAlign)
+              ? normalizedRestConfig.labelVerticalAlign
+              : 'top';
+            normalizedRestConfig.labelTextAlign = ['left', 'center', 'right'].includes(normalizedRestConfig.labelTextAlign)
+              ? normalizedRestConfig.labelTextAlign
+              : 'left';
+            normalizedRestConfig.labelWidth = normalizedRestConfig.formLayout === 'horizontal' &&
+              typeof normalizedRestConfig.labelWidth === 'number'
+              ? normalizedRestConfig.labelWidth
+              : 96;
             normalizedRestConfig.layoutCols = [1, 2, 3, 4].includes(normalizedRestConfig.layoutCols)
               ? normalizedRestConfig.layoutCols
               : 4;

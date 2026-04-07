@@ -1,10 +1,10 @@
 # 组件接口演示 Mock 配置
 
-以下配置可直接用于当前项目组件配置面板，配合新增的接口调试按钮一起验证。
+以下配置可直接用于当前项目的组件配置面板，配合 mock 接口快速验证请求参数、列表路径和字段映射。
 
 ## 表格组件
 
-支持 `GET + query 
+支持 `GET + query + 服务端分页`，返回结构为 `data.list`。
 
 ```json
 {
@@ -174,6 +174,35 @@
 }
 ```
 
+## 查询筛选级联字段
+
+支持 `GET + query + 级联树节点`，返回结构为 `data.cascader.list`。
+
+```json
+{
+  "queryFields": [
+    {
+      "id": "query-filter-field-cascader-demo",
+      "label": "港区位置",
+      "field": "portLocation",
+      "type": "cascader",
+      "dataMode": "request",
+      "requestConfig": {
+        "endpoint": "/api/demo/cascader",
+        "method": "GET",
+        "query": {
+          "scene": "port"
+        },
+        "listField": "data.cascader.list",
+        "labelField": "label",
+        "valueField": "value",
+        "childrenField": "children"
+      }
+    }
+  ]
+}
+```
+
 ## 统计卡片组件
 
 支持 `GET + query + 嵌套对象字段`，返回结构为 `payload.metrics`。
@@ -221,8 +250,8 @@
 
 ## 调试建议
 
-- `GET` 示例优先看 `表格 / 排行榜 / 导航分组 / 统计卡片`
-- `POST` 示例优先看 `新闻动态 / 轮播图 / 图表`
-- 分页模式优先看 `表格 / 新闻动态 / 排行榜`
-- 嵌套路径优先看 `轮播图 / 导航分组 / 统计卡片 / 图表`
+- `GET` 示例优先看：`表格 / 排行榜 / 导航分组 / 统计卡片 / 查询筛选级联`
+- `POST` 示例优先看：`新闻动态 / 轮播图 / 图表`
+- 分页模式优先看：`表格 / 新闻动态 / 排行榜`
+- 嵌套路径优先看：`轮播图 / 导航分组 / 查询筛选级联 / 统计卡片 / 图表`
 - 组件配置完成后，可直接使用面板中的“接口调试”按钮验证请求参数、解析结果和原始响应

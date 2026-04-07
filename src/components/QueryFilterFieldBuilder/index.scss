@@ -24,7 +24,15 @@
     margin-bottom: 8px;
   }
 
-  &__quick-add {
-    row-gap: 8px;
+  &__actions {
+    width: 100%;
+  }
+
+  &__add-button {
+    width: calc(100% - 108px);
+  }
+
+  &__quick-trigger {
+    width: 108px;
   }
 }

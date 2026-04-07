@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import type { QueryFilterOptionItem } from '@/types'
@@ -26,10 +26,27 @@ const OptionListEditor: React.FC<OptionListEditorProps> = ({
   onChange,
   addButtonText = '添加数据项',
 }) => {
-  const safeValue = cloneOptions(value)
+  const normalizedValue = useMemo(() => cloneOptions(value), [value])
+  const [options, setOptions] = useState<QueryFilterOptionItem[]>(normalizedValue)
+  const lastPropValueRef = useRef(JSON.stringify(normalizedValue))
+
+  useEffect(() => {
+    const nextSerializedValue = JSON.stringify(normalizedValue)
+    if (nextSerializedValue === lastPropValueRef.current) {
+      return
+    }
+
+    lastPropValueRef.current = nextSerializedValue
+    setOptions(normalizedValue)
+  }, [normalizedValue])
+
+  const emitChange = (nextList: QueryFilterOptionItem[]) => {
+    setOptions(nextList)
+    onChange?.(nextList)
+  }
 
   const handleItemChange = (index: number, key: 'label' | 'value', nextValue: string) => {
-    const nextList = safeValue.map((item, itemIndex) => {
+    const nextList = options.map((item, itemIndex) => {
       if (itemIndex === index) {
         return {
           ...item,
@@ -42,12 +59,12 @@ const OptionListEditor: React.FC<OptionListEditorProps> = ({
       }
     })
 
-    onChange?.(nextList)
+    emitChange(nextList)
   }
 
   const handleAdd = () => {
-    onChange?.([
-      ...safeValue,
+    emitChange([
+      ...options,
       {
         label: '',
         value: '',
@@ -56,12 +73,12 @@ const OptionListEditor: React.FC<OptionListEditorProps> = ({
   }
 
   const handleRemove = (index: number) => {
-    onChange?.(safeValue.filter((_, itemIndex) => itemIndex !== index))
+    emitChange(options.filter((_, itemIndex) => itemIndex !== index))
   }
 
   return (
     <div className="option-list-editor">
-      {safeValue.map((item, index) => (
+      {options.map((item, index) => (
         <div key={index} className="option-list-editor__row">
           <Input
             className="option-list-editor__item"

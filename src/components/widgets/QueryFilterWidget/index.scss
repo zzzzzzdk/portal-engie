@@ -5,6 +5,20 @@
 
   &__form {
     height: 100%;
+
+    .ant-form-item-label {
+      align-self: var(--query-filter-label-align-self, flex-start);
+      text-align: var(--query-filter-label-text-align, left);
+
+      > label {
+        width: 100%;
+        justify-content: var(--query-filter-label-justify-content, flex-start);
+      }
+    }
+
+    &--inline {
+      display: block;
+    }
   }
 
   &__fields {
@@ -15,11 +29,28 @@
 
   &__field {
     min-width: 180px;
+
+    &--horizontal {
+      .ant-form-item {
+        margin-bottom: 0;
+      }
+
+      .ant-form-item-row {
+        align-items: center;
+      }
+    }
+
+    &--inline {
+      .ant-form-item {
+        margin-bottom: 0;
+      }
+    }
   }
 
   &__actions {
     width: 100%;
     margin-bottom: 0;
+    margin-top: 12px;
 
     &--left {
       text-align: left;
@@ -67,6 +98,16 @@
 
 @media (max-width: 768px) {
   .query-filter-widget {
+    &__form--horizontal {
+      .ant-form-item-label {
+        padding-bottom: 4px;
+      }
+
+      .ant-form-item-row {
+        display: block;
+      }
+    }
+
     &__field {
       flex: 0 0 100% !important;
       max-width: 100% !important;

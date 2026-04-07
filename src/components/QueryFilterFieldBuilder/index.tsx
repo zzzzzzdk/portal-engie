@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Checkbox,
   Collapse,
   Divider,
+  Dropdown,
   Form,
   Input,
   InputNumber,
@@ -11,14 +12,24 @@ import {
   Select,
   Space,
 } from 'antd'
-import type { FormInstance } from 'antd'
+import type { FormInstance, MenuProps } from 'antd'
 import type { NamePath } from 'antd/es/form/interface'
-import { CaretRightOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+  CaretRightOutlined,
+  DeleteOutlined,
+  EllipsisOutlined,
+  PlusOutlined,
+} from '@ant-design/icons'
 import { v4 as uuidv4 } from 'uuid'
 import OptionListEditor from '@/components/OptionListEditor'
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs'
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton'
-import type { QueryFilterFieldConfig, QueryFilterFieldType } from '@/types'
+import type {
+  QueryFilterFieldConfig,
+  QueryFilterFieldType,
+  QueryFilterOptionItem,
+} from '@/types'
+import { hydrateQueryFilterFields } from '@/utils/queryFilter'
 import { keyValueListToObject } from '@/utils/widgetApi'
 import './index.scss'
 
@@ -31,18 +42,19 @@ interface QueryFilterFieldCardProps {
   form: FormInstance
   baseName: Array<string | number>
   fieldIndex: number
-  fieldKey: React.Key
+  field: QueryFilterFieldConfig
   remove: (index: number) => void
+  notifyChange: () => void
   duplicateFieldNames: Set<string>
 }
 
 const FIELD_TYPE_OPTIONS: Array<{ label: string; value: QueryFilterFieldType }> = [
   { label: '输入框', value: 'input' },
-  { label: '复选按钮组', value: 'checkboxGroup' },
+  { label: '多选按钮组', value: 'checkboxGroup' },
   { label: '级联选择器', value: 'cascader' },
-  { label: '日期选择框', value: 'datePicker' },
-  { label: '数字表单项', value: 'inputNumber' },
-  { label: '单选框组', value: 'radioGroup' },
+  { label: '日期选择器', value: 'datePicker' },
+  { label: '数字输入框', value: 'inputNumber' },
+  { label: '单选按钮组', value: 'radioGroup' },
   { label: '下拉选择器', value: 'select' },
 ]
 
@@ -58,7 +70,12 @@ const REQUEST_METHOD_OPTIONS = [
   { value: 'PATCH', label: 'PATCH' },
 ]
 
-const PLACEHOLDER_FIELD_TYPES: QueryFilterFieldType[] = ['input', 'select', 'datePicker', 'inputNumber']
+const PLACEHOLDER_FIELD_TYPES: QueryFilterFieldType[] = [
+  'input',
+  'select',
+  'datePicker',
+  'inputNumber',
+]
 
 const DEFAULT_FIELD_BY_TYPE: Record<QueryFilterFieldType, Partial<QueryFilterFieldConfig>> = {
   input: {
@@ -67,7 +84,7 @@ const DEFAULT_FIELD_BY_TYPE: Record<QueryFilterFieldType, Partial<QueryFilterFie
     type: 'input',
   },
   checkboxGroup: {
-    label: '复选按钮组',
+    label: '多选按钮组',
     field: 'checkbox_group',
     type: 'checkboxGroup',
     direction: 'horizontal',
@@ -80,18 +97,18 @@ const DEFAULT_FIELD_BY_TYPE: Record<QueryFilterFieldType, Partial<QueryFilterFie
     dataMode: 'json',
   },
   datePicker: {
-    label: '日期选择框',
+    label: '日期选择器',
     field: 'date_field',
     type: 'datePicker',
     pickerType: 'date',
   },
   inputNumber: {
-    label: '数字表单项',
+    label: '数字输入框',
     field: 'number_field',
     type: 'inputNumber',
   },
   radioGroup: {
-    label: '单选框组',
+    label: '单选按钮组',
     field: 'radio_group',
     type: 'radioGroup',
     direction: 'horizontal',
@@ -158,37 +175,83 @@ const getManualOptionsError = (value?: Array<{ label?: string; value?: string | 
     return !label || optionValue === undefined || optionValue === null || String(optionValue).trim() === ''
   })
 
-  return hasInvalidItem ? '请完善手动数据项的字段名和字段值' : undefined
+  return hasInvalidItem ? '请完善手动数据项的显示名和值' : undefined
 }
 
 const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
   form,
   baseName,
   fieldIndex,
-  fieldKey,
+  field,
   remove,
+  notifyChange,
   duplicateFieldNames,
 }) => {
   const fieldPath = useMemo(() => buildPath(baseName, fieldIndex), [baseName, fieldIndex])
-  const currentField = Form.useWatch(fieldPath, form) || {}
-  const currentLabel = currentField?.label || `字段 ${fieldIndex + 1}`
-  const currentType = (currentField?.type || 'input') as QueryFilterFieldType
-  const currentFieldName = currentField?.field || ''
-  const fieldNameError = !currentFieldName?.trim()
+  const watchedFieldValue = Form.useWatch(fieldPath, form)
+  const watchedLabel = Form.useWatch(buildPath(fieldPath, 'label'), form)
+  const watchedFieldName = Form.useWatch(buildPath(fieldPath, 'field'), form)
+  const watchedType = Form.useWatch(buildPath(fieldPath, 'type'), form)
+  const watchedMode = Form.useWatch(buildPath(fieldPath, 'mode'), form)
+  const watchedPickerType = Form.useWatch(buildPath(fieldPath, 'pickerType'), form)
+  const watchedDataSourceType = Form.useWatch(buildPath(fieldPath, 'dataSourceType'), form)
+  const watchedDataMode = Form.useWatch(buildPath(fieldPath, 'dataMode'), form)
+  const watchedManualOptions = Form.useWatch(buildPath(fieldPath, 'manualOptions'), form)
+
+  const currentField = useMemo(() => {
+    const [nextField] = hydrateQueryFilterFields([
+      (watchedFieldValue || field) as QueryFilterFieldConfig,
+    ])
+
+    return nextField || field
+  }, [field, watchedFieldValue])
+
+  const currentLabel = watchedLabel || currentField?.label || `字段 ${fieldIndex + 1}`
+  const currentType = ((watchedType || currentField?.type || 'input') as QueryFilterFieldType)
+  const currentFieldName = watchedFieldName || currentField?.field || ''
+  const fieldNameError = !currentFieldName.trim()
     ? 'field 名不能为空'
     : duplicateFieldNames.has(currentFieldName.trim())
       ? 'field 名称重复'
       : undefined
   const showPlaceholder = PLACEHOLDER_FIELD_TYPES.includes(currentType)
-  const selectMode = currentField?.mode || 'single'
-  const pickerType = currentField?.pickerType || 'date'
+  const selectMode = watchedMode || currentField?.mode || 'single'
+  const pickerType = watchedPickerType || currentField?.pickerType || 'date'
   const isArrayDefault =
     ['checkboxGroup', 'cascader'].includes(currentType) ||
     (currentType === 'select' && selectMode === 'multiple') ||
     (currentType === 'datePicker' && pickerType === 'range')
-  const sourceType = currentField?.dataSourceType || 'manual'
-  const dataMode = currentField?.dataMode || 'json'
-  const manualOptions = currentField?.manualOptions || []
+  const sourceType = watchedDataSourceType || currentField?.dataSourceType || 'manual'
+  const dataMode = watchedDataMode || currentField?.dataMode || 'json'
+  const manualOptions = Array.isArray(watchedManualOptions)
+    ? watchedManualOptions
+    : (currentField?.manualOptions || [])
+  const panelKey = currentField?.id || String(fieldIndex)
+  const [isExpanded, setIsExpanded] = useState(fieldIndex === 0)
+  const hasTypeConfig = (
+    currentType === 'input'
+    || currentType === 'inputNumber'
+    || currentType === 'datePicker'
+    || currentType === 'select'
+    || ['checkboxGroup', 'radioGroup'].includes(currentType)
+  )
+
+  useEffect(() => {
+    setIsExpanded(previous => previous || !field?.id)
+  }, [field?.id])
+
+  const updateCurrentField = (updater: (
+    previousValue: QueryFilterFieldConfig,
+  ) => QueryFilterFieldConfig) => {
+    const previousValue = (
+      form.getFieldValue(fieldPath) ||
+      currentField ||
+      {}
+    ) as QueryFilterFieldConfig
+
+    form.setFieldValue(fieldPath, updater(previousValue))
+    notifyChange()
+  }
 
   const getRequestConfig = () => form.getFieldValue(buildPath(fieldPath, 'requestConfig')) || {}
 
@@ -206,16 +269,21 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
 
   const handleTypeChange = (nextType: QueryFilterFieldType) => {
     const nextDefaults = cloneFieldDefaults(nextType)
-    const previousValue = form.getFieldValue(fieldPath) || {}
-
-    form.setFieldValue(fieldPath, {
+    updateCurrentField(previousValue => ({
       ...previousValue,
       ...nextDefaults,
       type: nextType,
       id: previousValue.id || uuidv4(),
-      label: previousValue.label || nextDefaults.label,
-      field: previousValue.field || nextDefaults.field,
-    })
+      label: previousValue.label || nextDefaults.label || '',
+      field: previousValue.field || nextDefaults.field || '',
+    }))
+  }
+
+  const handleManualOptionsChange = (nextValue: QueryFilterOptionItem[]) => {
+    updateCurrentField(previousValue => ({
+      ...previousValue,
+      manualOptions: nextValue,
+    }))
   }
 
   const renderRequestConfig = (options: {
@@ -225,83 +293,134 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
     childrenFieldLabel?: string
     childrenFieldPlaceholder?: string
     debugHint: string
-  }) => (
-    <>
-      <Form.Item label="接口地址" required className="widget-api-form-item">
-        <div className="widget-api-endpoint-row">
-          <Form.Item name={buildPath(fieldPath, 'requestConfig', 'method')} noStyle>
-            <Select
-              className="widget-api-endpoint-row__method"
-              options={REQUEST_METHOD_OPTIONS}
-            />
-          </Form.Item>
-          <Form.Item
-            name={buildPath(fieldPath, 'requestConfig', 'endpoint')}
-            noStyle
-            rules={[{ required: true, message: '请输入接口地址' }]}
-          >
-            <Input
-              className="widget-api-endpoint-row__input"
-              placeholder={options.endpointPlaceholder}
-            />
-          </Form.Item>
-        </div>
-      </Form.Item>
+    twoColumnLayout?: boolean
+  }) => {
+    const useTwoColumnLayout = options.twoColumnLayout || !!options.childrenFieldLabel
 
-      <div className={options.childrenFieldLabel ? 'form-row-4' : 'form-row-3'}>
-        <Form.Item
-          name={buildPath(fieldPath, 'requestConfig', 'listField')}
-          label={options.listFieldLabel || '列表字段路径'}
-        >
-          <Input placeholder={options.listFieldPlaceholder || 'data.list'} />
+    return (
+      <>
+        <Form.Item label="接口地址" required className="widget-api-form-item">
+          <div className="widget-api-endpoint-row">
+            <Form.Item
+              name={buildPath(fieldPath, 'requestConfig', 'method')}
+              noStyle
+              initialValue={currentField?.requestConfig?.method || 'GET'}
+            >
+              <Select
+                className="widget-api-endpoint-row__method"
+                options={REQUEST_METHOD_OPTIONS}
+              />
+            </Form.Item>
+            <Form.Item
+              name={buildPath(fieldPath, 'requestConfig', 'endpoint')}
+              noStyle
+              rules={[{ required: true, message: '请输入接口地址' }]}
+            >
+              <Input
+                className="widget-api-endpoint-row__input"
+                placeholder={options.endpointPlaceholder}
+              />
+            </Form.Item>
+          </div>
         </Form.Item>
-        <Form.Item
-          name={buildPath(fieldPath, 'requestConfig', 'labelField')}
-          label="字段名映射"
-        >
-          <Input placeholder="label" />
-        </Form.Item>
-        <Form.Item
-          name={buildPath(fieldPath, 'requestConfig', 'valueField')}
-          label="字段值映射"
-        >
-          <Input placeholder="value" />
-        </Form.Item>
-        {options.childrenFieldLabel && (
-          <Form.Item
-            name={buildPath(fieldPath, 'requestConfig', 'childrenField')}
-            label={options.childrenFieldLabel}
-          >
-            <Input placeholder={options.childrenFieldPlaceholder || 'children'} />
-          </Form.Item>
+
+        {useTwoColumnLayout ? (
+          <>
+            <div className="form-row-2">
+              <Form.Item
+                name={buildPath(fieldPath, 'requestConfig', 'listField')}
+                label={options.listFieldLabel || '列表字段路径'}
+              >
+                <Input placeholder={options.listFieldPlaceholder || 'data.list'} />
+              </Form.Item>
+              <Form.Item
+                name={buildPath(fieldPath, 'requestConfig', 'labelField')}
+                label="标签字段"
+              >
+                <Input placeholder="label" />
+              </Form.Item>
+            </div>
+            <div className="form-row-2">
+              <Form.Item
+                name={buildPath(fieldPath, 'requestConfig', 'valueField')}
+                label="取值字段"
+              >
+                <Input placeholder="value" />
+              </Form.Item>
+              {options.childrenFieldLabel ? (
+                <Form.Item
+                  name={buildPath(fieldPath, 'requestConfig', 'childrenField')}
+                  label={options.childrenFieldLabel}
+                >
+                  <Input placeholder={options.childrenFieldPlaceholder || 'children'} />
+                </Form.Item>
+              ) : (
+                <div />
+              )}
+            </div>
+          </>
+        ) : (
+          <div className={options.childrenFieldLabel ? 'form-row-4' : 'form-row-3'}>
+            <Form.Item
+              name={buildPath(fieldPath, 'requestConfig', 'listField')}
+              label={options.listFieldLabel || '列表字段路径'}
+            >
+              <Input placeholder={options.listFieldPlaceholder || 'data.list'} />
+            </Form.Item>
+            <Form.Item
+              name={buildPath(fieldPath, 'requestConfig', 'labelField')}
+              label="标签字段"
+            >
+              <Input placeholder="label" />
+            </Form.Item>
+            <Form.Item
+              name={buildPath(fieldPath, 'requestConfig', 'valueField')}
+              label="取值字段"
+            >
+              <Input placeholder="value" />
+            </Form.Item>
+            {options.childrenFieldLabel && (
+              <Form.Item
+                name={buildPath(fieldPath, 'requestConfig', 'childrenField')}
+                label={options.childrenFieldLabel}
+              >
+                <Input placeholder={options.childrenFieldPlaceholder || 'children'} />
+              </Form.Item>
+            )}
+          </div>
         )}
-      </div>
 
-      <Form.Item label="参数配置" className="widget-api-form-item">
-        <WidgetApiConfigTabs
-          form={form}
-          methodName={buildPath(fieldPath, 'requestConfig', 'method')}
-          headersName={buildPath(fieldPath, 'requestConfig', 'headersList')}
-          queryName={buildPath(fieldPath, 'requestConfig', 'queryList')}
-          bodyName={buildPath(fieldPath, 'requestConfig', 'bodyList')}
-          debugContent={
-            <WidgetApiDebugButton
-              form={form}
-              buildConfig={buildRequestDebugConfig}
-            />
-          }
-          debugHint={options.debugHint}
-        />
-      </Form.Item>
-    </>
-  )
+        <Form.Item label="参数配置" className="widget-api-form-item">
+          <WidgetApiConfigTabs
+            form={form}
+            methodName={buildPath(fieldPath, 'requestConfig', 'method')}
+            headersName={buildPath(fieldPath, 'requestConfig', 'headersList')}
+            queryName={buildPath(fieldPath, 'requestConfig', 'queryList')}
+            bodyName={buildPath(fieldPath, 'requestConfig', 'bodyList')}
+            debugContent={(
+              <WidgetApiDebugButton
+                form={form}
+                buildConfig={buildRequestDebugConfig}
+              />
+            )}
+            debugHint={options.debugHint}
+          />
+        </Form.Item>
+      </>
+    )
+  }
 
   return (
     <Collapse
       className="query-filter-field-builder__collapse-item"
+      activeKey={isExpanded ? [panelKey] : []}
+      onChange={activeKeys => {
+        const nextActiveKeys = Array.isArray(activeKeys) ? activeKeys : [activeKeys]
+        setIsExpanded(nextActiveKeys.includes(panelKey))
+      }}
       items={[
         {
-          key: String(fieldKey),
+          key: panelKey,
           forceRender: true,
           label: (
             <div className="query-filter-field-builder__header">
@@ -369,14 +488,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                 ) : (
                   <div />
                 )}
-
-                <Form.Item
-                  name={buildPath(fieldPath, 'required')}
-                  label="是否必填"
-                  valuePropName="checked"
-                >
-                  <Checkbox>必填</Checkbox>
-                </Form.Item>
+                <div />
               </div>
 
               <Form.Item
@@ -395,24 +507,26 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                 )}
               </Form.Item>
 
-              <Divider style={{ margin: '12px 0' }}>类型配置</Divider>
+              {hasTypeConfig && (
+                <Divider style={{ margin: '12px 0' }}>类型配置</Divider>
+              )}
 
               {currentType === 'input' && (
                 <div className="form-row-3">
                   <Form.Item name={buildPath(fieldPath, 'maxLength')} label="最大长度">
                     <InputNumber min={1} precision={0} style={{ width: '100%' }} />
                   </Form.Item>
-                  <Form.Item name={buildPath(fieldPath, 'addonBefore')} label="前附加内容">
+                  <Form.Item name={buildPath(fieldPath, 'addonBefore')} label="前置内容">
                     <Input placeholder="例如：ID" />
                   </Form.Item>
-                  <Form.Item name={buildPath(fieldPath, 'addonAfter')} label="后附加内容">
+                  <Form.Item name={buildPath(fieldPath, 'addonAfter')} label="后置内容">
                     <Input placeholder="例如：单位" />
                   </Form.Item>
                 </div>
               )}
 
               {currentType === 'inputNumber' && (
-                <div className="form-row-4">
+                <div className="form-row-2">
                   <Form.Item name={buildPath(fieldPath, 'min')} label="最小值">
                     <InputNumber style={{ width: '100%' }} />
                   </Form.Item>
@@ -438,10 +552,10 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                   </Form.Item>
                   <Form.Item
                     name={buildPath(fieldPath, 'disablePastDates')}
-                    label="禁用之前日期"
+                    label="禁用过去日期"
                     valuePropName="checked"
                   >
-                    <Checkbox>禁用之前日期</Checkbox>
+                    <Checkbox>禁用过去日期</Checkbox>
                   </Form.Item>
                 </div>
               )}
@@ -491,9 +605,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                     >
                       <OptionListEditor
                         value={manualOptions}
-                        onChange={nextValue => {
-                          form.setFieldValue(buildPath(fieldPath, 'manualOptions'), nextValue)
-                        }}
+                        onChange={handleManualOptionsChange}
                         addButtonText="添加数据项"
                       />
                     </Form.Item>
@@ -509,12 +621,15 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
               {currentType === 'cascader' && (
                 <>
                   <Divider style={{ margin: '12px 0' }}>数据配置</Divider>
-                  <Form.Item name={buildPath(fieldPath, 'dataMode')} label="数据方式">
-                    <Radio.Group>
-                      <Radio.Button value="json">静态数据</Radio.Button>
-                      <Radio.Button value="request">请求数据</Radio.Button>
-                    </Radio.Group>
-                  </Form.Item>
+                  <div className="form-row-2">
+                    <Form.Item name={buildPath(fieldPath, 'dataMode')} label="数据方式">
+                      <Radio.Group>
+                        <Radio.Button value="json">静态数据</Radio.Button>
+                        <Radio.Button value="request">请求数据</Radio.Button>
+                      </Radio.Group>
+                    </Form.Item>
+                    <div />
+                  </div>
 
                   {dataMode === 'json' ? (
                     <Form.Item
@@ -530,9 +645,10 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                   ) : (
                     renderRequestConfig({
                       endpointPlaceholder: '/api/cascader',
-                      childrenFieldLabel: '子节点字段映射',
+                      childrenFieldLabel: '子节点字段',
                       childrenFieldPlaceholder: 'children',
                       debugHint: '调试时将使用当前字段的接口地址、参数和级联字段路径。',
+                      twoColumnLayout: true,
                     })
                   )}
                 </>
@@ -541,7 +657,6 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
           ),
         },
       ]}
-      defaultActiveKey={[String(fieldKey)]}
       expandIcon={({ isActive }) => <CaretRightOutlined rotate={isActive ? 90 : 0} />}
     />
   )
@@ -549,69 +664,108 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
 
 const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form, name }) => {
   const baseName = useMemo(() => ensurePathArray(name), [name])
-  const watchedListValue = Form.useWatch(baseName, form)
-  const listValue = Array.isArray(watchedListValue) ? watchedListValue : []
+  const [listVersion, setListVersion] = useState(0)
+  const formSnapshot = Form.useWatch([], form)
+  void formSnapshot
+  void listVersion
+
+  const formListValue = form.getFieldValue(baseName)
+  const rawListValue = Array.isArray(formListValue) ? formListValue : []
+  const listValue = useMemo(
+    () => hydrateQueryFilterFields(rawListValue),
+    [rawListValue],
+  )
+
+  useEffect(() => {
+    if (!rawListValue.length) {
+      return
+    }
+
+    if (JSON.stringify(rawListValue) !== JSON.stringify(listValue)) {
+      form.setFieldValue(baseName, listValue)
+      setListVersion(version => version + 1)
+    }
+  }, [baseName, form, listValue, rawListValue])
 
   const duplicateFieldNames = useMemo(() => {
     const counts: Record<string, number> = {}
 
-    listValue.forEach((item: QueryFilterFieldConfig) => {
-      const field = item?.field?.trim()
-      if (field) {
-        counts[field] = (counts[field] || 0) + 1
+    listValue.forEach(item => {
+      const fieldName = item?.field?.trim()
+      if (fieldName) {
+        counts[fieldName] = (counts[fieldName] || 0) + 1
       }
     })
 
     return new Set(Object.keys(counts).filter(key => counts[key] > 1))
   }, [listValue])
 
+  const handleAdd = (type: QueryFilterFieldType) => {
+    const nextIndex = listValue.length + 1
+    form.setFieldValue(baseName, [...listValue, createFieldConfig(type, nextIndex)])
+    setListVersion(version => version + 1)
+  }
+
+  const handleRemove = (index: number) => {
+    const nextValue = [...listValue]
+    nextValue.splice(index, 1)
+    form.setFieldValue(baseName, nextValue)
+    setListVersion(version => version + 1)
+  }
+
+  const notifyChange = () => {
+    setListVersion(version => version + 1)
+  }
+
+  const quickAddMenuItems = useMemo<MenuProps['items']>(() => (
+    FIELD_TYPE_OPTIONS.map(option => ({
+      key: option.value,
+      label: `新增${option.label}`,
+    }))
+  ), [])
+
   return (
-    <Form.List name={name}>
-      {(fields, { add, remove }) => (
-        <div className="query-filter-field-builder">
-          <div className="query-filter-field-builder__collapse">
-            {fields.map(field => (
-              <QueryFilterFieldCard
-                key={field.key}
-                form={form}
-                baseName={baseName}
-                fieldIndex={field.name}
-                fieldKey={field.key}
-                remove={remove}
-                duplicateFieldNames={duplicateFieldNames}
-              />
-            ))}
-          </div>
+    <div className="query-filter-field-builder">
+      <div className="query-filter-field-builder__collapse">
+        {listValue.map((item, index) => (
+          <QueryFilterFieldCard
+            key={item.id || `${item.type}-${index}`}
+            form={form}
+            baseName={baseName}
+            fieldIndex={index}
+            field={item}
+            remove={handleRemove}
+            notifyChange={notifyChange}
+            duplicateFieldNames={duplicateFieldNames}
+          />
+        ))}
+      </div>
 
+      <Space.Compact block className="query-filter-field-builder__actions">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          className="query-filter-field-builder__add-button"
+          onClick={() => handleAdd('input')}
+        >
+          添加字段
+        </Button>
+
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: quickAddMenuItems,
+            onClick: ({ key }) => handleAdd(key as QueryFilterFieldType),
+          }}
+        >
           <Button
+            className="query-filter-field-builder__quick-trigger"
+            icon={<EllipsisOutlined />}
             type="primary"
-            icon={<PlusOutlined />}
-            block
-            onClick={() => {
-              const nextIndex = fields.length + 1
-              add(createFieldConfig('input', nextIndex))
-            }}
-          >
-            添加字段
-          </Button>
-
-          <Space wrap className="query-filter-field-builder__quick-add">
-            {FIELD_TYPE_OPTIONS.map(option => (
-              <Button
-                key={option.value}
-                size="small"
-                onClick={() => {
-                  const nextIndex = fields.length + 1
-                  add(createFieldConfig(option.value, nextIndex))
-                }}
-              >
-                {`新增${option.label}`}
-              </Button>
-            ))}
-          </Space>
-        </div>
-      )}
-    </Form.List>
+          />
+        </Dropdown>
+      </Space.Compact>
+    </div>
   )
 }
 

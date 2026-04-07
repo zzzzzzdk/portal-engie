@@ -553,6 +553,75 @@ const DEMO_NAV_GROUP_SOURCE = [
   { id: 'nav-12', groupType: 'admin', url: '/help', icon: 'QuestionCircleOutlined', name: '帮助中心', description: '配置说明与帮助文档', openInNew: false },
 ];
 
+const DEMO_CASCADER_SOURCE = [
+  {
+    label: '青岛港',
+    value: 'qingdao-port',
+    children: [
+      {
+        label: '前湾港区',
+        value: 'qianwan',
+        children: [
+          { label: '集装箱码头', value: 'container-terminal' },
+          { label: '冷链作业区', value: 'cold-chain-zone' },
+        ],
+      },
+      {
+        label: '董家口港区',
+        value: 'dongjiakou',
+        children: [
+          { label: '矿石码头', value: 'ore-terminal' },
+          { label: '原油码头', value: 'oil-terminal' },
+        ],
+      },
+    ],
+  },
+  {
+    label: '烟台港',
+    value: 'yantai-port',
+    children: [
+      {
+        label: '芝罘港区',
+        value: 'zhifu',
+        children: [
+          { label: '客运码头', value: 'passenger-terminal' },
+          { label: '散货堆场', value: 'bulk-yard' },
+        ],
+      },
+      {
+        label: '蓬莱港区',
+        value: 'penglai',
+        children: [
+          { label: '旅游客运区', value: 'tourism-terminal' },
+          { label: '滚装作业区', value: 'ro-ro-zone' },
+        ],
+      },
+    ],
+  },
+  {
+    label: '日照港',
+    value: 'rizhao-port',
+    children: [
+      {
+        label: '石臼港区',
+        value: 'shijiu',
+        children: [
+          { label: '煤炭泊位', value: 'coal-berth' },
+          { label: '件杂货区', value: 'general-cargo-zone' },
+        ],
+      },
+      {
+        label: '岚山港区',
+        value: 'lanshan',
+        children: [
+          { label: '钢材作业区', value: 'steel-zone' },
+          { label: '木材堆场', value: 'timber-yard' },
+        ],
+      },
+    ],
+  },
+];
+
 const DEMO_STATS_MAP = {
   today: {
     activeUsers: 18642,
@@ -1018,6 +1087,38 @@ router.post("/api/demo/nav-group", async (req, res) => {
     groups: {
       groupType: params.groupType || 'portal',
       list: buildNavGroupList(params),
+    },
+  };
+
+  res.json(req.json);
+});
+
+router.get("/api/demo/cascader", async (req, res) => {
+  await req.sleep(0.2);
+  const params = req.query || {};
+
+  req.json.data = {
+    cascader: {
+      list: DEMO_CASCADER_SOURCE,
+    },
+    query: {
+      scene: params.scene || 'port',
+    },
+  };
+
+  res.json(req.json);
+});
+
+router.post("/api/demo/cascader", async (req, res) => {
+  await req.sleep(0.2);
+  const params = req.body || {};
+
+  req.json.data = {
+    cascader: {
+      list: DEMO_CASCADER_SOURCE,
+    },
+    query: {
+      scene: params.scene || 'port',
     },
   };
 

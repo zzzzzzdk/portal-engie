@@ -1,10 +1,12 @@
 import dayjs, { Dayjs } from 'dayjs';
 import {
   QueryFilterFieldConfig,
+  QueryFilterFieldType,
   QueryFilterOptionItem,
   QueryFilterRequestConfig,
 } from '@/types';
 import {
+  getValueByPath,
   keyValueListToJsonString,
   parseJsonConfig,
 } from '@/utils/widgetApi';
@@ -23,6 +25,75 @@ const isEmptyValue = (value: unknown) => {
   }
 
   return false;
+};
+
+const QUERY_FILTER_FIELD_DEFAULTS: Record<QueryFilterFieldType, Partial<QueryFilterFieldConfig>> = {
+  input: {
+    label: '输入框',
+    field: 'input_field',
+    type: 'input',
+  },
+  checkboxGroup: {
+    label: '复选按钮组',
+    field: 'checkbox_group',
+    type: 'checkboxGroup',
+    direction: 'horizontal',
+    dataSourceType: 'manual',
+  },
+  cascader: {
+    label: '级联选择器',
+    field: 'cascader_field',
+    type: 'cascader',
+    dataMode: 'json',
+  },
+  datePicker: {
+    label: '日期选择框',
+    field: 'date_field',
+    type: 'datePicker',
+    pickerType: 'date',
+  },
+  inputNumber: {
+    label: '数字输入框',
+    field: 'number_field',
+    type: 'inputNumber',
+  },
+  radioGroup: {
+    label: '单选按钮组',
+    field: 'radio_group',
+    type: 'radioGroup',
+    direction: 'horizontal',
+    dataSourceType: 'manual',
+  },
+  select: {
+    label: '下拉选择器',
+    field: 'select_field',
+    type: 'select',
+    mode: 'single',
+    showSearch: false,
+    dataSourceType: 'manual',
+  },
+};
+
+export const hydrateQueryFilterFields = (fields?: QueryFilterFieldConfig[]) => {
+  if (!Array.isArray(fields)) {
+    return [];
+  }
+
+  return fields.map((field, index) => {
+    const type = (field?.type || 'input') as QueryFilterFieldType;
+    const defaults = QUERY_FILTER_FIELD_DEFAULTS[type] || QUERY_FILTER_FIELD_DEFAULTS.input;
+    const nextLabel = field?.label?.trim();
+    const nextField = field?.field?.trim();
+
+    return {
+      ...defaults,
+      ...field,
+      id: field?.id || `query-filter-field-${type}-${index + 1}`,
+      type,
+      label: nextLabel || `${defaults.label || '字段'}${index + 1}`,
+      field: nextField || `${defaults.field || 'field'}_${index + 1}`,
+    } as QueryFilterFieldConfig;
+  });
 };
 
 const normalizeRequestConfig = (requestConfig?: QueryFilterRequestConfig) => {
@@ -113,13 +184,15 @@ const normalizeDefaultValue = (field: QueryFilterFieldConfig) => {
 };
 
 export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) => {
-  if (!Array.isArray(fields)) {
+  const hydratedFields = hydrateQueryFilterFields(fields);
+
+  if (!hydratedFields.length) {
     return [];
   }
 
   const placeholderFieldTypes = ['input', 'select', 'datePicker', 'inputNumber'];
 
-  return fields.map(field => {
+  return hydratedFields.map(field => {
     const normalizedField: QueryFilterFieldConfig = {
       ...field,
       label: field.label?.trim() || '',
@@ -239,11 +312,13 @@ export const parseQueryFilterDefaultValue = (field: QueryFilterFieldConfig) => {
 };
 
 export const buildQueryFilterInitialValues = (fields?: QueryFilterFieldConfig[]) => {
-  if (!Array.isArray(fields)) {
+  const hydratedFields = hydrateQueryFilterFields(fields);
+
+  if (!hydratedFields.length) {
     return {};
   }
 
-  return fields.reduce<Record<string, any>>((result, field) => {
+  return hydratedFields.reduce<Record<string, any>>((result, field) => {
     const value = parseQueryFilterDefaultValue(field);
     if (value !== undefined) {
       result[field.field] = value;
@@ -292,13 +367,74 @@ export const mapQueryFilterOptions = (
   list: any[],
   requestConfig?: QueryFilterRequestConfig,
 ) => {
-  const labelField = requestConfig?.labelField || 'label';
-  const valueField = requestConfig?.valueField || 'value';
+  const labelField = requestConfig?.labelField?.trim();
+  const valueField = requestConfig?.valueField?.trim();
+
+  const resolveLabel = (item: any) => {
+    if (labelField && item?.[labelField] !== undefined) {
+      return item[labelField];
+    }
+
+    const fallbackLabelField = ['label', 'name', 'title', 'text']
+      .find(field => item?.[field] !== undefined);
+
+    return fallbackLabelField ? item[fallbackLabelField] : undefined;
+  };
+
+  const resolveValue = (item: any) => {
+    if (valueField && item?.[valueField] !== undefined) {
+      return item[valueField];
+    }
+
+    const fallbackValueField = ['value', 'id', 'code', 'key', 'name']
+      .find(field => item?.[field] !== undefined);
+
+    return fallbackValueField ? item[fallbackValueField] : undefined;
+  };
 
   return list.map(item => ({
-    label: item?.[labelField],
-    value: item?.[valueField],
+    label: resolveLabel(item),
+    value: resolveValue(item),
   })).filter(item => item.label !== undefined && item.value !== undefined);
+};
+
+export const resolveQueryFilterOptionList = (
+  responseData: any,
+  requestConfig?: QueryFilterRequestConfig,
+) => {
+  const explicitListField = requestConfig?.listField?.trim();
+
+  if (explicitListField) {
+    const explicitValue = getValueByPath(responseData, explicitListField);
+    if (Array.isArray(explicitValue)) {
+      return explicitValue;
+    }
+  }
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  }
+
+  const fallbackPaths = [
+    'data.list',
+    'data.records',
+    'data.rows',
+    'payload.list',
+    'payload.records',
+    'payload.rows',
+    'list',
+    'records',
+    'rows',
+  ];
+
+  for (const path of fallbackPaths) {
+    const value = getValueByPath(responseData, path);
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  return [];
 };
 
 export const mapQueryFilterCascaderOptions = (
