@@ -2089,7 +2089,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                             {...restField}
                             name={[name, 'systemId']}
                             label="所属系统"
-                            rules={[{ required: true, message: '请选择所属系统' }]}
+
                             style={{ marginBottom: 0 }}
                           >
                             <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
@@ -2178,32 +2178,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             <Form.Item name="url" label="跳转链接">
               <Input placeholder="请输入跳转链接" />
             </Form.Item>
-            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.url !== cur.url}>
-              {({ getFieldValue }) => (
-                <Form.Item
-                  name="systemId"
-                  label="所属系统"
-                  rules={[
-                    {
-                      validator: async (_, value) => {
-                        if (!getFieldValue('url')) {
-                          return Promise.resolve();
-                        }
-                        if (value) {
-                          return Promise.resolve();
-                        }
-                        return Promise.reject(new Error('请选择所属系统'));
-                      },
-                    },
-                  ]}
-                >
-                  <Select
-                    placeholder="请选择所属系统"
-                    options={JUMP_SYSTEM_OPTIONS}
-                    allowClear
-                  />
-                </Form.Item>
-              )}
+            <Form.Item name="systemId" label="所属系统">
+              <Select
+                placeholder="请选择所属系统"
+                options={JUMP_SYSTEM_OPTIONS}
+                allowClear
+              />
             </Form.Item>
             <div className="form-row-2">
               <Form.Item name="openInNew" label="新窗口打开" valuePropName="checked">
@@ -2571,7 +2551,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                     {...restField}
                                     name={[name, 'systemId']}
                                     label="所属系统"
-                                    rules={[{ required: true, message: '请选择所属系统' }]}
+        
                                   >
                                     <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                                   </Form.Item>
@@ -3346,7 +3326,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                     {...restField}
                                     name={[name, 'systemId']}
                                     label="所属系统"
-                                    rules={[{ required: true, message: '请选择所属系统' }]}
+        
                                     style={{ marginBottom: 0 }}
                                   >
                                     <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />

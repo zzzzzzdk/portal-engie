@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
 import type { MenuProps, InputRef } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -84,6 +84,7 @@ const Layout: React.FC = () => {
   const [editingTitle, setEditingTitle] = useState('')
   const [titleSaving, setTitleSaving] = useState(false)
   const configDialogSaveRef = useRef<(() => Promise<boolean>) | null>(null)
+  const jsonInputRef = useRef<HTMLInputElement>(null)
   const currentCoverUrlRef = useRef('')
   const titleInputRef = useRef<InputRef>(null)
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
@@ -639,6 +640,71 @@ const Layout: React.FC = () => {
     message.success(`已切换到${mode === 'light' ? '浅色' : '深色'}模式（仅当前画布）`)
   }
 
+  // JSON 导入处理
+  const handleImportJson = () => {
+    jsonInputRef.current?.click();
+  };
+
+  const handleJsonFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // 验证 JSON 结构
+      if (!data.widgets && !Array.isArray(data)) {
+        message.error('JSON 格式错误：缺少 widgets 字段或不是有效的数组');
+        return;
+      }
+
+      modal.confirm({
+        title: '确认导入',
+        content: `即将导入 ${Array.isArray(data) ? data.length : (data.widgets?.length || 0)} 个组件，当前页面内容将被替换，是否继续？`,
+        okText: '确认导入',
+        cancelText: '取消',
+        onOk: () => {
+          const { loadDashboardFromData } = useStore.getState();
+
+          if (Array.isArray(data)) {
+            // 直接是 widgets 数组
+            loadDashboardFromData({ widgets: data });
+          } else {
+            // 是完整的工作台配置对象
+            loadDashboardFromData(data);
+          }
+          message.success('JSON 导入成功');
+        },
+      });
+    } catch (err) {
+      console.error('JSON 解析失败:', err);
+      message.error('JSON 解析失败，请检查文件格式');
+    } finally {
+      // 重置 input 以允许重复选择同一文件
+      e.target.value = '';
+    }
+  };
+
+  // 导出 JSON
+  const handleExportJson = () => {
+    const state = useStore.getState();
+    const exportData = {
+      widgets: state.widgets,
+      groups: state.groups,
+      floatingModules: state.floatingModules,
+      dashboardConfig: state.dashboardConfig,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('JSON 导出成功');
+  };
+
   const handleResetDashboard = () => {
     modal.confirm({
       title: '确认清空页面',
@@ -854,6 +920,10 @@ const Layout: React.FC = () => {
                       <Button icon={<SettingOutlined />} onClick={() => setDashboardConfigOpen(true)} className='set'>页面设置</Button>
 
                       <Button icon={<DeleteOutlined />} onClick={handleResetDashboard} danger className='clear'>清空页面</Button>
+
+                      {/* <Button icon={<ImportOutlined />} onClick={handleImportJson} className='import'>导入JSON</Button>
+
+                      <Button icon={<FileTextOutlined />} onClick={handleExportJson} className='export'>导出JSON</Button> */}
                     </>
                   )}
 
@@ -990,6 +1060,15 @@ const Layout: React.FC = () => {
           <Spin size="large" tip={publishingMaskText} fullscreen />
         </div>
       )}
+
+      {/* 隐藏的 JSON 文件输入 */}
+      <input
+        type="file"
+        ref={jsonInputRef}
+        style={{ display: 'none' }}
+        accept=".json"
+        onChange={handleJsonFileChange}
+      />
 
     </AntdLayout>
   );
