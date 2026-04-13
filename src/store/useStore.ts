@@ -1116,6 +1116,7 @@ export const useStore = create<AppState>()(
           groups: [],
           floatingModules: [] as Widget[],
           globalMicroApps: [] as Widget[],
+          currentCoverUrl: '',
           dashboardConfig: {
             backgroundType: 'color',
             backgroundColor: '',

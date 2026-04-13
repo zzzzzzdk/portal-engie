@@ -1,0 +1,59 @@
+{
+  "codex": {
+    "enabled": true,
+    "apiStyle": "openai-responses",
+    "requestApiStyle": "openai-responses",
+    "streamApiStyle": "openai-responses",
+    "authStyle": "bearer",
+    "baseUrl": "https://api.openai.com/v1",
+    "responsesPath": "/responses",
+    "model": "gpt-5.4",
+    "apiKey": "YOUR_OPENAI_API_KEY",
+    "temperature": 0.2,
+    "maxTokens": 4096
+  },
+  "claude": {
+    "enabled": false,
+    "apiStyle": "anthropic-messages",
+    "requestApiStyle": "anthropic-messages",
+    "streamApiStyle": "anthropic-messages",
+    "authStyle": "x-api-key",
+    "baseUrl": "https://api.anthropic.com",
+    "messagesPath": "/v1/messages",
+    "model": "claude-3-7-sonnet-latest",
+    "apiKey": "YOUR_ANTHROPIC_API_KEY",
+    "anthropicVersion": "2023-06-01",
+    "temperature": 0.2,
+    "maxTokens": 4096
+  },
+  "qwen": {
+    "enabled": false,
+    "apiStyle": "openai-chat",
+    "requestApiStyle": "openai-chat",
+    "streamApiStyle": "openai-chat",
+    "authStyle": "bearer",
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "chatPath": "/chat/completions",
+    "responsesPath": "/responses",
+    "model": "qwen-plus",
+    "apiKey": "YOUR_DASHSCOPE_API_KEY",
+    "responseFormat": "none",
+    "temperature": 0.2,
+    "maxTokens": 4096
+  },
+  "doubao": {
+    "enabled": false,
+    "apiStyle": "openai-chat",
+    "requestApiStyle": "openai-chat",
+    "streamApiStyle": "openai-chat",
+    "authStyle": "bearer",
+    "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+    "chatPath": "/chat/completions",
+    "responsesPath": "/responses",
+    "model": "YOUR_ARK_ENDPOINT_ID",
+    "apiKey": "YOUR_ARK_API_KEY",
+    "responseFormat": "none",
+    "temperature": 0.2,
+    "maxTokens": 4096
+  }
+}

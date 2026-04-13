@@ -1,150 +1,155 @@
 # 布局规则详细说明
 
-## Grid 规格
+## 生成基线
 
-| 参数 | 值 | 说明 |
+Portal Builder 输出给编辑器导入的 JSON，统一以 **`compact` 36 列** 作为生成基线：
+
+| 维度 | 值 | 说明 |
 |---|---|---|
-| 列数 | 12 | 12-column responsive grid |
-| 行高 | 120px | 每行高度（标准密度） |
-| 边距 | 10px | widget 间距 |
-| 碰撞策略 | preventCollision: true | 不自动紧凑排列 |
-| compactType | null | 不自动上下压缩 |
+| 列数 | 36 | 编辑器默认网格 |
+| cellHeight | 30px | 编辑器默认 |
+| `x` 范围 | `0-35` | 左到右 |
+| `y` | 非负整数或 `Infinity` | `Infinity` 表示追加到末尾 |
 
-**坐标系**: 原点 (0,0) 在左上角，x 向右递增，y 向下递增。
+### 重要约束
 
-## 布局行计算
+- 生成 JSON 时，**不要输出 `x + w > 36`**。
+- 即使编辑器内部某些“新增组件默认尺寸”与 36 列规则不完全一致，**Skill 仍以可安全导入的 36 列快照为准**。
+- `carousel`、`queryFilter`、`pageNavigator` 在生成页面时，优先按 **全宽组件** 处理。
 
-标准行高 120px + 边距 10px = 每行 130px。
+## 推荐生成尺寸
 
-布局中 y=Infinity 表示追加到当前网格末尾（自动计算真实 y 值）。
+以下是 **Skill 生成快照时的推荐尺寸**，用于稳定输出，不等同于“编辑器点击新增组件时的内部默认值”。
 
-## 组件优先级规则
+| WidgetType | 推荐 `w` | 推荐 `h` | 说明 |
+|---|---:|---:|---|
+| `headerBar` | 36 | 2 | 顶部整行导航 |
+| `carousel` | 36 | 12 | 顶部 Banner |
+| `queryFilter` | 36 | 5 | 顶部筛选器 |
+| `pageNavigator` | 36 | 3 | 底部分页/切页 |
+| `stats` | 10 | 6 | 多指标概览 |
+| `indicatorCard` | 8 | 5 | 单指标卡 |
+| `chart` | 8 | 9 | 图表主体 |
+| `dataTable` | 10 | 8 | 明细表格 |
+| `topList` | 5 | 9 | 排名列表 |
+| `news` | 6 | 10 | 新闻动态 |
+| `navGroup` | 10 | 10 | 多图标导航 |
+| `iconNav` | 2 | 3 | 单图标入口 |
+| `richText` | 8 | 6 | 公告/说明 |
+| `cardGrid` | 8 | 6 | 仅在用户明确要求时使用 |
 
-当多个组件竞争同一行空间时，按以下优先级排列：
+## 自动布局算法
 
-```
-导航类(headerBar, iconNav, navGroup) > 指标类(stats, indicatorCard) > 图表类(chart) > 列表类(dataTable, topList, news) > 工具类(search, queryFilter)
-```
-
-## 典型布局模式
-
-### 1. 数据监控看板（KPI + 图表 + 明细）
-
-```
-+------+----------+
-| KPI1 |  KPI2    |  ← stats / indicatorCard (y=0, 各占4列/6列)
-+------+----------+
-| KPI3 |  KPI4    |  ← stats (y=1)
-+------+----------+
-|       CHART      |  ← chart (y=2, 跨12列或8+4列)
-+------+-----------+
-| topList  | dataTable | ← y=3 同行分列
-+------------------------
-```
-
-**布局策略**:
-- 顶部 KPI: 2-4 个 indicatorCard/stats，横向排列
-- 中部图表: 1-2 个 chart，根据数据维度选择类型
-- 下部明细: topList + dataTable 或 dataTable 单独占 12 列
-
-### 2. 展示宣传页（Banner + 入口 + 动态）
-
-```
-+------------------------+
-|      CAROUSEL         | ← carousel (y=0, 12列, h=4)
-+------------------------+
-|  ICON1 | ICON2 | ICON3 | ← iconNav (y=4, 12列或4+4+4)
-|  ICON4 | ICON5 | ICON6 |
-+------------------------+
-| NEWS      | RICH_TEXT  | ← news + richText (y=7, 6+6列)
-+------------------------+
-```
-
-### 3. 数据管理页（筛选 + 表格）
-
-```
-+------------------------+
-|     QUERY_FILTER       | ← queryFilter (y=0, 12列)
-+------------------------+
-|      DATA_TABLE        | ← dataTable (y=1, 12列)
-+------------------------+
-|    PAGE_NAVIGATOR      | ← pageNavigator (y=2, 12列, 可选)
-+------------------------+
-```
-
-### 4. 运营大屏（多指标 + 多图表）
-
-```
-+--------+------+------+
-| KPI1   | KPI2 | KPI3 |  ← stats (y=0, 4+4+4)
-+--------+------+------+
-| KPI4   | KPI5 | KPI6 |
-+--------+------+------+
-|   LINE_CHART   | PIE |  ← chart (y=2, 8+4)
-+--------+--------+------+
-| BAR_CHART  | TOP_LIST |  ← chart + topList (y=3)
-+-------------------------+
-|       DATA_TABLE        |  ← dataTable (y=4, 12列)
-+-------------------------+
-```
-
-## 尺寸调整规则
-
-### 基于重要性的尺寸调整
-
-| 重要性 | w 调整 | h 调整 |
-|---|---|---|
-| 核心（主图表/KPI） | +2 或 12（全宽）| +2 |
-| 次要（辅助图表） | 保持默认 | 保持默认 |
-| 补充（列表/明细） | 保持默认或-2 | 保持默认 |
-
-### 用户指定尺寸
-
-如果用户在描述中指定了尺寸（如"大图表"、"小卡片"），按以下规则映射：
-
-| 描述 | w | h |
-|---|---|---|
-| 全宽 / 大 / 大屏 | 12 | 默认+2 |
-| 中等 / 标准 | 默认 | 默认 |
-| 小 / 紧凑 / 迷你 | 减半 | 减半 |
-
-## 布局冲突处理
-
-当计算出的 `x + w > 12` 时，自动换行：
+默认按顺序排布，使用当前行最大高度推进 `y`，避免重叠。
 
 ```python
-def layout_widgets(widgets):
-    current_x = 0
-    current_y = 0
+COLS = 36
+current_x = 0
+current_y = 0
+row_max_h = 0
 
-    for w in widgets:
-        if current_x + w.default_w > 12:
-            current_x = 0
-            current_y += w.default_h
+for widget in widgets:
+    w = widget.layout.w
+    h = widget.layout.h
 
-        w.layout = { x: current_x, y: current_y, w: w.default_w, h: w.default_h }
-        current_x += w.default_w
+    if current_x + w > COLS:
+        current_x = 0
+        current_y += row_max_h
+        row_max_h = 0
 
-    return widgets
+    widget.layout.x = current_x
+    widget.layout.y = current_y
+
+    current_x += w
+    row_max_h = max(row_max_h, h)
 ```
+
+### 换行规则
+
+- 判断条件是 `current_x + w > 36`。
+- 新行的 `y` 增量使用上一行的 `row_max_h`，不是当前组件的 `h`。
+- 单个全宽组件应独占一行。
 
 ## 位置语义映射
 
-将用户的自然语言位置描述转换为坐标：
+用户有明确位置描述时，优先覆盖自动布局：
 
-| 描述 | x | y | w |
-|---|---|---|---|
-| 顶部 | 0 | 0 | 满宽(12)或默认 |
-| 左侧 | 0 | - | 半宽(6)或默认 |
-| 右边/右侧 | 6 | - | 半宽(6)或默认 |
-| 底部 | 0 | Infinity | 满宽(12)或默认 |
-| 左上 | 0 | 0 | 半宽(6) |
-| 右下 | 6 | Infinity | 半宽(6) |
-| 中央/中间 | 3 | - | 满宽(12)或默认 |
-| 单独一行 | 0 | Infinity | 满宽(12) |
+| 描述 | `x` | `y` | `w` |
+|---|---:|---:|---:|
+| 顶部 | 0 | 0 | 36 |
+| 底部 | 0 | `Infinity` | 36 |
+| 左侧 | 0 | 自动 | 18 |
+| 右侧 | 18 | 自动 | 18 |
+| 左上 | 0 | 0 | 18 |
+| 右上 | 18 | 0 | 18 |
+| 单独一行 | 0 | `Infinity` | 36 |
 
-## 响应式注意事项
+## 典型页面模式
 
-- `minW` 和 `minH` 确保 widget 不会缩小到无法正常使用
-- 图表类 (`chart`) `minW: 4` 确保 ECharts 有足够渲染空间
-- 表格类 (`dataTable`) `minW: 6` 确保列不会被压缩
+### 1. 数据看板
+
+推荐组合：
+
+```text
+indicatorCard + indicatorCard + chart + topList/dataTable
+```
+
+推荐布局：
+
+- 顶部放 2-4 个 `indicatorCard` / `stats`
+- 中部放 1-2 个 `chart`
+- 底部放 `topList`、`dataTable`
+
+### 2. 企业门户 / 展示宣传页
+
+推荐组合：
+
+```text
+headerBar + carousel + navGroup + news + richText
+```
+
+推荐布局：
+
+- 顶部 `headerBar`
+- 第二行 `carousel`
+- 中部 `navGroup`
+- 底部 `news` + `richText`
+
+### 3. 管理后台
+
+推荐组合：
+
+```text
+queryFilter + dataTable + pageNavigator
+```
+
+推荐布局：
+
+- 顶部 `queryFilter`
+- 中部 `dataTable`
+- 底部 `pageNavigator`
+
+## 特殊组件说明
+
+### `navGroup`
+
+- 多图标入口优先使用 `navGroup`
+- `config.staticItems` 为主字段
+- `staticItems[].icon` 优先使用 iconfont 名，必须以 `icon-` 开头
+
+### `iconNav`
+
+- 只适合单个图标入口
+- “快捷入口、4-8 个图标、门户入口宫格” 这类描述不要落到 `iconNav`
+
+### `cardGrid`
+
+- 当前项目中的 `cardGrid` 仍偏占位实现
+- 没有用户明确要求时，不要把它作为门户页主内容模块的默认推荐
+
+## 响应式与兼容性
+
+- `minW`、`minH` 仍应保留，避免组件在编辑器中被压缩到不可用
+- 图表建议 `minW >= 4`
+- 表格建议 `minW >= 6`
+- 生成时优先保证导入可用，再追求视觉丰满度

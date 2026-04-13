@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "帮我做一个销售数据看板，包含本月收入趋势折线图、各区域销售排名和今日销售额KPI指标",
-      "expected_output": "生成包含 indicatorCard（KPI指标）+ chart（折线图）+ topList（排名列表）的 DashboardSnapshot JSON，包含正确的 layout 坐标和完整的 config 结构（含颜色默认值）",
+      "expected_output": "生成包含 indicatorCard、chart、topList 的 DashboardSnapshot JSON，布局基于 compact 36 列，且配置字段符合当前项目运行时字段。",
       "files": [],
       "expectations": [
         "输出为有效的 JSON 格式",
@@ -13,72 +13,69 @@
         "至少一个 widget 的 type 为 'chart'，且 config.chartType 为 'basic-line'",
         "至少一个 widget 的 type 为 'topList'",
         "每个 widget 的 layout 包含 x, y, w, h 四个字段",
-        "layout 中所有 widget 的 x + w 不超过 36（compact grid）",
-        "chart widget 的 config 包含 colors 数组和 chartType 字段",
-        "topList 组件的 config 包含 dataSource:'static' 和 staticData 数组",
-        "所有 color 相关字段都有默认值（如 titleColor: '#222222'）",
-        "输出格式包含预览表格和 JSON 代码块"
+        "所有 widget 满足 x + w <= 36",
+        "chart widget 的 config 包含 colors 数组、chartType、categoryField、valueField",
+        "topList 的 config 包含 dataSource: 'static' 和 staticData 数组",
+        "颜色相关字段具备默认值，且 backgroundColor 搭配 backgroundType 使用",
+        "输出包含识别结果、布局预览和 JSON 代码块"
       ]
     },
     {
       "id": 2,
       "prompt": "生成一个公司门户网站首页，要有 Banner 轮播、快捷入口图标导航和新闻动态列表",
-      "expected_output": "生成包含 carousel（轮播）+ iconNav（图标导航）+ news（新闻列表）的 DashboardSnapshot JSON，布局为展示型页面结构（Banner 顶部 → 图标导航中部 → 新闻底部）",
+      "expected_output": "生成包含 carousel、navGroup、news 的 DashboardSnapshot JSON；若用户语义接近门户首页，优先补充 headerBar 或 richText，而不是把多图标入口误生成成 iconNav。",
       "files": [],
       "expectations": [
         "输出为有效的 JSON 格式",
-        "包含至少 3 个 widgets",
         "至少一个 widget 的 type 为 'carousel'",
-        "至少一个 widget 的 type 为 'navGroup'（多图标导航应使用 navGroup，不是 iconNav）",
+        "至少一个 widget 的 type 为 'navGroup'",
         "至少一个 widget 的 type 为 'news'",
-        "carousel 位于布局上部（y 较小或 w ≥ 30 满宽，compact grid 36列）",
-        "每个 widget 有有效的 id（UUID 格式）",
-        "每个 widget 的 config 包含 showTitle 和 titleColor",
-        "navGroup 的 config 包含 staticItems 数组，icon 值以 'icon-' 开头（iconfont 图标，不使用 emoji）",
+        "carousel 位于布局上部，且推荐全宽或接近全宽",
+        "navGroup 的 config 包含 staticItems 数组",
+        "staticItems 中的 icon 值以 'icon-' 开头",
+        "不把多图标门户入口错误生成为单个 iconNav",
         "输出包含预览说明和 JSON 代码块"
       ]
     },
     {
       "id": 3,
       "prompt": "做一个数据管理页面，需要有筛选条件和数据表格，可以按状态和日期过滤，表格要能分页",
-      "expected_output": "生成包含 queryFilter（筛选）+ dataTable（数据表格）+ pageNavigator（分页）的 DashboardSnapshot JSON，布局为管理后台典型结构（筛选器顶部 → 表格中部 → 分页器底部）",
+      "expected_output": "生成包含 queryFilter、dataTable、pageNavigator 的 DashboardSnapshot JSON，布局为管理后台结构，字段符合当前 QueryFilter 和 DataTable 的运行时配置。",
       "files": [],
       "expectations": [
         "输出为有效的 JSON 格式",
-        "包含至少 2 个 widgets",
         "至少一个 widget 的 type 为 'queryFilter'",
         "至少一个 widget 的 type 为 'dataTable'",
         "dataTable 的 config 包含 paginationMode: 'pagination' 或 paginationConfig",
-        "queryFilter 位于表格上方（y 值小于表格的 y 值）",
-        "每个 widget 的 layout 有效且不重叠（自动换行逻辑正确）",
-        "config 中包含 backgroundColor 等颜色默认值",
-        "widgets 数量在 2-4 个之间（不过度拆分）",
+        "queryFilter 的 config 包含 queryFields 数组",
+        "queryFields 中的 select/radioGroup/checkboxGroup 使用 manualOptions 或 requestConfig",
+        "queryFilter 位于 dataTable 上方",
+        "widgets 数量在 2-4 个之间",
         "输出包含预览说明和 JSON 代码块"
       ]
     },
     {
       "id": 4,
       "prompt": "给我做一个好看的页面",
-      "expected_output": "Skill 应该主动追问用户需求（展示型/数据型/管理型），而不是直接生成单-widget typography 降级方案。追问内容应包含 2-3 个典型模板供选择。",
+      "expected_output": "Skill 应主动追问用户是展示型、数据型还是管理型页面，并给出 2-3 个模板选项；不能直接降级成单个 typography widget。",
       "files": [],
       "expectations": [
-        "Skill 输出了追问内容，而不是直接生成",
-        "追问包含至少 2 个典型模板选项（如数据看板/门户首页/管理后台）",
-        "没有生成只有一个 typography widget 的敷衍方案",
-        "追问使用了 emoji 或编号等友好的格式"
+        "输出为追问，而不是直接生成 JSON",
+        "至少提供 2 个模板选项",
+        "不生成只有一个 typography widget 的降级方案",
+        "追问格式清晰，适合用户继续补充需求"
       ]
     },
     {
       "id": 5,
       "prompt": "加个折线图",
-      "expected_output": "Skill 识别出 chart + basic-line，但因为只有单个组件，无法推断完整页面结构，应主动追问：数据来源（API/静态）、是否需要配套组件（指标卡/表格等）、图表主题",
+      "expected_output": "Skill 识别出 chart + basic-line，但因为用户只描述了单个组件，应主动追问数据来源、是否需要配套组件和图表主题，而不是直接生成孤立页面。",
       "files": [],
       "expectations": [
-        "识别到 chart + basic-line（精确匹配）",
-        "输出了追问内容，询问数据来源或是否需要其他组件",
-        "置信度标注中包含 [精确] 标记",
-        "单个 chart widget 布局满宽（w=12）或居中展示",
-        "不是默默地生成一个孤零零的 chart 而不追问"
+        "识别出 chart + basic-line",
+        "输出追问内容，询问数据来源和是否需要其他组件",
+        "包含 [精确] 或等价的识别标记",
+        "不直接输出最终页面 JSON"
       ]
     }
   ]

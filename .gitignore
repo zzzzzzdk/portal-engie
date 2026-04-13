@@ -86,6 +86,7 @@ Desktop.ini
 # Mock server temporary files
 mock/logs
 mock/*.log
+mock/config/*.local.json
 
 # IDE - VSCode specific
 .history/

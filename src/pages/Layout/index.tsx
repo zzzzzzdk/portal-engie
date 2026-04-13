@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
 import type { MenuProps, InputRef } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined, RobotOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -13,11 +13,12 @@ import GlobalMicroAppContainer from './GlobalMicroAppContainer'
 import DashboardConfigDialog from '@/components/DashboardConfigDialog';
 import ConfigDialog from '@/components/ConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
-import WidgetDrawer from '@/components/WidgetDrawer';
+import WorkspaceSidebar, { WorkspaceSidebarTabKey } from '@/components/WorkspaceSidebar';
 import Icon from '@/components/Icon';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme'
 import { getStylePreset } from '@/theme/tokens/styles'
 import { useConfigStore } from '@/store/useConfigStore'
+import { lightPreset } from '@/theme/tokens/presets/light'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
 import captureDashboardCover from '@/utils/captureDashboardCover'
@@ -52,11 +53,13 @@ const Layout: React.FC = () => {
     configPanelTarget,
     dashboardConfig,
     clearDashboardCanvas,
+    loadDashboardFromData,
     closeConfigPanel,
     updateDashboardConfig,
     currentCoverUrl,
     setCurrentCoverUrl,
     clearDirty,
+    markDirty,
     pendingMicroAppDrop,
     setPendingMicroAppDrop,
   } = useStore();
@@ -75,6 +78,7 @@ const Layout: React.FC = () => {
   const [publishForm] = Form.useForm()
   const [microAppMarketMode, setMicroAppMarketMode] = useState<'widget' | 'floating' | 'global'>('widget')
   const [widgetDrawerOpen, setWidgetDrawerOpen] = useState(false)
+  const [workspaceSidebarTab, setWorkspaceSidebarTab] = useState<WorkspaceSidebarTabKey>('widget')
   const [publishAction, setPublishAction] = useState<'publish' | 'draft'>('publish')
   const [publishLoading, setPublishLoading] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle')
@@ -189,6 +193,46 @@ const Layout: React.FC = () => {
   }, [editId, currentCoverUrl]);
 
   const getCurrentCoverUrl = useCallback(() => currentCoverUrl, [currentCoverUrl])
+
+  const currentSnapshot = useMemo(() => ({
+    widgets,
+    groups,
+    floatingModules,
+    dashboardConfig,
+  }), [dashboardConfig, floatingModules, groups, widgets])
+
+  const hasWorkspaceContent = useMemo(
+    () => widgets.length > 0 || groups.length > 0 || floatingModules.length > 0,
+    [floatingModules.length, groups.length, widgets.length],
+  )
+
+  const openWorkspaceSidebar = useCallback((tab: WorkspaceSidebarTabKey) => {
+    setWorkspaceSidebarTab(tab)
+    setWidgetDrawerOpen(true)
+  }, [])
+
+  const handleApplyAiSnapshot = useCallback((snapshot: {
+    widgets: Widget[];
+    groups: typeof groups;
+    floatingModules: Widget[];
+    dashboardConfig?: typeof dashboardConfig;
+  }) => {
+    loadDashboardFromData(snapshot)
+    markDirty()
+    message.success('AI 已更新当前工作台')
+  }, [loadDashboardFromData, markDirty, message])
+
+  const resetGlobalThemeConfig = useCallback(() => {
+    const configStore = useConfigStore.getState()
+    configStore.setThemePreset('light')
+    configStore.setBaseColors(lightPreset.colors)
+    configStore.setCustomTokens(lightPreset)
+  }, [])
+
+  const handleClearWorkspaceForAi = useCallback(() => {
+    clearDashboardCanvas()
+    resetGlobalThemeConfig()
+  }, [clearDashboardCanvas, resetGlobalThemeConfig])
 
   // 响应拖放微应用到画布：打开微应用市场选择器
   useEffect(() => {
@@ -713,7 +757,8 @@ const Layout: React.FC = () => {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
-        clearDashboardCanvas({ preserveTitle: true });
+        clearDashboardCanvas();
+        resetGlobalThemeConfig();
         message.success('已清空当前应用页面');
       },
     });
@@ -909,10 +954,18 @@ const Layout: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     disabled={!isEditMode}
-                    onClick={() => setWidgetDrawerOpen(true)}
+                    onClick={() => openWorkspaceSidebar('widget')}
                     className='add'
                   >
                     添加组件
+                  </Button>
+
+                  <Button
+                    icon={<RobotOutlined />}
+                    disabled={!isEditMode}
+                    onClick={() => openWorkspaceSidebar('ai')}
+                  >
+                    AI辅助建模
                   </Button>
 
                   {isEditMode && (
@@ -976,7 +1029,7 @@ const Layout: React.FC = () => {
 
       {isFullScreen && isDashboardRoute && (
         <FloatingControlPanel
-          onAddWidget={() => setWidgetDrawerOpen(true)}
+          onAddWidget={() => openWorkspaceSidebar('widget')}
           onOpenSettings={() => setDashboardConfigOpen(true)}
           onResetPage={handleResetDashboard}
           onSaveDraft={() => openPublishModal('draft')}
@@ -991,10 +1044,16 @@ const Layout: React.FC = () => {
         <div className="app-content__workspace">
           {isDashboardRoute && (
             <div className={`app-content__sidebar ${widgetDrawerOpen ? 'is-open' : ''}`}>
-              <WidgetDrawer
+              <WorkspaceSidebar
                 open={widgetDrawerOpen}
+                activeTab={workspaceSidebarTab}
+                onTabChange={setWorkspaceSidebarTab}
                 onClose={() => setWidgetDrawerOpen(false)}
-                onSelect={handleAddWidget}
+                onWidgetSelect={handleAddWidget}
+                currentSnapshot={currentSnapshot}
+                hasWorkspaceContent={hasWorkspaceContent}
+                onApplySnapshot={handleApplyAiSnapshot}
+                onClearWorkspace={handleClearWorkspaceForAi}
               />
             </div>
           )}

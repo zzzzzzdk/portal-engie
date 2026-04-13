@@ -12,6 +12,7 @@ var systemSettingsRouter = require("./routes/system-settings");
 var publishRouter = require("./routes/publish");
 var uploadRouter = require("./routes/upload");
 var microAppRouter = require("./routes/micro-app");
+var aiWorkbenchRouter = require("./routes/ai-workbench");
 
 var baseApi = "/";
 var app = express();
@@ -88,6 +89,7 @@ app.use(baseApi, systemSettingsRouter);
 app.use(baseApi, publishRouter);
 app.use(baseApi, uploadRouter);
 app.use(baseApi, microAppRouter);
+app.use(baseApi, aiWorkbenchRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
