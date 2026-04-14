@@ -1,38 +1,35 @@
-import React from 'react';
-import { Form, Input, Select, Radio, Divider } from 'antd';
-import EventRouteConfig from '@/components/EventRouteConfig';
-import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
-import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
-import { keyValueListToObject } from '@/utils/widgetApi';
-import { MicroAppEventType } from '@/types';
-import { WidgetConfigProps } from './types';
+import React from 'react'
+import { Divider, Form, Input, Radio, Select } from 'antd'
+import EventRouteConfig from '@/components/EventRouteConfig'
+import WidgetApiDebugButton from '@/components/WidgetApiDebugButton'
+import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs'
+import { keyValueListToObject } from '@/utils/widgetApi'
+import { MicroAppEventType } from '@/types'
+import { WidgetConfigProps } from './types'
 
 const SEARCH_SENDER_EVENTS = [
   { id: 'search-submit', type: MicroAppEventType.DATA_SUBMIT, name: '搜索提交' },
-];
+]
 
 const buildHeaders = (headersList?: Array<{ key?: string; value?: string }>) => {
   if (!Array.isArray(headersList)) {
-    return undefined;
+    return undefined
   }
 
   const headers = headersList.reduce<Record<string, string>>((result, item) => {
-    const key = item?.key?.trim();
+    const key = item?.key?.trim()
     if (key) {
-      result[key] = item.value || '';
+      result[key] = item.value || ''
     }
-    return result;
-  }, {});
+    return result
+  }, {})
 
-  return Object.keys(headers).length ? headers : undefined;
-};
+  return Object.keys(headers).length ? headers : undefined
+}
 
-/**
- * 搜索组件配置 - 数据与交互
- */
 const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
-  const form = Form.useFormInstance();
-  const submitMethod = Form.useWatch('submitMethod', form) || 'eventRoute';
+  const form = Form.useFormInstance()
+  const submitMethod = Form.useWatch('submitMethod', form) || 'eventRoute'
 
   return (
     <>
@@ -40,7 +37,7 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
       <Form.Item
         name="submitMethod"
         label="提交方式"
-        layout='horizontal'
+        layout="horizontal"
         colon={false}
       >
         <Radio.Group>
@@ -81,7 +78,7 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
               headersName="apiHeadersList"
               queryName="apiQueryList"
               bodyName="apiBodyList"
-              debugContent={
+              debugContent={(
                 <WidgetApiDebugButton
                   form={form}
                   buildConfig={formValues => ({
@@ -92,8 +89,8 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
                     body: keyValueListToObject(formValues.apiBodyList),
                   })}
                 />
-              }
-              debugHint="调试时将使用当前搜索接口地址、请求头、Query 和 Body 参数。"
+              )}
+              debugHint="调试时会使用当前搜索接口地址、请求头、Query 和 Body 参数。"
             />
           </Form.Item>
         </>
@@ -113,8 +110,18 @@ const SearchConfig: React.FC<WidgetConfigProps> = ({ widget }) => {
           />
         </Form.Item>
       )}
-    </>
-  );
-};
 
-export default SearchConfig;
+      <Divider>消息文案</Divider>
+      <div className="form-row-2">
+        <Form.Item name="successMessage" label="成功提示消息">
+          <Input placeholder="搜索请求已发送" />
+        </Form.Item>
+        <Form.Item name="failureMessage" label="失败提示消息">
+          <Input placeholder="搜索请求失败" />
+        </Form.Item>
+      </div>
+    </>
+  )
+}
+
+export default SearchConfig

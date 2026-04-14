@@ -13,11 +13,14 @@ import MicroAppSelector from '../MicroAppSelector';
 import EventRouteConfig from '../EventRouteConfig';
 import BackgroundSettings from '@/components/BackgroundSettings';
 import AssistantHubConfig from '@/components/AssistantHubConfig';
+import GlobalThemeReferenceFields from '@/components/GlobalThemeReferenceFields';
 import IconPicker from '@/components/IconPicker';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
+import WidgetTitleSettings from '@/components/WidgetTitleSettings';
 import RichTextEditor from '@/components/RichTextEditor';
 import { getIconValueType } from '@/components/IconPicker/types';
+import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
 import { LinkConfig, SearchConfig, QueryFilterConfig, QueryFilterDataConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig, ChartConfig, ChartDataConfig, IndicatorCardConfig } from './configs';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import {
@@ -26,6 +29,14 @@ import {
   getWidgetApiFieldMeta,
   getWidgetPaginationDefaults,
 } from '@/utils/widgetApiDefaults';
+import {
+  buildBackgroundFormValues,
+  buildWidgetTitleStyleFormValues,
+  getDefaultGlobalThemeId,
+  getGlobalMessageCopy,
+  getGlobalThemeOptions,
+  getGlobalThemeScheme,
+} from '@/utils/global-config';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
 import { hydrateQueryFilterFields, normalizeQueryFilterFields } from '@/utils/queryFilter';
 import { getChartPresetDefinition, resolveChartLegacyPreset } from '@/components/widgets/chart/presets';
@@ -317,8 +328,14 @@ const normalizeColorValue = (color: any, defaultColor?: string): string | undefi
 const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, onRegisterSaveHandler }) => {
   const { updateWidget, updateFloatingModule, updateFloatingModuleConfig, floatingModules, groups, updateGroup, updateGroupConfig } = useStore();
   const { styleTokens } = useCanvasTheme();
+  const globalConfigDetail = useGlobalConfigStore(state => state.detail);
+  const ensureGlobalConfigLoaded = useGlobalConfigStore(state => state.ensureLoaded);
   const [form] = Form.useForm();
   const showNavMenuValue = Form.useWatch('showNavMenu', form);
+  const titleUseGlobalConfig = Form.useWatch('titleUseGlobalConfig', form) ?? false;
+  const titleGlobalThemeId = Form.useWatch('titleGlobalThemeId', form);
+  const backgroundUseGlobalConfig = Form.useWatch('backgroundUseGlobalConfig', form) ?? false;
+  const backgroundGlobalThemeId = Form.useWatch('backgroundGlobalThemeId', form);
   const statsItemsValue = Form.useWatch('statsItems', form);
   const columnsValue = Form.useWatch('columns', form);
   const rowKeyValue = Form.useWatch('rowKey', form);
@@ -344,6 +361,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const [fileList, setFileList] = useState<any[]>([]);
   const prevWidgetIdRef = useRef<string | null>(null);
   const [bgUploading, setBgUploading] = useState(false);
+  const globalThemeOptions = useMemo(() => getGlobalThemeOptions(globalConfigDetail), [globalConfigDetail]);
   const genericStaticDataEditorMeta = useMemo(
     () =>
       getStaticDataEditorMeta(widget.type, {
@@ -465,6 +483,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
   useEffect(() => {
     if (isOpen) {
+      void ensureGlobalConfigLoaded();
+    }
+  }, [ensureGlobalConfigLoaded, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
       // 仅在切换到不同组件时重置表单，防止前一个组件的配置值残留
       // 同一组件保存后不重置，避免 Form.List（如 navItems）因 resetFields 导致数据丢失
       const currentId = isGroup ? group?.id : widget?.id;
@@ -475,20 +499,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
       // 分组配置初始化
       if (isGroup && group) {
-        const config = group.config || {};
+        const config = (group.config || {}) as any;
         form.setFieldsValue({
           title: group.title,
-          showTitle: config.showTitle !== false,
-          titleColor: config.titleColor,
-          titleFontSize: config.titleFontSize,
-          titleFontWeight: config.titleFontWeight,
-          backgroundType: config.backgroundType || 'color',
-          backgroundColor: config.backgroundColor,
-          backgroundImage: config.backgroundImage,
-          backgroundGradient: config.backgroundGradient,
-          backgroundSize: config.backgroundSize,
-          backgroundRepeat: config.backgroundRepeat,
-          backgroundPosition: config.backgroundPosition,
+          titleUseGlobalConfig: config.titleUseGlobalConfig ?? false,
+          titleGlobalThemeId: config.titleGlobalThemeId,
+          backgroundUseGlobalConfig: config.backgroundUseGlobalConfig ?? false,
+          backgroundGlobalThemeId: config.backgroundGlobalThemeId,
+          ...buildWidgetTitleStyleFormValues(config),
+          ...buildBackgroundFormValues(config),
           borderStyle: config.borderStyle || 'none',
           borderColor: config.borderColor,
           borderWidth: config.borderWidth ?? 2,
@@ -527,6 +546,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           title: widget.title,
           showTitle: widget.config.showTitle !== false,
           showNavMenu: widget.config.showNavMenu ?? false,
+          titleUseGlobalConfig: widget.config.titleUseGlobalConfig ?? false,
+          titleGlobalThemeId: widget.config.titleGlobalThemeId,
+          backgroundUseGlobalConfig: widget.config.backgroundUseGlobalConfig ?? false,
+          backgroundGlobalThemeId: widget.config.backgroundGlobalThemeId,
+          titleColor: widget.config.titleColor,
+          titleFontSize: widget.config.titleFontSize,
+          titleFontWeight: widget.config.titleFontWeight,
           refreshInterval: widget.config.refreshInterval,
           systemId: widget.config.systemId,
           moduleId: widget.config.moduleId,
@@ -542,6 +568,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           backgroundSize: widget.config.backgroundSize,
           backgroundRepeat: widget.config.backgroundRepeat,
           backgroundPosition: widget.config.backgroundPosition,
+          contentPadding: widget.config.contentPadding,
         };
         form.setFieldsValue(initialValues);
 
@@ -613,6 +640,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           ...normalizedConfig,
           // title uses widget.title to avoid being overwritten by config.title
           title: widget.title,
+          titleUseGlobalConfig: widget.config.titleUseGlobalConfig ?? false,
+          titleGlobalThemeId: widget.config.titleGlobalThemeId,
+          backgroundUseGlobalConfig: widget.config.backgroundUseGlobalConfig ?? false,
+          backgroundGlobalThemeId: widget.config.backgroundGlobalThemeId,
           refreshInterval: widget.config.refreshInterval,
           apiEndpoint: widget.config.apiEndpoint,
           apiMethod: widget.config.apiMethod || 'GET',
@@ -856,6 +887,62 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     }
   }, [isOpen, widget, form, isFloatingModule, isGroup, group, navGroupItemDefaults, styleTokens]);
 
+  useEffect(() => {
+    if (!isOpen || !globalConfigDetail || !titleUseGlobalConfig) {
+      return;
+    }
+
+    const nextThemeId = titleGlobalThemeId || getDefaultGlobalThemeId(globalConfigDetail);
+    if (!titleGlobalThemeId && nextThemeId) {
+      form.setFieldValue('titleGlobalThemeId', nextThemeId);
+      return;
+    }
+
+    const theme = getGlobalThemeScheme(globalConfigDetail, nextThemeId);
+    if (!theme?.widgetTitle) {
+      return;
+    }
+
+    form.setFieldsValue(buildWidgetTitleStyleFormValues(theme.widgetTitle));
+  }, [form, globalConfigDetail, isOpen, titleGlobalThemeId, titleUseGlobalConfig]);
+
+  useEffect(() => {
+    if (!isOpen || !globalConfigDetail || !backgroundUseGlobalConfig) {
+      return;
+    }
+
+    const nextThemeId = backgroundGlobalThemeId || getDefaultGlobalThemeId(globalConfigDetail);
+    if (!backgroundGlobalThemeId && nextThemeId) {
+      form.setFieldValue('backgroundGlobalThemeId', nextThemeId);
+      return;
+    }
+
+    const theme = getGlobalThemeScheme(globalConfigDetail, nextThemeId);
+    if (!theme?.widgetBackground) {
+      return;
+    }
+
+    form.setFieldsValue(buildBackgroundFormValues(theme.widgetBackground));
+  }, [backgroundGlobalThemeId, backgroundUseGlobalConfig, form, globalConfigDetail, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !globalConfigDetail || !['search', 'queryFilter', 'customForm'].includes(widget.type)) {
+      return;
+    }
+
+    const nextValues: Record<string, string> = {};
+    if (!form.getFieldValue('successMessage')) {
+      nextValues.successMessage = getGlobalMessageCopy(globalConfigDetail, 'form.success');
+    }
+    if (!form.getFieldValue('failureMessage')) {
+      nextValues.failureMessage = getGlobalMessageCopy(globalConfigDetail, 'form.error');
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      form.setFieldsValue(nextValues);
+    }
+  }, [form, globalConfigDetail, isOpen, widget.type]);
+
   const handleOk = useCallback(async (): Promise<boolean> => {
     try {
       const values = await form.validateFields();
@@ -976,9 +1063,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         const {
           title,
           showTitle,
+          titleUseGlobalConfig,
+          titleGlobalThemeId,
           titleColor,
           titleFontSize,
           titleFontWeight,
+          backgroundUseGlobalConfig,
+          backgroundGlobalThemeId,
           backgroundType,
           backgroundColor,
           backgroundImage,
@@ -1014,9 +1105,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         // 更新分组配置
         updateGroupConfig(group.id, {
           showTitle,
+          titleUseGlobalConfig,
+          titleGlobalThemeId,
           titleColor: normalizedTitleColor,
           titleFontSize,
           titleFontWeight,
+          backgroundUseGlobalConfig,
+          backgroundGlobalThemeId,
           backgroundType,
           backgroundColor: normalizedBgColor,
           backgroundImage,
@@ -1030,7 +1125,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           borderWidth,
           borderRadius,
           padding,
-        });
+        } as any);
 
         message.success('配置保存成功');
         return true;
@@ -1041,7 +1136,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         const {
           title,
           showTitle,
+          titleUseGlobalConfig,
+          titleGlobalThemeId,
           titleColor,
+          titleFontSize,
+          titleFontWeight,
           refreshInterval,
           // 尺寸配置
           width,
@@ -1072,6 +1171,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           icon: rawIcon,
           forceIconOnly,
           // 背景配置
+          backgroundUseGlobalConfig,
+          backgroundGlobalThemeId,
           backgroundType,
           backgroundColor,
           backgroundImage,
@@ -1105,7 +1206,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           updateFloatingModuleConfig(widget.id, {
             ...widget.config,
             showTitle,
+            titleUseGlobalConfig,
+            titleGlobalThemeId,
             titleColor: normalizedTitleColor,
+            titleFontSize,
+            titleFontWeight,
             refreshInterval,
             // 尺寸配置
             width,
@@ -1124,6 +1229,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             zIndex,
             // 背景配置
             backgroundType,
+            backgroundUseGlobalConfig,
+            backgroundGlobalThemeId,
             backgroundColor: normalizedBgColor,
             backgroundImage,
             backgroundGradient,
@@ -1179,7 +1286,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           updateFloatingModuleConfig(widget.id, {
             ...widget.config,
             showTitle,
+            titleUseGlobalConfig,
+            titleGlobalThemeId,
             titleColor: normalizedTitleColor,
+            titleFontSize,
+            titleFontWeight,
             refreshInterval,
             // 尺寸配置
             width,
@@ -1198,6 +1309,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             zIndex,
             // 背景配置
             backgroundType,
+            backgroundUseGlobalConfig,
+            backgroundGlobalThemeId,
             backgroundColor: normalizedBgColor,
             backgroundImage,
             backgroundGradient,
@@ -1221,8 +1334,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         if (widget.type === 'microApp') {
           // 微应用配置
           const {
-            title, showTitle, titleColor, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon: rawIcon,
-            backgroundType, backgroundColor, backgroundImage, backgroundGradient,
+            title, showTitle, titleUseGlobalConfig, titleGlobalThemeId, titleColor, titleFontSize,
+            titleFontWeight, refreshInterval, systemId, moduleId, sync, alive, eventRoutes, icon: rawIcon,
+            backgroundUseGlobalConfig, backgroundGlobalThemeId, backgroundType, backgroundColor, backgroundImage, backgroundGradient,
             backgroundSize, backgroundRepeat, backgroundPosition, forceIconOnly, contentPadding
           } = values;
           const normalizedForceIcon = !!forceIconOnly;
@@ -1248,7 +1362,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             config: {
               ...widget.config,
               showTitle,
+              titleUseGlobalConfig,
+              titleGlobalThemeId,
               titleColor: normalizedTitleColor,
+              titleFontSize,
+              titleFontWeight,
               refreshInterval,
               systemId,
               moduleId,
@@ -1258,6 +1376,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               iconSvg: cleanedIconSvg || undefined,
               forceIconOnly: normalizedForceIcon,
               eventRoutes: eventRoutes || [],
+              backgroundUseGlobalConfig,
+              backgroundGlobalThemeId,
               backgroundType,
               backgroundColor: normalizedBgColor,
               backgroundImage,
@@ -1281,7 +1401,25 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           });
         } else {
           // 其他小部件配置
-          const { title, showTitle, titleColor, refreshInterval, apiEndpoint, backgroundType, backgroundColor, backgroundImage, backgroundGradient, contentPadding, ...restConfig } = values;
+          const {
+            title,
+            showTitle,
+            titleUseGlobalConfig,
+            titleGlobalThemeId,
+            titleColor,
+            titleFontSize,
+            titleFontWeight,
+            refreshInterval,
+            apiEndpoint,
+            backgroundUseGlobalConfig,
+            backgroundGlobalThemeId,
+            backgroundType,
+            backgroundColor,
+            backgroundImage,
+            backgroundGradient,
+            contentPadding,
+            ...restConfig
+          } = values;
 
           // 规范化颜色值的辅助函数
           const normalizeColor = (color: any): string | undefined => {
@@ -1735,9 +1873,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             config: {
               ...widget.config,
               showTitle,
+              titleUseGlobalConfig,
+              titleGlobalThemeId,
               titleColor: normalizedTitleColor,
+              titleFontSize,
+              titleFontWeight,
               refreshInterval,
               apiEndpoint,
+              backgroundUseGlobalConfig,
+              backgroundGlobalThemeId,
               backgroundType,
               backgroundColor: normalizedBgColor,
               backgroundImage,
@@ -1774,23 +1918,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         <Input />
       </Form.Item>
 
-      <div className="form-row-2">
-        <Form.Item
-          name="showTitle"
-          label="显示标题"
-          valuePropName="checked"
-          tooltip={
-            isFloatingModule
-              ? "关闭后将显示透明拖拽条，编辑模式下仍可进行操作"
-              : "关闭后小部件将不显示头部标题栏"
-          }
-        >
-          <Switch />
-        </Form.Item>
-        <Form.Item name="titleColor" label="标题颜色">
-          <ColorPicker showText allowClear />
-        </Form.Item>
-      </div>
+      <div className="config-section-title">标题设置</div>
+      <GlobalThemeReferenceFields
+        form={form}
+        useFieldName="titleUseGlobalConfig"
+        themeIdFieldName="titleGlobalThemeId"
+        options={globalThemeOptions}
+        hint="开启后会自动填充全局主题中的组件标题设置，引用期间不可编辑。"
+      />
+      <WidgetTitleSettings disabled={titleUseGlobalConfig} />
 
       <div className="form-row-2">
         <Form.Item
@@ -1814,9 +1950,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       )}
 
       <div className="config-section-title">背景设置</div>
+      <GlobalThemeReferenceFields
+        form={form}
+        useFieldName="backgroundUseGlobalConfig"
+        themeIdFieldName="backgroundGlobalThemeId"
+        options={globalThemeOptions}
+        hint="开启后会自动填充全局主题中的组件背景设置，引用期间不可编辑。"
+      />
       <BackgroundSettings
         form={form}
         initialValues={widget.config as any}
+        disabled={backgroundUseGlobalConfig}
       />
     </>
   );
@@ -3456,27 +3600,15 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         <Input />
       </Form.Item>
 
-      <div className="form-row-2">
-        <Form.Item name="showTitle" label="显示标题" valuePropName="checked">
-          <Switch />
-        </Form.Item>
-        <Form.Item name="titleColor" label="标题颜色">
-          <ColorPicker showText allowClear />
-        </Form.Item>
-      </div>
-      <div className="form-row-2">
-        <Form.Item name="titleFontSize" label="标题字号" rules={[{ type: 'number', min: 12 }]}>
-          <InputNumber style={{ width: '100%' }} suffix="px" placeholder="14" />
-        </Form.Item>
-        <Form.Item name="titleFontWeight" label="标题字重">
-          <Select placeholder="500">
-            <Select.Option value={400}>常规 (400)</Select.Option>
-            <Select.Option value={500}>中等 (500)</Select.Option>
-            <Select.Option value={600}>半粗 (600)</Select.Option>
-            <Select.Option value={700}>粗体 (700)</Select.Option>
-          </Select>
-        </Form.Item>
-      </div>
+      <Divider>标题设置</Divider>
+      <GlobalThemeReferenceFields
+        form={form}
+        useFieldName="titleUseGlobalConfig"
+        themeIdFieldName="titleGlobalThemeId"
+        options={globalThemeOptions}
+        hint="开启后会自动填充分组标题样式，引用期间不可编辑。"
+      />
+      <WidgetTitleSettings disabled={titleUseGlobalConfig} />
 
       <Divider>边框设置</Divider>
       <div className="form-row-2">
@@ -3501,9 +3633,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       </div>
 
       <Divider>背景设置</Divider>
+      <GlobalThemeReferenceFields
+        form={form}
+        useFieldName="backgroundUseGlobalConfig"
+        themeIdFieldName="backgroundGlobalThemeId"
+        options={globalThemeOptions}
+        hint="开启后会自动填充分组背景设置，引用期间不可编辑。"
+      />
       <BackgroundSettings
         form={form}
         initialValues={group?.config as any}
+        disabled={backgroundUseGlobalConfig}
       />
     </>
   );

@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Input, Button, message, Select, Space } from 'antd';
 import { SearchOutlined, ClearOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import WujieReact from 'wujie-react';
 import { WidgetConfig, Widget, EventRouteConfig, MicroAppEventType } from '@/types';
 import { parseJsonConfig } from '@/utils/widgetApi';
+import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
+import { getGlobalMessageCopy } from '@/utils/global-config';
 import './index.scss';
 
 const { bus } = WujieReact;
@@ -59,8 +61,20 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   const apiHeaders = searchConfig?.apiHeaders;
   const apiQuery = searchConfig?.apiQuery;
   const apiBody = searchConfig?.apiBody;
+  const globalConfigDetail = useGlobalConfigStore(state => state.detail);
+  const ensureGlobalConfigLoaded = useGlobalConfigStore(state => state.ensureLoaded);
+  const successMessage =
+    searchConfig?.successMessage || getGlobalMessageCopy(globalConfigDetail, 'form.success');
+  const failureMessage =
+    searchConfig?.failureMessage || getGlobalMessageCopy(globalConfigDetail, 'form.error');
 
   const [searchValue, setSearchValue] = useState('');
+
+  useEffect(() => {
+    if (!searchConfig?.successMessage || !searchConfig?.failureMessage) {
+      void ensureGlobalConfigLoaded();
+    }
+  }, [ensureGlobalConfigLoaded, searchConfig?.failureMessage, searchConfig?.successMessage]);
 
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -97,8 +111,8 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
       });
     });
 
-    message.success('搜索请求已发送');
-  }, [eventRoutes, widget?.id]);
+    message.success(successMessage);
+  }, [eventRoutes, successMessage, widget?.id]);
 
   const buildApiQuery = useCallback((searchParams: Record<string, any>) => {
     const configuredQuery = parseJsonConfig(apiQuery);
@@ -140,15 +154,15 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
           ...(apiMethod === 'GET' ? {} : { data: requestPayload }),
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         });
-        message.success('搜索请求已发送');
+        message.success(successMessage);
       } catch (error) {
-        message.error('搜索请求失败');
+        message.error(failureMessage);
         console.error('搜索 API 请求失败:', error);
       }
     } else {
       emitSearchEvent(searchParams);
     }
-  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiQuery, buildApiPayload, emitSearchEvent]);
+  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiQuery, buildApiPayload, emitSearchEvent, failureMessage, successMessage]);
 
   const handleSimpleSearch = (value: string) => {
     if (!value.trim()) {

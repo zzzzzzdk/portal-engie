@@ -791,7 +791,11 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
                       {isDraggable && <DragOutlined className="drag-icon" />}
                       <span
                         className="title"
-                        style={config.titleColor ? { color: config.titleColor } : undefined}
+                        style={{
+                          ...(config.titleColor ? { color: config.titleColor } : {}),
+                          ...(config.titleFontSize ? { fontSize: Number(config.titleFontSize) } : {}),
+                          ...(config.titleFontWeight ? { fontWeight: config.titleFontWeight } : {}),
+                        }}
                       >
                         {widget.title}
                       </span>

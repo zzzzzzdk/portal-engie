@@ -56,6 +56,7 @@ const QueryFilterConfig: React.FC<WidgetConfigProps> = ({ form, widget }) => {
           <div />
         )}
       </div>
+
       <div className="form-row-2">
         {isHorizontalLayout ? (
           <Form.Item name="labelVerticalAlign" label="标签垂直对齐" initialValue="top">
@@ -80,6 +81,7 @@ const QueryFilterConfig: React.FC<WidgetConfigProps> = ({ form, widget }) => {
           <div />
         )}
       </div>
+
       <div className="form-row-2">
         <Form.Item name="layoutCols" label="字段列数" initialValue={4}>
           <Radio.Group>
@@ -97,11 +99,22 @@ const QueryFilterConfig: React.FC<WidgetConfigProps> = ({ form, widget }) => {
           </Radio.Group>
         </Form.Item>
       </div>
+
       <div className="form-row-2">
         <Form.Item name="fieldSpacing" label="字段间距(px)" initialValue={16}>
           <InputNumber min={0} max={48} precision={0} style={{ width: '100%' }} />
         </Form.Item>
         <div />
+      </div>
+
+      <Divider>消息文案</Divider>
+      <div className="form-row-2">
+        <Form.Item name="successMessage" label="成功提示消息">
+          <Input placeholder="查询请求已发送" />
+        </Form.Item>
+        <Form.Item name="failureMessage" label="失败提示消息">
+          <Input placeholder="查询请求失败" />
+        </Form.Item>
       </div>
     </>
   )

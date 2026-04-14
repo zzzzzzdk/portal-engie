@@ -268,7 +268,7 @@ const DashboardInner: React.FC = () => {
       if (resolvedWidgetType === 'floating-assistantHub') {
         addFloatingModuleLocal(
           'assistantHub',
-          '鍔╂墜涓績',
+          '助手中心',
           { entries: [] },
           {
             width: 720, height: 500,

@@ -23,6 +23,7 @@ export interface WidgetApiConfig {
   body?: Record<string, any> | string
   dataField?: string
   listField?: string
+  timeout?: number
   pagination?: WidgetPaginationConfig
 }
 
@@ -206,6 +207,7 @@ export const buildWidgetApiRequest = (
     url: config.endpoint?.trim() || '',
     method,
     headers: config.headers,
+    timeout: config.timeout,
     params: {
       ...(parseJsonConfig(config.query) || {}),
       ...(method === 'GET' ? paginationPayload : {}),

@@ -19,6 +19,8 @@ import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { createChartPresetConfig } from '@/components/widgets/chart/presets';
+import { useGlobalConfigStore } from './useGlobalConfigStore';
+import { getGlobalMessageCopy } from '@/utils/global-config';
 
 // cellHeight=30 时的默认布局尺寸
 // 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
@@ -49,6 +51,9 @@ const DEFAULT_GROUP_CONFIG: WidgetGroupConfig = {
   borderRadius: 8,
   backgroundType: 'color',
   backgroundColor: 'rgba(0, 0, 0, 0.02)',
+};
+const getDefaultMessageCopy = (key: 'form.success' | 'form.error') => {
+  return getGlobalMessageCopy(useGlobalConfigStore.getState().detail, key);
 };
 const DEFAULT_HEADER_BAR_LAYOUT = { w: 4, h: 2, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_NAVIGATOR_LAYOUT = { w: 12, h: 3, x: 0, y: 0, minW: 2, minH: 1 };
@@ -346,6 +351,18 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         itemIconColor: '#ffffff',
         itemGap: 12,
       };
+    case 'search':
+      return {
+        ...baseConfig,
+        successMessage: getDefaultMessageCopy('form.success'),
+        failureMessage: getDefaultMessageCopy('form.error'),
+      };
+    case 'customForm':
+      return {
+        ...baseConfig,
+        successMessage: getDefaultMessageCopy('form.success'),
+        failureMessage: getDefaultMessageCopy('form.error'),
+      };
     case 'queryFilter':
       return {
         ...baseConfig,
@@ -380,6 +397,8 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         ],
         submitMethod: 'eventRoute',
         apiMethod: 'GET',
+        successMessage: getDefaultMessageCopy('form.success'),
+        failureMessage: getDefaultMessageCopy('form.error'),
       };
     default:
       return baseConfig;

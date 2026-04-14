@@ -32,6 +32,8 @@ import {
   resolveQueryFilterOptionList,
 } from '@/utils/queryFilter'
 import './index.scss'
+import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
+import { getGlobalMessageCopy } from '@/utils/global-config'
 
 const { RangePicker } = DatePicker
 const { bus } = WujieReact
@@ -107,6 +109,12 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
   const apiQuery = queryFilterConfig?.apiQuery
   const apiBody = queryFilterConfig?.apiBody
   const eventRoutes = queryFilterConfig?.eventRoutes || []
+  const globalConfigDetail = useGlobalConfigStore(state => state.detail)
+  const ensureGlobalConfigLoaded = useGlobalConfigStore(state => state.ensureLoaded)
+  const successMessage =
+    queryFilterConfig?.successMessage || getGlobalMessageCopy(globalConfigDetail, 'form.success')
+  const failureMessage =
+    queryFilterConfig?.failureMessage || getGlobalMessageCopy(globalConfigDetail, 'form.error')
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({})
   const formStyle = useMemo(() => {
     const alignSelfMap = {
@@ -137,6 +145,12 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
     form.resetFields()
     form.setFieldsValue(buildQueryFilterInitialValues(fields))
   }, [fields, form])
+
+  useEffect(() => {
+    if (!queryFilterConfig?.successMessage || !queryFilterConfig?.failureMessage) {
+      void ensureGlobalConfigLoaded()
+    }
+  }, [ensureGlobalConfigLoaded, queryFilterConfig?.failureMessage, queryFilterConfig?.successMessage])
 
   useEffect(() => {
     let cancelled = false
@@ -254,8 +268,8 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
       })
     })
 
-    message.success('查询请求已发送')
-  }, [eventRoutes, widget?.id])
+    message.success(successMessage)
+  }, [eventRoutes, successMessage, widget?.id])
 
   const buildApiQuery = useCallback((searchParams: Record<string, any>) => {
     const configuredQuery = parseJsonConfig(apiQuery)
@@ -305,7 +319,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
           ...(apiMethod === 'GET' ? {} : { data: requestPayload }),
           ...(apiHeaders ? { headers: apiHeaders } : {}),
         })
-        message.success('查询请求已发送')
+        message.success(successMessage)
         return
       }
 
@@ -314,10 +328,10 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
       if (error?.errorFields) {
         return
       }
-      message.error('查询请求失败')
+      message.error(failureMessage)
       console.error('查询筛选提交失败:', error)
     }
-  }, [apiEndpoint, apiHeaders, apiMethod, buildApiPayload, buildApiQuery, emitSearchEvent, fields, form, submitMethod])
+  }, [apiEndpoint, apiHeaders, apiMethod, buildApiPayload, buildApiQuery, emitSearchEvent, failureMessage, fields, form, submitMethod, successMessage])
 
   const handleReset = useCallback(() => {
     form.resetFields()
@@ -463,3 +477,4 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
 }
 
 export default QueryFilterWidget
+

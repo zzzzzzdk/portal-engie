@@ -337,7 +337,7 @@ export async function exportPageAsHtml(options: ExportOptions = {}): Promise<voi
     updateProgress('render', '正在等待页面渲染完成...');
     await waitForRenderComplete(iframeDoc);
 
-    updateProgress('microApp', '姝ｅ湪鍥哄寲寰簲鐢ㄥ唴瀹?..');
+    updateProgress('microApp', '正在固化微应用内容...');
     processMicroApps(iframeDoc);
 
     updateProgress('images', '正在处理图片...');

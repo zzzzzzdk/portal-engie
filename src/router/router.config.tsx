@@ -65,6 +65,22 @@ const routeConfig: RouteConfig[] = [
         },
       },
       {
+        path: 'data-source',
+        element: () => import('@/pages/DataSourcePage'),
+        meta: {
+          requiresAuth: false,
+          title: '数据源 - Portal Engine',
+        },
+      },
+      {
+        path: 'global-config',
+        element: () => import('@/pages/GlobalConfigPage'),
+        meta: {
+          requiresAuth: false,
+          title: '全局配置 - Portal Engine',
+        },
+      },
+      {
         path: 'publish-list',
         element: () => import('@/pages/PublishList'),
         meta: {

@@ -1,0 +1,17 @@
+.widget-title-settings {
+  &__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 768px) {
+    &__row {
+      grid-template-columns: 1fr;
+    }
+  }
+}

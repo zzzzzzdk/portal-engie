@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { FileInfo, PreviewInfo } from '@/types';
 import { bucketApi, fileOpsApi } from '@/api/fileManager';
+import { useGlobalConfigStore } from './useGlobalConfigStore';
 
 interface FileState {
   // 桶状态
@@ -53,6 +54,7 @@ export const useFileStore = create<FileState>((set, get) => ({
   fetchBucket: async () => {
     set({ bucketLoading: true });
     try {
+      await useGlobalConfigStore.getState().ensureLoaded();
       const buckets = await bucketApi.list();
       const bucketName = buckets?.[0]?.name;
       if (!bucketName) {

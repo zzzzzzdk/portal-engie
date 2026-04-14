@@ -42,7 +42,7 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
     floatingPanelPosition,
     setFloatingPanelPosition,
   } = useStore();
-  const { isDark, themeMode, styleMode, setCanvasThemeMode, setCanvasStyleMode } = useCanvasTheme();
+  const { isDark } = useCanvasTheme();
 
   const nodeRef = useRef(null);
 
@@ -107,37 +107,6 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
             <Button className="app-sub-header__publish-btn" icon={<CloudUploadOutlined />} onClick={onPublish} size='small' loading={isPublishing}>
               发布
             </Button>
-
-            <div className="floating-control-panel__style-toggle">
-              <Button.Group size="small">
-                <Button
-                  type={themeMode === 'light' ? 'primary' : 'default'}
-                  onClick={() => setCanvasThemeMode('light')}
-                >
-                  浅色
-                </Button>
-                <Button
-                  type={themeMode === 'dark' ? 'primary' : 'default'}
-                  onClick={() => setCanvasThemeMode('dark')}
-                >
-                  深色
-                </Button>
-              </Button.Group>
-              <Button.Group size="small" style={{ marginLeft: 4 }}>
-                <Button
-                  type={styleMode === 'normal' ? 'primary' : 'default'}
-                  onClick={() => setCanvasStyleMode('normal')}
-                >
-                  标准
-                </Button>
-                <Button
-                  type={styleMode === 'minimal' ? 'primary' : 'default'}
-                  onClick={() => setCanvasStyleMode('minimal')}
-                >
-                  极简
-                </Button>
-              </Button.Group>
-            </div>
 
             <Tooltip title="退出全屏">
               <Button type="text" icon={<FullscreenExitOutlined />} onClick={onExitFullScreen} className="full" size='small' />

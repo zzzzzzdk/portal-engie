@@ -1,5 +1,5 @@
 const path = require('path');
-const { LOCAL_CONFIG_PATH, PROVIDER_DEFINITIONS, readProviderConfig } = require('./providers/config');
+const { LOCAL_CONFIG_PATH, listProviderConfigs, readProviderConfig } = require('./providers/config');
 const { callProvider, callProviderStreamPreview } = require('./providers');
 const {
   buildPortalBuilderContext,
@@ -78,18 +78,16 @@ const isRetriableUpstreamError = (error) => {
 };
 
 const listModels = () =>
-  Object.keys(PROVIDER_DEFINITIONS).map((providerId) => {
-    const config = readProviderConfig(providerId);
-    return {
-      id: config.id,
-      name: config.name,
-      provider: config.provider,
-      description: config.description,
-      recommended: config.recommended,
-      configured: config.configured,
-      configHint: config.configHint,
-    };
-  });
+  listProviderConfigs().map((config) => ({
+    id: config.id,
+    name: config.name,
+    provider: config.provider,
+    description: config.description,
+    isDefault: config.isDefault,
+    recommended: config.isDefault || config.recommended,
+    configured: config.configured,
+    configHint: config.configHint,
+  }));
 
 const dedupeReasoning = (steps) =>
   (Array.isArray(steps) ? steps : [])
@@ -360,7 +358,9 @@ const prepareChatRequest = ({
   }
 
   if (!config.configured) {
-    const error = new Error(`${config.name} is not configured. Fill ${path.relative(process.cwd(), LOCAL_CONFIG_PATH)} or set environment variables.`);
+    const error = new Error(
+      `${config.name} is not configured. Update it in Global Config > 模型配置, ${path.relative(process.cwd(), LOCAL_CONFIG_PATH)}, or environment variables.`,
+    );
     error.statusCode = 400;
     throw error;
   }

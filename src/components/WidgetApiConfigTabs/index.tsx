@@ -1,8 +1,13 @@
 import React from 'react'
-import { Button, Empty, Form, Input, Tabs, Typography } from 'antd'
+import { Button, Empty, Form, Input, Select, Tabs, Typography } from 'antd'
 import type { FormInstance } from 'antd'
 import type { NamePath } from 'antd/es/form/interface'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+
+export interface WidgetApiConfigTabOption {
+  label: string
+  value: string
+}
 
 interface WidgetApiConfigTabsProps {
   form: FormInstance
@@ -14,9 +19,13 @@ interface WidgetApiConfigTabsProps {
   debugHint?: React.ReactNode
   showQueryTab?: boolean
   showBodyTab?: boolean
+  headerKeyOptions?: WidgetApiConfigTabOption[]
 }
 
-const renderKeyValueList = (name: NamePath) => (
+const renderKeyValueList = (
+  name: NamePath,
+  keyOptions?: WidgetApiConfigTabOption[],
+) => (
   <Form.List name={name}>
     {(fields, { add, remove }) => (
       <div className="widget-api-config-tabs__list">
@@ -26,12 +35,22 @@ const renderKeyValueList = (name: NamePath) => (
               {...restField}
               name={[fieldName, 'key']}
               noStyle
-              rules={[{ required: true, message: '请输入键名' }]}
+              rules={[{ required: true, message: '请输入参数名' }]}
             >
-              <Input placeholder="键" />
+              {keyOptions?.length ? (
+                <Select
+                  placeholder="请选择请求头"
+                  options={keyOptions}
+                  showSearch
+                  optionFilterProp="label"
+                  className="widget-api-config-tabs__select"
+                />
+              ) : (
+                <Input placeholder="请输入参数名" />
+              )}
             </Form.Item>
             <Form.Item {...restField} name={[fieldName, 'value']} noStyle>
-              <Input placeholder="键" />
+              <Input placeholder="请输入参数值" />
             </Form.Item>
             <Button
               type="text"
@@ -60,6 +79,7 @@ const WidgetApiConfigTabs: React.FC<WidgetApiConfigTabsProps> = ({
   debugHint,
   showQueryTab = true,
   showBodyTab = true,
+  headerKeyOptions,
 }) => {
   const apiMethod = (Form.useWatch(methodName, form) || 'GET').toUpperCase()
   const canUseBody = ['POST', 'PUT', 'PATCH'].includes(apiMethod)
@@ -68,13 +88,13 @@ const WidgetApiConfigTabs: React.FC<WidgetApiConfigTabsProps> = ({
     {
       key: 'headers',
       label: '请求头',
-      children: renderKeyValueList(headersName),
+      children: renderKeyValueList(headersName, headerKeyOptions),
     },
     ...(showQueryTab
       ? [
           {
             key: 'query',
-            label: 'Query参数',
+            label: 'Query 参数',
             children: renderKeyValueList(queryName),
           },
         ]
@@ -83,7 +103,7 @@ const WidgetApiConfigTabs: React.FC<WidgetApiConfigTabsProps> = ({
       ? [
           {
             key: 'body',
-            label: 'Body参数',
+            label: 'Body 参数',
             disabled: !canUseBody,
             children: canUseBody ? (
               renderKeyValueList(bodyName)

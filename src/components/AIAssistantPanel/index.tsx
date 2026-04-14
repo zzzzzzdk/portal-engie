@@ -166,8 +166,10 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
           (item) => item.configured !== false,
         );
         const recommendedModel =
+          configuredModels.find((item) => item.isDefault)?.id ||
           configuredModels.find((item) => item.recommended)?.id ||
           configuredModels[0]?.id ||
+          nextModels.find((item) => item.isDefault)?.id ||
           nextModels.find((item) => item.recommended)?.id ||
           nextModels[0]?.id;
 
@@ -472,7 +474,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
               onChange={setSelectedModel}
               options={models.map((item) => ({
                 value: item.id,
-                label: `${item.name}${item.recommended ? " / 推荐" : ""}`,
+                label: `${item.name}${item.isDefault ? " / 默认" : item.recommended ? " / 推荐" : ""}`,
                 disabled: item.configured === false,
               }))}
             />

@@ -107,6 +107,16 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
 
     // 在编辑模式下，即使隐藏标题也要显示拖拽条（但小尺寸组件除外）
     const shouldShowHeader = !isSmallSize && (showTitle || isEditMode);
+    const titleStyle: React.CSSProperties = {};
+    if (widget.config.titleColor) {
+      titleStyle.color = widget.config.titleColor;
+    }
+    if (widget.config.titleFontSize !== undefined && widget.config.titleFontSize !== null) {
+      titleStyle.fontSize = Number(widget.config.titleFontSize);
+    }
+    if (widget.config.titleFontWeight !== undefined && widget.config.titleFontWeight !== null) {
+      titleStyle.fontWeight = widget.config.titleFontWeight;
+    }
 
     const backgroundStyle = useCallback(() => {
       // 计算背景样式
@@ -203,7 +213,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
             {showTitle && (
               <h3
                 className="widget-title"
-                style={widget.config.titleColor ? { color: widget.config.titleColor } : undefined}
+                style={Object.keys(titleStyle).length ? titleStyle : undefined}
               >
                 {widget.title}
               </h3>

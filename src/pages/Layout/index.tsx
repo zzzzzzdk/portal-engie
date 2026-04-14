@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
 import type { MenuProps, InputRef } from 'antd';
-import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined, RobotOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined, RobotOutlined, DatabaseOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -807,11 +807,23 @@ const Layout: React.FC = () => {
       icon: <ApiOutlined />,
       label: '微应用配置',
     },
+    {
+      key: '/data-source',
+      icon: <DatabaseOutlined />,
+      label: '数据源',
+    },
+    {
+      key: '/global-config',
+      icon: <GlobalOutlined />,
+      label: '全局配置',
+    },
   ];
 
   // 获取当前路由对应的菜单 key
   const getSelectedKey = () => {
     const path = location.pathname;
+    if (path.includes('global-config')) return '/global-config';
+    if (path.includes('data-source')) return '/data-source';
     if (path.includes('micro-app-config')) return '/micro-app-config';
     if (path.includes('publish-list')) return '/publish-list';
     return '/publish-list';

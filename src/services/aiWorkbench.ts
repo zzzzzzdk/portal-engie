@@ -9,6 +9,7 @@ export interface AIWorkbenchModel {
   provider: string;
   description?: string;
   recommended?: boolean;
+  isDefault?: boolean;
   configured?: boolean;
   configHint?: string;
 }
