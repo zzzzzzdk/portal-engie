@@ -9,13 +9,13 @@ import {
   SunOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import axios from 'axios'
 import IconRenderer from '@/components/IconRenderer'
 import { useCanvasTheme } from '@/hooks/useCanvasTheme'
 import { useStore } from '@/store/useStore'
 import { useSystemStore } from '@/store/useSystemStore'
 import type { NavItem, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { requestWidgetApi } from '@/utils/widgetApi'
 import './index.scss'
 
 const { Text } = Typography
@@ -33,13 +33,17 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
   showThemeSwitcher?: boolean
   showUserProfile?: boolean
   navItems?: HeaderNavItem[]
-  navDataSource?: 'static' | 'api'
+  navDataSource?: 'static' | 'api' | 'customApi' | 'dataSource'
+  navDataSourceId?: string
   navApiEndpoint?: string
-  navTextColor?: string
-  showNavMenu?: boolean
   navApiMethod?: 'GET' | 'POST'
   navApiHeaders?: Record<string, string>
-  navApiBody?: string
+  navApiQuery?: Record<string, any> | string
+  navApiBody?: Record<string, any> | string
+  navApiListField?: string
+  navTimeout?: number
+  navTextColor?: string
+  showNavMenu?: boolean
   navFieldMapping?: {
     name?: string
     url?: string
@@ -49,6 +53,23 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
 
 interface HeaderBarWidgetProps {
   config?: WidgetConfig
+}
+
+const mapHeaderNavItem = (
+  item: any,
+  mapping?: HeaderBarWidgetConfig['navFieldMapping'],
+): HeaderNavItem => {
+  if (!mapping || (!mapping.name && !mapping.url && !mapping.icon)) {
+    return item as HeaderNavItem
+  }
+
+  return {
+    ...item,
+    name: item?.[mapping.name || 'name'] ?? item?.name,
+    url: item?.[mapping.url || 'url'] ?? item?.url ?? item?.path,
+    path: item?.[mapping.url || 'url'] ?? item?.path ?? item?.url,
+    icon: item?.[mapping.icon || 'icon'] ?? item?.icon,
+  }
 }
 
 const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
@@ -217,7 +238,10 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
 
     let isMounted = true
     const hasStaticNav = Array.isArray(headerConfig?.navItems) && headerConfig.navItems.length > 0
-    const dataSource = headerConfig?.navDataSource || (hasStaticNav ? 'static' : 'api')
+    const dataSource =
+      headerConfig?.navDataSource === 'api'
+        ? 'customApi'
+        : headerConfig?.navDataSource || (hasStaticNav ? 'static' : 'customApi')
 
     const loadNavItems = async () => {
       if (dataSource === 'static') {
@@ -234,44 +258,30 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       setNavLoading(true)
 
       try {
-        const method = headerConfig?.navApiMethod || 'GET'
-        const headers = headerConfig?.navApiHeaders
-        let data: any
-
-        if (method === 'POST' && headerConfig?.navApiBody) {
-          try {
-            data = JSON.parse(headerConfig.navApiBody)
-          } catch {
-            console.warn('HeaderBarWidget: navApiBody JSON 解析失败，已忽略请求体')
-          }
-        }
-
-        const response = await axios({
-          method,
-          url: endpoint,
-          ...(headers ? { headers } : {}),
-          ...(data !== undefined ? { data } : {}),
+        const result = await requestWidgetApi({
+          endpoint,
+          method: headerConfig?.navApiMethod || 'GET',
+          headers: headerConfig?.navApiHeaders,
+          query: headerConfig?.navApiQuery,
+          body: headerConfig?.navApiBody,
+          listField: headerConfig?.navApiListField,
+          timeout: headerConfig?.navTimeout,
         })
 
-        const rawPayload = Array.isArray(response.data?.data)
-          ? response.data.data
-          : Array.isArray(response.data)
-            ? response.data
-            : []
+        const sourceList = result.list.length
+          ? result.list
+          : Array.isArray(result.raw?.data)
+            ? result.raw.data
+            : Array.isArray(result.raw)
+              ? result.raw
+              : []
 
-        const mapping = headerConfig?.navFieldMapping
-        const payload =
-          mapping && (mapping.name || mapping.url || mapping.icon)
-            ? rawPayload.map((item: any) => ({
-                ...item,
-                name: item[mapping.name || 'name'] ?? item.name,
-                url: item[mapping.url || 'url'] ?? item.url,
-                icon: item[mapping.icon || 'icon'] ?? item.icon,
-              }))
-            : rawPayload
+        const payload = sourceList.map((item: any) =>
+          mapHeaderNavItem(item, headerConfig?.navFieldMapping),
+        )
 
         if (isMounted) {
-          setNavItems(payload as HeaderNavItem[])
+          setNavItems(payload)
         }
       } catch (error) {
         console.error('HeaderBarWidget: 导航数据加载失败', error)
@@ -285,7 +295,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
       }
     }
 
-    loadNavItems()
+    void loadNavItems()
 
     return () => {
       isMounted = false
@@ -294,10 +304,13 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     headerConfig?.navApiBody,
     headerConfig?.navApiEndpoint,
     headerConfig?.navApiHeaders,
+    headerConfig?.navApiListField,
     headerConfig?.navApiMethod,
+    headerConfig?.navApiQuery,
     headerConfig?.navDataSource,
     headerConfig?.navFieldMapping,
     headerConfig?.navItems,
+    headerConfig?.navTimeout,
     showNavMenu,
   ])
 

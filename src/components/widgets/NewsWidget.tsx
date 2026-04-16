@@ -96,6 +96,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
           body: newsConfig?.apiBody,
           dataField: newsConfig?.apiDataField,
           listField: newsConfig?.apiListField || defaultListField,
+          timeout: newsConfig?.timeout,
         })
 
         const sourceList = result.list.length

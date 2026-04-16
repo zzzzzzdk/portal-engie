@@ -559,7 +559,7 @@ const DataSourcePage: React.FC = () => {
                   buildConfig={(formValues) => ({
                     endpoint: formValues.url,
                     method: formValues.method || 'GET',
-                    timeout: Number(formValues.timeout),
+                    timeout: Number(formValues.timeout) * 1000,
                     headers: keyValueListToObject(formValues.requestConfig?.headersList),
                     query: keyValueListToObject(formValues.requestConfig?.queryList),
                     body:

@@ -119,6 +119,7 @@ const buildDataTableViewStateKey = (params: {
   apiBody?: string
   apiDataField?: string
   apiListField?: string
+  timeout?: number
   paginationMode?: string
   paginationConfig?: Record<string, any>
   staticDataText?: string
@@ -134,6 +135,7 @@ const buildDataTableViewStateKey = (params: {
     body: params.apiBody || '',
     dataField: params.apiDataField || '',
     listField: params.apiListField || '',
+    timeout: params.timeout || 0,
     paginationMode: params.paginationMode || 'none',
     paginationConfig: params.paginationConfig || {},
     staticDataText: params.staticDataText || '',
@@ -239,6 +241,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
         apiBody,
         apiDataField: tableConfig?.apiDataField,
         apiListField: tableConfig?.apiListField || defaultListField,
+        timeout: tableConfig?.timeout,
         paginationMode,
         paginationConfig: {
           pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
@@ -275,6 +278,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       tableConfig?.apiDataField,
       tableConfig?.apiListField,
       tableConfig?.apiMethod,
+      tableConfig?.timeout,
       widget?.id,
     ],
   )
@@ -392,6 +396,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
               body: apiBody,
               dataField: tableConfig?.apiDataField,
               listField: tableConfig?.apiListField || defaultListField,
+              timeout: tableConfig?.timeout,
               pagination: requestPaginationConfig,
             },
             paginationMode === 'pagination'
@@ -487,6 +492,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       tableConfig?.apiDataField,
       tableConfig?.apiListField,
       tableConfig?.apiMethod,
+      tableConfig?.timeout,
       viewStateKey,
     ],
   )

@@ -60,14 +60,17 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
 
   const carouselConfig = config as CarouselWidgetConfig
-  const dataSourceType = carouselConfig.dataSourceType || 'static'
+  const dataSourceType = carouselConfig.dataSourceType === 'api'
+    ? 'customApi'
+    : (carouselConfig.dataSourceType || 'static')
+  const isRemoteSource = dataSourceType === 'customApi' || dataSourceType === 'dataSource'
   const configuredSlides = carouselConfig.slides || []
   const [remoteSlides, setRemoteSlides] = useState<CarouselSlide[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchSlides = useCallback(async () => {
-    if (dataSourceType !== 'api' || !carouselConfig.apiConfig?.endpoint) {
+    if (!isRemoteSource || !carouselConfig.apiConfig?.endpoint) {
       setRemoteSlides([])
       return
     }
@@ -82,6 +85,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         headers: carouselConfig.apiConfig.headers,
         query: carouselConfig.apiConfig.queryParams ?? carouselConfig.apiConfig.params,
         body: carouselConfig.apiConfig.body ?? carouselConfig.apiConfig.bodyParams,
+        timeout: carouselConfig.apiConfig.timeout,
         listField: carouselConfig.apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
       })
 
@@ -101,16 +105,16 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     } finally {
       setLoading(false)
     }
-  }, [carouselConfig.apiConfig, dataSourceType])
+  }, [carouselConfig.apiConfig, isRemoteSource])
 
   useEffect(() => {
-    if (dataSourceType === 'api' && carouselConfig.apiConfig?.endpoint) {
+    if (isRemoteSource && carouselConfig.apiConfig?.endpoint) {
       fetchSlides()
     }
-  }, [carouselConfig.apiConfig?.endpoint, dataSourceType, fetchSlides])
+  }, [carouselConfig.apiConfig?.endpoint, fetchSlides, isRemoteSource])
 
   useEffect(() => {
-    if (dataSourceType !== 'api') {
+    if (!isRemoteSource) {
       return
     }
     if (!carouselConfig.refreshInterval || carouselConfig.refreshInterval <= 0) {
@@ -122,21 +126,21 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
     }, safeIntervalMs(carouselConfig.refreshInterval))
 
     return () => clearInterval(timer)
-  }, [carouselConfig.refreshInterval, dataSourceType, fetchSlides])
+  }, [carouselConfig.refreshInterval, fetchSlides, isRemoteSource])
 
   useEffect(() => {
     if (!widget?.refreshCount) return
-    if (dataSourceType === 'api') {
+    if (isRemoteSource) {
       fetchSlides()
     }
-  }, [widget?.refreshCount, dataSourceType, fetchSlides])
+  }, [widget?.refreshCount, fetchSlides, isRemoteSource])
 
   const slides = useMemo(() => {
-    if (dataSourceType === 'api') {
+    if (isRemoteSource) {
       return remoteSlides
     }
     return configuredSlides
-  }, [configuredSlides, dataSourceType, remoteSlides])
+  }, [configuredSlides, isRemoteSource, remoteSlides])
 
   const responsiveBreakpoints = useMemo(() => {
     if (!Array.isArray(carouselConfig.responsive)) return undefined

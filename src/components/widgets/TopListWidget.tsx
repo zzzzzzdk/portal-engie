@@ -95,6 +95,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
           body: listConfig?.apiBody,
           dataField: listConfig?.apiDataField,
           listField: listConfig?.apiListField || defaultListField,
+          timeout: listConfig?.timeout,
         })
 
         const sourceList = result.list.length

@@ -204,7 +204,7 @@ const PRESET_MAP: Record<ChartPreset, ChartPresetDefinition> = {
       showTooltip: true,
       showLabel: true,
       barWidth: '40%',
-      borderRadius: 99,
+      borderRadius: 0,
       colors: DEFAULT_CHART_COLORS,
     },
     staticDataExample: [

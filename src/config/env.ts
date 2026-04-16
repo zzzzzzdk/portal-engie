@@ -28,15 +28,6 @@ export const getApiBaseUrl = (): string => {
   return window.__APP_CONFIG__?.API_BASE_URL || '/api'
 }
 
-/**
- * 获取 MinIO 文件管理服务地址
- * 优先级：
- * 1. window.__APP_CONFIG__.MINIO_API_URL (生产环境在 index.html 中配置)
- * 2. 默认值 '/minio-api' (开发环境会被 Vite Proxy 代理)
- */
-export const getMinioApiUrl = (): string => {
-  return window.__APP_CONFIG__?.MINIO_API_URL || '/minio-api'
-}
 
 /**
  * 获取应用名称

@@ -124,6 +124,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
         query: mergeRequestConfig(chartConfig.apiQuery),
         body: mergeRequestConfig(chartConfig.apiBody),
         dataField: chartConfig.apiDataField || defaultDataField,
+        timeout: chartConfig?.timeout,
       })
 
       setChartData(result.data ?? result.raw ?? presetDefinition.staticDataExample)

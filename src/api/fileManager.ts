@@ -8,14 +8,12 @@ import type {
   FileInfo,
   OnlyOfficeConfigResponse,
 } from '@/types';
-import { getMinioApiUrl } from '@/config/env';
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
 
 // 独立的 axios 实例，用于文件管理服务
-// 开发环境通过 vite proxy 将 /minio-api 代理到 MinIO 后端 http://localhost:8000/api
-// 生产环境通过 window.__APP_CONFIG__.MINIO_API_URL 配置，如 http://192.168.16.26:8010/api
+// 通过全局配置的 documentStorageUrl 设置，请求拦截器优先读取
 const fileApi = axios.create({
-  baseURL: getMinioApiUrl(),
+  baseURL: '/minio-api',
   timeout: 30000,
 });
 
@@ -25,7 +23,7 @@ fileApi.interceptors.request.use((config) => {
 
   return {
     ...config,
-    baseURL: documentStorageUrl || getMinioApiUrl(),
+    baseURL: documentStorageUrl || '/minio-api',
   };
 });
 

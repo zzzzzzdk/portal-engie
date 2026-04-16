@@ -7,7 +7,7 @@ import { getWidgetDefaultFieldValue } from '@/utils/widgetApiDefaults'
 import './index.scss'
 
 interface IndicatorCardWidgetConfig extends WidgetConfig {
-  dataSource?: 'static' | 'customApi'
+  dataSource?: 'static' | 'customApi' | 'dataSource'
   staticValue?: string | number
   staticDescription?: string
   valueField?: string
@@ -84,6 +84,7 @@ const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widge
         query: widgetConfig.apiQuery,
         body: widgetConfig.apiBody,
         dataField: widgetConfig.apiDataField || defaultDataField,
+        timeout: widgetConfig?.timeout,
       })
 
       const payload = resolveApiPayload(result.data ?? result.raw)

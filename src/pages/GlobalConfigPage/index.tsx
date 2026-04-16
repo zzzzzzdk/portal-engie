@@ -46,6 +46,11 @@ type GlobalModuleKey =
   | 'message-copy'
   | 'model-config'
 
+type MessageCopyFormValues = {
+  formSuccess?: string
+  formError?: string
+}
+
 const MODULE_OPTIONS: Array<{
   key: GlobalModuleKey
   title: string
@@ -140,6 +145,87 @@ const getModuleTitle = (moduleKey: GlobalModuleKey | null) => {
   return MODULE_OPTIONS.find(item => item.key === moduleKey)?.title || '全局配置'
 }
 
+const buildMessageCopyFormValues = (
+  messageCopies?: GlobalConfigDetail['messageCopies']
+): MessageCopyFormValues => ({
+  formSuccess: messageCopies?.['form.success'],
+  formError: messageCopies?.['form.error'],
+})
+
+interface MessageCopyPanelProps {
+  messageCopies?: GlobalConfigDetail['messageCopies']
+  saving: boolean
+  onSave: (values: MessageCopyFormValues) => Promise<void>
+}
+
+const MessageCopyPanel: React.FC<MessageCopyPanelProps> = ({
+  messageCopies,
+  saving,
+  onSave,
+}) => {
+  const [form] = Form.useForm<MessageCopyFormValues>()
+
+  useEffect(() => {
+    form.setFieldsValue(buildMessageCopyFormValues(messageCopies))
+  }, [form, messageCopies])
+
+  const handleSave = async () => {
+    const values = await form.validateFields()
+    await onSave(values)
+  }
+
+  return (
+    <div className="global-config-page__module-panel global-config-page__simple-panel">
+      <div className="global-config-page__panel-intro">
+        <div className="global-config-page__panel-title">消息文案配置</div>
+        <div className="global-config-page__panel-description">
+          <div>影响范围：自定义表单保存。</div>
+          <div>影响策略：平台默认兜底，业务可覆盖文案。</div>
+        </div>
+      </div>
+
+      <div className="global-config-page__panel-body">
+        <Card className="global-config-page__content-card" bordered={false}>
+          <div className="global-config-page__editor-header">
+            <div>
+              <div className="global-config-page__card-title">默认文案</div>
+              <div className="global-config-page__card-tip">当前仅维护两个固定文案键</div>
+            </div>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={saving}
+              onClick={() => void handleSave()}
+            >
+              保存文案
+            </Button>
+          </div>
+
+          <div className="global-config-page__content-scroll">
+            <Form form={form} layout="vertical">
+              <Form.Item
+                name="formSuccess"
+                label="form.success"
+                rules={[{ required: true, whitespace: true, message: '请输入成功文案' }]}
+              >
+                <Input placeholder="请输入成功提示文案" maxLength={60} />
+              </Form.Item>
+
+              <Form.Item
+                name="formError"
+                label="form.error"
+                rules={[{ required: true, whitespace: true, message: '请输入失败文案' }]}
+              >
+                <Input placeholder="请输入失败提示文案" maxLength={60} />
+              </Form.Item>
+            </Form>
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
 const GlobalConfigPage: React.FC = () => {
   const setGlobalConfigDetail = useGlobalConfigStore(state => state.setDetail)
   const [themeBasicForm] = Form.useForm()
@@ -147,11 +233,11 @@ const GlobalConfigPage: React.FC = () => {
   const [widgetBackgroundForm] = Form.useForm()
   const [widgetTitleForm] = Form.useForm()
   const [componentDataSourceForm] = Form.useForm()
-  const [messageCopyForm] = Form.useForm()
+  const [messageCopyForm] = Form.useForm<MessageCopyFormValues>()
   const [createThemeForm] = Form.useForm()
 
   const [loading, setLoading] = useState(false)
-  const [activeModule, setActiveModule] = useState<GlobalModuleKey | null>(null)
+  const [activeModule, setActiveModule] = useState<GlobalModuleKey | null>("theme")
   const [configDetail, setConfigDetail] = useState<GlobalConfigDetail | null>(null)
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
   const [themeSaving, setThemeSaving] = useState(false)
@@ -181,7 +267,6 @@ const GlobalConfigPage: React.FC = () => {
       setConfigDetail(detail)
       setGlobalConfigDetail(detail)
       componentDataSourceForm.setFieldsValue(detail.componentDataSource)
-      messageCopyForm.setFieldsValue(detail.messageCopies)
       setSelectedThemeId(prev => {
         if (prev && detail.themes.some(item => item.id === prev)) {
           return prev
@@ -194,7 +279,7 @@ const GlobalConfigPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [componentDataSourceForm, messageCopyForm, setGlobalConfigDetail])
+  }, [componentDataSourceForm, setGlobalConfigDetail])
 
   useEffect(() => {
     fetchConfigDetail()
@@ -227,6 +312,26 @@ const GlobalConfigPage: React.FC = () => {
     widgetBackgroundForm,
     widgetTitleForm,
   ])
+
+  useEffect(() => {
+    if (!configDetail) {
+      return
+    }
+
+    let frameId = 0
+
+    if (activeModule === 'component-data-source') {
+      frameId = window.requestAnimationFrame(() => {
+        componentDataSourceForm.setFieldsValue(configDetail.componentDataSource)
+      })
+    }
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+    }
+  }, [activeModule, componentDataSourceForm, configDetail])
 
   const handleCreateTheme = async () => {
     try {
@@ -358,13 +463,13 @@ const GlobalConfigPage: React.FC = () => {
     }
   }
 
-  const handleSaveMessageCopy = async () => {
+  const handleSaveMessageCopy = async (values?: MessageCopyFormValues) => {
     try {
-      const values = await messageCopyForm.validateFields()
+      const nextValues = values || (await messageCopyForm.validateFields())
       setMessageSaving(true)
       const res = await saveMessageCopyConfig({
-        'form.success': String(values['form.success'] || '').trim(),
-        'form.error': String(values['form.error'] || '').trim(),
+        'form.success': String(nextValues.formSuccess || '').trim(),
+        'form.error': String(nextValues.formError || '').trim(),
       })
 
       if (res.code !== 20000) {
@@ -588,7 +693,7 @@ const GlobalConfigPage: React.FC = () => {
     </div>
   )
 
-  const renderMessageCopyPanel = () => (
+  const renderMessageCopyPanelLegacy = () => (
     <div className="global-config-page__module-panel global-config-page__simple-panel">
       <div className="global-config-page__panel-intro">
         <div className="global-config-page__panel-title">消息文案配置</div>
@@ -616,9 +721,13 @@ const GlobalConfigPage: React.FC = () => {
           </div>
 
           <div className="global-config-page__content-scroll">
-            <Form form={messageCopyForm} layout="vertical">
+            <Form
+              form={messageCopyForm}
+              layout="vertical"
+              initialValues={buildMessageCopyFormValues(configDetail?.messageCopies)}
+            >
               <Form.Item
-                name="form.success"
+                name="formSuccess"
                 label="form.success"
                 rules={[{ required: true, whitespace: true, message: '请输入成功文案' }]}
               >
@@ -626,7 +735,7 @@ const GlobalConfigPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="form.error"
+                name="formError"
                 label="form.error"
                 rules={[{ required: true, whitespace: true, message: '请输入失败文案' }]}
               >
@@ -637,6 +746,14 @@ const GlobalConfigPage: React.FC = () => {
         </Card>
       </div>
     </div>
+  )
+
+  const renderMessageCopyPanel = () => (
+    <MessageCopyPanel
+      messageCopies={configDetail?.messageCopies}
+      saving={messageSaving}
+      onSave={handleSaveMessageCopy}
+    />
   )
 
   const renderRightContent = () => {

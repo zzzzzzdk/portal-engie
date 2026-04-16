@@ -99,7 +99,7 @@ export interface ChartWidgetConfig extends WidgetConfig {
   funnelSort?: 'ascending' | 'descending'
   colors?: string[]
   staticData?: unknown
-  dataSource?: 'customApi' | 'static'
+  dataSource?: 'customApi' | 'static' | 'dataSource'
   geoJsonSource?: 'inline' | 'url'
   geoJsonText?: string
   geoJsonUrl?: string

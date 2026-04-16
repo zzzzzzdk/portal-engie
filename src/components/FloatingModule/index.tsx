@@ -14,7 +14,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import { Button, Modal } from 'antd';
-import Draggable, { DraggableEventHandler } from 'react-draggable';
+import { DraggableCore, DraggableData, DraggableEvent, DraggableEventHandler } from 'react-draggable';
 import { Resizable, ResizeCallbackData } from 'react-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
@@ -101,6 +101,66 @@ const clampPosition = (
 };
 
 // 将绝对位置转换为比例值 (0~1)
+const remapPositionForViewport = (
+  position: Position,
+  blockSize: Size,
+  previousViewport: Viewport,
+  nextViewport: Viewport,
+): Position => {
+  const adjustAxis = (
+    prevCoord: number,
+    prevViewSize: number,
+    nextViewSize: number,
+    currentBlockSize: number
+  ) => {
+    if (!prevViewSize || !nextViewSize) {
+      return prevCoord;
+    }
+    if (prevViewSize === nextViewSize) {
+      return prevCoord;
+    }
+    const prevMax = Math.max(
+      VIEWPORT_PADDING,
+      prevViewSize - currentBlockSize - VIEWPORT_PADDING
+    );
+    const prevRange = prevMax - VIEWPORT_PADDING;
+    if (prevRange <= 0) {
+      const nextMax = Math.max(
+        VIEWPORT_PADDING,
+        nextViewSize - currentBlockSize - VIEWPORT_PADDING
+      );
+      return clamp(prevCoord, VIEWPORT_PADDING, nextMax);
+    }
+    const ratio = clamp(
+      (prevCoord - VIEWPORT_PADDING) / prevRange,
+      0,
+      1
+    );
+    const nextMax = Math.max(
+      VIEWPORT_PADDING,
+      nextViewSize - currentBlockSize - VIEWPORT_PADDING
+    );
+    const nextRange = Math.max(0, nextMax - VIEWPORT_PADDING);
+    const raw = VIEWPORT_PADDING + ratio * nextRange;
+    return clamp(raw, VIEWPORT_PADDING, nextMax);
+  };
+
+  return clampPosition({
+    x: adjustAxis(
+      position.x,
+      previousViewport.width,
+      nextViewport.width,
+      blockSize.width
+    ),
+    y: adjustAxis(
+      position.y,
+      previousViewport.height,
+      nextViewport.height,
+      blockSize.height
+    ),
+  }, blockSize, nextViewport);
+};
+
 const positionToRatio = (
   pos: Position,
   size: Size,
@@ -253,12 +313,25 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
   const viewportRef = useRef<Viewport>(initialViewport);
   const lastCollapsedPosRef = useRef<Position | null>(null);
   const lastExpandedPosRef = useRef<Position | null>(null);
+  const positionRef = useRef<Position>(position);
   const justDraggedRef = useRef(false);
   const dragStartPosRef = useRef<Position | null>(null);
 
   useEffect(() => {
     sizeRef.current = size;
   }, [size]);
+
+  const applyNodeTransform = useCallback((nextPosition: Position) => {
+    if (!nodeRef.current) {
+      return;
+    }
+    nodeRef.current.style.transform = `translate3d(${nextPosition.x}px, ${nextPosition.y}px, 0)`;
+  }, []);
+
+  useEffect(() => {
+    positionRef.current = position;
+    applyNodeTransform(position);
+  }, [position, applyNodeTransform]);
 
   useEffect(() => {
     if (containerEl && containerEl.isConnected) {
@@ -331,62 +404,27 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
         return prev;
       }
 
-      const adjustAxis = (
-        prevCoord: number,
-        prevViewSize: number,
-        nextViewSize: number,
-        blockSize: number
-      ) => {
-        if (!prevViewSize || !nextViewSize) {
-          return prevCoord;
-        }
-        if (prevViewSize === nextViewSize) {
-          return prevCoord;
-        }
-        const prevMax = Math.max(
-          VIEWPORT_PADDING,
-          prevViewSize - blockSize - VIEWPORT_PADDING
+      if (lastExpandedPosRef.current) {
+        lastExpandedPosRef.current = remapPositionForViewport(
+          lastExpandedPosRef.current,
+          { width: config.width || 380, height: config.height || 400 },
+          previousViewport,
+          viewport,
         );
-        const prevRange = prevMax - VIEWPORT_PADDING;
-        if (prevRange <= 0) {
-          const nextMax = Math.max(
-            VIEWPORT_PADDING,
-            nextViewSize - blockSize - VIEWPORT_PADDING
-          );
-          return clamp(prevCoord, VIEWPORT_PADDING, nextMax);
-        }
-        const ratio = clamp(
-          (prevCoord - VIEWPORT_PADDING) / prevRange,
-          0,
-          1
-        );
-        const nextMax = Math.max(
-          VIEWPORT_PADDING,
-          nextViewSize - blockSize - VIEWPORT_PADDING
-        );
-        const nextRange = Math.max(0, nextMax - VIEWPORT_PADDING);
-        const raw = VIEWPORT_PADDING + ratio * nextRange;
-        return clamp(raw, VIEWPORT_PADDING, nextMax);
-      };
+      }
 
-      const recalculated = {
-        x: adjustAxis(
-          prev.x,
-          previousViewport.width,
-          viewport.width,
-          sizeSnapshot.width
-        ),
-        y: adjustAxis(
-          prev.y,
-          previousViewport.height,
-          viewport.height,
-          sizeSnapshot.height
-        ),
-      };
+      if (lastCollapsedPosRef.current) {
+        lastCollapsedPosRef.current = remapPositionForViewport(
+          lastCollapsedPosRef.current,
+          { width: collapsedWidth, height: collapsedHeight },
+          previousViewport,
+          viewport,
+        );
+      }
 
-      return clampPosition(recalculated, sizeSnapshot, viewport);
+      return remapPositionForViewport(prev, sizeSnapshot, previousViewport, viewport);
     });
-  }, [viewport.width, viewport.height]);
+  }, [viewport.width, viewport.height, config.width, config.height, collapsedWidth, collapsedHeight]);
 
   // 当外部 config 改变时同步状态 (主要是为了响应其他用户的修改或重置)
   // 注意：这可能会与本地交互冲突，所以这里只在必要属性变化时更新，且加防抖或判断
@@ -531,23 +569,26 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
     [widget.id, updateFloatingModuleSize]
   );
 
-  const handleDrag: DraggableEventHandler = useCallback((_e, data) => {
-    setPosition({ x: data.x, y: data.y });
-  }, []);
-
-  const handleDragStart: DraggableEventHandler = useCallback((_e, data) => {
+  const handleDragStart: DraggableEventHandler = useCallback(() => {
     setIsDragging(true);
-    dragStartPosRef.current = { x: data.x, y: data.y };
-    setPosition({ x: data.x, y: data.y });
+    dragStartPosRef.current = positionRef.current;
   }, []);
 
-  const handleDragStop: DraggableEventHandler = useCallback((_e, data) => {
-    const finalPos = clampPosition({ x: data.x, y: data.y }, size, viewport);
+  const handleDrag = useCallback((_e: DraggableEvent, data: DraggableData) => {
+    const finalPos = clampPosition({
+      x: positionRef.current.x + data.deltaX,
+      y: positionRef.current.y + data.deltaY,
+    }, sizeRef.current, viewportRef.current);
+    positionRef.current = finalPos;
+    applyNodeTransform(finalPos);
+  }, [applyNodeTransform]);
+
+  const handleDragStop: DraggableEventHandler = useCallback(() => {
+    const finalPos = positionRef.current;
     setPosition(finalPos);
     setIsDragging(false);
-    // 只有鼠标实际移动了才标记为拖拽，防止原地点击被误判
     const start = dragStartPosRef.current;
-    const didMove = start ? Math.abs(data.x - start.x) > 2 || Math.abs(data.y - start.y) > 2 : false;
+    const didMove = start ? Math.abs(finalPos.x - start.x) > 2 || Math.abs(finalPos.y - start.y) > 2 : false;
     dragStartPosRef.current = null;
     if (didMove) {
       justDraggedRef.current = true;
@@ -562,17 +603,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       }
     }
     debouncedSavePosition(finalPos);
-  }, [size, viewport, debouncedSavePosition, isExpanded]);
-
-  // 计算拖拽边界
-  const dragBounds = useMemo(() => {
-    return {
-      left: VIEWPORT_PADDING,
-      top: VIEWPORT_PADDING,
-      right: viewport.width - size.width - VIEWPORT_PADDING,
-      bottom: viewport.height - size.height - VIEWPORT_PADDING,
-    };
-  }, [viewport.width, viewport.height, size.width, size.height]);
+  }, [debouncedSavePosition, isExpanded]);
 
   const handleResize = useCallback((_e: any, { size: nextSize }: ResizeCallbackData) => {
     setSize(nextSize);
@@ -729,24 +760,23 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
 
   return (
     <>
-      <Draggable
+      <DraggableCore
         nodeRef={nodeRef}
         disabled={!isDraggable}
-        position={position}
         onStart={handleDragStart}
         onDrag={handleDrag}
         onStop={handleDragStop}
         handle=".drag-handle"
-        bounds={dragBounds}
       >
         <div
           ref={nodeRef}
+          className={`floating-module-container${isDragging ? ' react-draggable-dragging' : ''}`}
           style={{
             position: 'fixed',
             left: containerEl ? containerOffset.left : 0,
             top: containerEl ? containerOffset.top : 0,
             zIndex: config.zIndex || 9999,
-            // Ensure the wrapper takes the size, crucial for Draggable to calculate bounds correctly
+            transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
             width: size.width,
             height: size.height
           }}
@@ -888,7 +918,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
             </div>
           </Resizable>
         </div>
-      </Draggable>
+      </DraggableCore>
 
     </>
   );

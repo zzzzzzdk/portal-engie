@@ -1,0 +1,21 @@
+.data-source-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .data-source-method-tag {
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid;
+    border-radius: 2px;
+    padding: 0 4px;
+    line-height: 18px;
+    flex-shrink: 0;
+  }
+
+  .data-source-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

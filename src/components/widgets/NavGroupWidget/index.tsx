@@ -137,6 +137,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
         body: widgetConfig?.apiBody,
         dataField: widgetConfig?.apiDataField,
         listField: widgetConfig?.apiListField || DEFAULT_NAV_GROUP_LIST_FIELD,
+        timeout: widgetConfig?.timeout,
       })
       const sourceList = result.list.length
         ? result.list

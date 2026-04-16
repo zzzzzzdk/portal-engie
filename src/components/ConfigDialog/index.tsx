@@ -21,7 +21,22 @@ import WidgetTitleSettings from '@/components/WidgetTitleSettings';
 import RichTextEditor from '@/components/RichTextEditor';
 import { getIconValueType } from '@/components/IconPicker/types';
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
-import { LinkConfig, SearchConfig, QueryFilterConfig, QueryFilterDataConfig, CustomFormConfig, CustomFormStyleConfig, DataTableConfig, CarouselConfig, CarouselDataConfig, ChartConfig, ChartDataConfig, IndicatorCardConfig } from './configs';
+import {
+  LinkConfig,
+  SearchConfig,
+  QueryFilterConfig,
+  QueryFilterDataConfig,
+  CustomFormConfig,
+  CustomFormStyleConfig,
+  DataTableConfig,
+  CarouselConfig,
+  CarouselDataConfig,
+  ChartConfig,
+  ChartDataConfig,
+  IndicatorCardConfig,
+  ConfigDialogDataTab,
+} from './configs';
+import { normalizeDataSourceMode } from './configs/dataSourceHelpers';
 import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import {
   DEFAULT_NAV_GROUP_LIST_FIELD,
@@ -631,7 +646,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           indicatorValueColor: normalizeColorForForm(widget.config.indicatorValueColor),
           indicatorDescriptionColor: normalizeColorForForm(widget.config.indicatorDescriptionColor),
           displayMode: widget.config.displayMode || 'text',
-          navDataSource: widget.config.navDataSource || (widget.config.navItems?.length ? 'static' : 'api'),
+          navDataSource:
+            normalizeDataSourceMode(widget.config.navDataSource) ||
+            (widget.config.navDataSourceId ? 'dataSource' : (widget.config.navItems?.length ? 'static' : 'customApi')),
           navItems: widget.config.navItems || [],
           navTextColor: normalizeColorForForm(widget.config.navTextColor),
         };
@@ -653,6 +670,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           apiBodyList: objectToKeyValueList(widget.config.apiBody),
           apiDataField: widget.config.apiDataField,
           apiListField: widget.config.apiListField,
+          dataSourceId: (widget.config as any).dataSourceId,
+          timeout: widget.config.timeout,
           paginationMode: widget.config.paginationMode || 'none',
           paginationConfig: {
             page: widget.config.paginationConfig?.page || 1,
@@ -691,7 +710,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
         if (widget.type === 'indicatorCard') {
           form.setFieldsValue({
-            dataSource: widget.config.dataSource || (widget.config.apiEndpoint ? 'customApi' : 'static'),
+            dataSource:
+              normalizeDataSourceMode(widget.config.dataSource) ||
+              ((widget.config as any).dataSourceId ? 'dataSource' : (widget.config.apiEndpoint ? 'customApi' : 'static')),
             apiMethod: widget.config.apiMethod || 'GET',
             valueField: widget.config.valueField || 'value',
             descriptionField: widget.config.descriptionField || 'description',
@@ -702,7 +723,9 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         if (widget.type === 'navGroup') {
           const hasStaticItems = widget.config.staticItems && widget.config.staticItems.length > 0;
           form.setFieldsValue({
-            dataSource: hasStaticItems ? 'static' : 'api',
+            dataSource:
+              normalizeDataSourceMode((widget.config as any).dataSource) ||
+              ((widget.config as any).dataSourceId ? 'dataSource' : (hasStaticItems ? 'static' : 'customApi')),
             staticItems: widget.config.staticItems || [],
             apiMethod: widget.config.apiMethod || 'GET',
             apiQuery: stringifyJsonValue(widget.config.apiQuery),
@@ -713,9 +736,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
         // headerBar 导航接口配置初始化
         if (widget.type === 'headerBar') {
+          const hasStaticNav = widget.config.navItems && widget.config.navItems.length > 0;
           form.setFieldsValue({
+            navDataSource:
+              normalizeDataSourceMode(widget.config.navDataSource) ||
+              (widget.config.navDataSourceId ? 'dataSource' : (hasStaticNav ? 'static' : 'customApi')),
             navApiMethod: widget.config.navApiMethod || 'GET',
-            navApiBody: widget.config.navApiBody || '',
+            navDataSourceId: widget.config.navDataSourceId,
+            navTimeout: widget.config.navTimeout,
+            navApiQuery: stringifyJsonValue(widget.config.navApiQuery),
+            navApiQueryList: objectToKeyValueList(widget.config.navApiQuery),
+            navApiBody: stringifyJsonValue(widget.config.navApiBody),
+            navApiBodyList: objectToKeyValueList(widget.config.navApiBody),
+            navApiListField: widget.config.navApiListField || '',
             navApiHeadersList: widget.config.navApiHeaders
               ? Object.entries(widget.config.navApiHeaders).map(([key, value]) => ({ key, value }))
               : [],
@@ -733,8 +766,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         // carousel 接口请求头初始化
         if (widget.type === 'carousel' && widget.config.apiConfig) {
           form.setFieldsValue({
+            dataSourceType:
+              normalizeDataSourceMode(widget.config.dataSourceType) ||
+              (widget.config.apiConfig.dataSourceId ? 'dataSource' : ((widget.config.dataSourceType || 'static') === 'static' ? 'static' : 'customApi')),
             apiConfig: {
               ...widget.config.apiConfig,
+              dataSourceId: widget.config.apiConfig.dataSourceId,
+              timeout: widget.config.apiConfig.timeout,
               ...(widget.config.apiConfig.headers
                 ? {
                   headersList: Object.entries(widget.config.apiConfig.headers).map(([key, value]) => ({ key, value })),
@@ -843,7 +881,13 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             hasLegacyStaticData;
 
           form.setFieldsValue({
-            dataSource: hasStaticData ? 'static' : ((widget.config as any).dataSource || 'customApi'),
+            dataSource:
+              hasStaticData
+                ? 'static'
+                : (
+                  normalizeDataSourceMode((widget.config as any).dataSource) ||
+                  ((widget.config as any).dataSourceId ? 'dataSource' : 'customApi')
+                ),
             staticData: getCommonStaticDataInitialValue(widget),
           });
         }
@@ -1557,7 +1601,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           }
 
           if (COMMON_STATIC_DATA_WIDGET_TYPES.includes(widget.type)) {
-            const dataSource = normalizedRestConfig.dataSource || 'customApi';
+            const dataSource = normalizeDataSourceMode(normalizedRestConfig.dataSource) || 'customApi';
             const staticDataText =
               typeof normalizedRestConfig.staticData === 'string'
                 ? normalizedRestConfig.staticData.trim()
@@ -1565,6 +1609,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
             if (dataSource === 'static') {
               normalizedRestConfig.staticData = staticDataText ? JSON.parse(staticDataText) : undefined;
+              normalizedRestConfig.dataSourceId = undefined;
+              normalizedRestConfig.timeout = undefined;
               normalizedRestConfig.apiEndpoint = undefined;
               normalizedRestConfig.apiMethod = undefined;
               normalizedRestConfig.apiHeaders = undefined;
@@ -1605,6 +1651,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 normalizedRestConfig.listItems = undefined;
               }
 
+              if (dataSource === 'customApi') {
+                normalizedRestConfig.dataSourceId = undefined;
+                normalizedRestConfig.timeout = undefined;
+              }
+
               if (normalizedRestConfig.apiMethod !== 'POST') {
                 normalizedRestConfig.apiBody = undefined;
               }
@@ -1633,7 +1684,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               ? normalizedRestConfig.descriptionField.trim() || undefined
               : normalizedRestConfig.descriptionField;
 
-            if ((normalizedRestConfig.dataSource || 'static') === 'static') {
+            const dataSource = normalizeDataSourceMode(normalizedRestConfig.dataSource) || 'static';
+
+            if (dataSource === 'static') {
+              normalizedRestConfig.dataSourceId = undefined;
+              normalizedRestConfig.timeout = undefined;
               normalizedRestConfig.apiEndpoint = undefined;
               normalizedRestConfig.apiMethod = undefined;
               normalizedRestConfig.apiHeaders = undefined;
@@ -1643,6 +1698,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             } else {
               normalizedRestConfig.staticValue = undefined;
               normalizedRestConfig.staticDescription = undefined;
+
+              if (dataSource === 'customApi') {
+                normalizedRestConfig.dataSourceId = undefined;
+                normalizedRestConfig.timeout = undefined;
+              }
 
               if (normalizedRestConfig.apiMethod !== 'POST') {
                 normalizedRestConfig.apiBody = undefined;
@@ -1730,7 +1790,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
           // navGroup 特殊处理：数据来源和静态导航项
           if (widget.type === 'navGroup') {
-            const dataSource = normalizedRestConfig.dataSource;
+            const dataSource = normalizeDataSourceMode(normalizedRestConfig.dataSource) || 'customApi';
             if (dataSource === 'static') {
               // 手动配置模式：规范化 staticItems 中的颜色值，清除 apiEndpoint
               if (normalizedRestConfig.staticItems && Array.isArray(normalizedRestConfig.staticItems)) {
@@ -1742,6 +1802,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 }));
               }
               // 清除 apiEndpoint、apiHeaders、apiMethod、apiBody
+              normalizedRestConfig.dataSourceId = undefined;
+              normalizedRestConfig.timeout = undefined;
               normalizedRestConfig.apiEndpoint = undefined;
               normalizedRestConfig.apiHeaders = undefined;
               normalizedRestConfig.apiMethod = undefined;
@@ -1752,30 +1814,45 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             } else {
               // 接口模式：清除 staticItems
               normalizedRestConfig.staticItems = undefined;
+              if (dataSource === 'customApi') {
+                normalizedRestConfig.dataSourceId = undefined;
+                normalizedRestConfig.timeout = undefined;
+              }
               // 非 POST 时清除请求体
               if (normalizedRestConfig.apiMethod !== 'POST') {
                 normalizedRestConfig.apiBody = undefined;
               }
             }
           } else if (widget.type === 'headerBar') {
-            const navSource = normalizedRestConfig.navDataSource || (normalizedRestConfig.navItems?.length ? 'static' : 'api');
+            const navSource =
+              normalizeDataSourceMode(normalizedRestConfig.navDataSource) ||
+              (normalizedRestConfig.navDataSourceId
+                ? 'dataSource'
+                : (normalizedRestConfig.navItems?.length ? 'static' : 'customApi'));
+            normalizedRestConfig.navDataSource = navSource;
             if (navSource === 'static') {
+              normalizedRestConfig.navDataSourceId = undefined;
+              normalizedRestConfig.navTimeout = undefined;
               normalizedRestConfig.navApiEndpoint = undefined;
               normalizedRestConfig.navApiMethod = undefined;
               normalizedRestConfig.navApiHeaders = undefined;
+              normalizedRestConfig.navApiQuery = undefined;
               normalizedRestConfig.navApiBody = undefined;
+              normalizedRestConfig.navApiListField = undefined;
               normalizedRestConfig.navFieldMapping = undefined;
               delete normalizedRestConfig.navApiHeadersList;
+              delete normalizedRestConfig.navApiQueryList;
+              delete normalizedRestConfig.navApiBodyList;
               if (!Array.isArray(normalizedRestConfig.navItems)) {
                 normalizedRestConfig.navItems = [];
               }
             } else {
               normalizedRestConfig.navItems = undefined;
-              // 非 POST 时清除请求体
-              if (normalizedRestConfig.navApiMethod !== 'POST') {
-                normalizedRestConfig.navApiBody = undefined;
+              if (navSource === 'customApi') {
+                normalizedRestConfig.navDataSourceId = undefined;
+                normalizedRestConfig.navTimeout = undefined;
               }
-              // navApiHeadersList 数组转换为 navApiHeaders 对象
+
               if (normalizedRestConfig.navApiHeadersList) {
                 const headers: Record<string, string> = {};
                 (normalizedRestConfig.navApiHeadersList as { key: string; value: string }[]).forEach(item => {
@@ -1785,6 +1862,32 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 });
                 normalizedRestConfig.navApiHeaders = Object.keys(headers).length > 0 ? headers : undefined;
                 delete normalizedRestConfig.navApiHeadersList;
+              }
+
+              if ('navApiQueryList' in normalizedRestConfig) {
+                normalizedRestConfig.navApiQuery =
+                  keyValueListToObject(normalizedRestConfig.navApiQueryList);
+                delete normalizedRestConfig.navApiQueryList;
+              } else if (typeof normalizedRestConfig.navApiQuery === 'string') {
+                normalizedRestConfig.navApiQuery =
+                  normalizedRestConfig.navApiQuery.trim() || undefined;
+              }
+
+              if (typeof normalizedRestConfig.navApiListField === 'string') {
+                normalizedRestConfig.navApiListField =
+                  normalizedRestConfig.navApiListField.trim() || undefined;
+              }
+
+              if (normalizedRestConfig.navApiMethod !== 'POST') {
+                normalizedRestConfig.navApiBody = undefined;
+                delete normalizedRestConfig.navApiBodyList;
+              } else if ('navApiBodyList' in normalizedRestConfig) {
+                normalizedRestConfig.navApiBody =
+                  keyValueListToObject(normalizedRestConfig.navApiBodyList);
+                delete normalizedRestConfig.navApiBodyList;
+              } else if (typeof normalizedRestConfig.navApiBody === 'string') {
+                const bodyText = normalizedRestConfig.navApiBody.trim();
+                normalizedRestConfig.navApiBody = bodyText ? JSON.parse(bodyText) : undefined;
               }
             }
           }
@@ -1820,51 +1923,67 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
           // carousel apiConfig.headersList 数组转换为 headers 对象
           if (widget.type === 'carousel' && normalizedRestConfig.apiConfig) {
-            const headersList = normalizedRestConfig.apiConfig.headersList;
-            if (headersList && Array.isArray(headersList)) {
-              const headers: Record<string, string> = {};
-              headersList.forEach((item: { key: string; value: string }) => {
-                if (item.key?.trim()) {
-                  headers[item.key.trim()] = item.value || '';
-                }
-              });
-              normalizedRestConfig.apiConfig.headers = Object.keys(headers).length > 0 ? headers : undefined;
-              delete normalizedRestConfig.apiConfig.headersList;
+            const carouselSourceType =
+              normalizeDataSourceMode(normalizedRestConfig.dataSourceType) ||
+              (normalizedRestConfig.apiConfig.dataSourceId
+                ? 'dataSource'
+                : ((normalizedRestConfig.dataSourceType || 'static') === 'static' ? 'static' : 'customApi'));
+            normalizedRestConfig.dataSourceType = carouselSourceType;
+
+            if (carouselSourceType === 'static') {
+              normalizedRestConfig.apiConfig = undefined;
+            } else if (carouselSourceType === 'customApi') {
+              normalizedRestConfig.apiConfig.dataSourceId = undefined;
+              normalizedRestConfig.apiConfig.timeout = undefined;
             }
 
-            if ('queryParamsList' in normalizedRestConfig.apiConfig) {
-              normalizedRestConfig.apiConfig.queryParams =
-                keyValueListToObject(normalizedRestConfig.apiConfig.queryParamsList);
-              delete normalizedRestConfig.apiConfig.queryParamsList;
-            } else if (typeof normalizedRestConfig.apiConfig.queryParams === 'string') {
-              normalizedRestConfig.apiConfig.queryParams =
-                normalizedRestConfig.apiConfig.queryParams.trim() || undefined;
-            }
+            if (normalizedRestConfig.apiConfig) {
+              const headersList = normalizedRestConfig.apiConfig.headersList;
+              if (headersList && Array.isArray(headersList)) {
+                const headers: Record<string, string> = {};
+                headersList.forEach((item: { key: string; value: string }) => {
+                  if (item.key?.trim()) {
+                    headers[item.key.trim()] = item.value || '';
+                  }
+                });
+                normalizedRestConfig.apiConfig.headers = Object.keys(headers).length > 0 ? headers : undefined;
+                delete normalizedRestConfig.apiConfig.headersList;
+              }
 
-            if (typeof normalizedRestConfig.apiConfig.listField === 'string') {
-              normalizedRestConfig.apiConfig.listField =
-                normalizedRestConfig.apiConfig.listField.trim() || undefined;
-            }
+              if ('queryParamsList' in normalizedRestConfig.apiConfig) {
+                normalizedRestConfig.apiConfig.queryParams =
+                  keyValueListToObject(normalizedRestConfig.apiConfig.queryParamsList);
+                delete normalizedRestConfig.apiConfig.queryParamsList;
+              } else if (typeof normalizedRestConfig.apiConfig.queryParams === 'string') {
+                normalizedRestConfig.apiConfig.queryParams =
+                  normalizedRestConfig.apiConfig.queryParams.trim() || undefined;
+              }
 
-            delete normalizedRestConfig.apiConfig.dataField;
-            delete normalizedRestConfig.apiConfig.params;
+              if (typeof normalizedRestConfig.apiConfig.listField === 'string') {
+                normalizedRestConfig.apiConfig.listField =
+                  normalizedRestConfig.apiConfig.listField.trim() || undefined;
+              }
 
-            if (normalizedRestConfig.apiConfig.method !== 'POST') {
-              normalizedRestConfig.apiConfig.body = undefined;
-              delete normalizedRestConfig.apiConfig.bodyParams;
-              delete normalizedRestConfig.apiConfig.bodyParamsList;
-            } else if ('bodyParamsList' in normalizedRestConfig.apiConfig) {
-              normalizedRestConfig.apiConfig.body =
-                keyValueListToObject(normalizedRestConfig.apiConfig.bodyParamsList);
-              delete normalizedRestConfig.apiConfig.bodyParamsList;
-              delete normalizedRestConfig.apiConfig.bodyParams;
-            } else if (typeof normalizedRestConfig.apiConfig.bodyParams === 'string') {
-              const bodyText = normalizedRestConfig.apiConfig.bodyParams.trim();
-              normalizedRestConfig.apiConfig.body = bodyText ? JSON.parse(bodyText) : undefined;
-              delete normalizedRestConfig.apiConfig.bodyParams;
-            } else if (normalizedRestConfig.apiConfig.bodyParams) {
-              normalizedRestConfig.apiConfig.body = normalizedRestConfig.apiConfig.bodyParams;
-              delete normalizedRestConfig.apiConfig.bodyParams;
+              delete normalizedRestConfig.apiConfig.dataField;
+              delete normalizedRestConfig.apiConfig.params;
+
+              if (normalizedRestConfig.apiConfig.method !== 'POST') {
+                normalizedRestConfig.apiConfig.body = undefined;
+                delete normalizedRestConfig.apiConfig.bodyParams;
+                delete normalizedRestConfig.apiConfig.bodyParamsList;
+              } else if ('bodyParamsList' in normalizedRestConfig.apiConfig) {
+                normalizedRestConfig.apiConfig.body =
+                  keyValueListToObject(normalizedRestConfig.apiConfig.bodyParamsList);
+                delete normalizedRestConfig.apiConfig.bodyParamsList;
+                delete normalizedRestConfig.apiConfig.bodyParams;
+              } else if (typeof normalizedRestConfig.apiConfig.bodyParams === 'string') {
+                const bodyText = normalizedRestConfig.apiConfig.bodyParams.trim();
+                normalizedRestConfig.apiConfig.body = bodyText ? JSON.parse(bodyText) : undefined;
+                delete normalizedRestConfig.apiConfig.bodyParams;
+              } else if (normalizedRestConfig.apiConfig.bodyParams) {
+                normalizedRestConfig.apiConfig.body = normalizedRestConfig.apiConfig.bodyParams;
+                delete normalizedRestConfig.apiConfig.bodyParams;
+              }
             }
           }
 
@@ -2102,7 +2221,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             <Form.Item
               name="showNavMenu"
               label="显示导航区域"
-              tooltip="开启后可在“导航配置”页签设置数据来源与内容"
+              tooltip="开启后可在“数据与交互”页签设置数据来源与内容"
               valuePropName="checked"
             >
               <Switch />
@@ -2807,7 +2926,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const renderDataTab = () => {
     const hasDataConfig = [
       'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
-      'microApp', 'search', 'queryFilter', 'navGroup', 'carousel',
+      'microApp', 'search', 'queryFilter', 'navGroup', 'carousel', 'headerBar',
       'news', 'topList'
     ].includes(widget.type);
 
@@ -2818,6 +2937,19 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     const apiPlaceholder = getWidgetApiEndpointPlaceholder(widget.type);
     const apiFieldMeta = getWidgetApiFieldMeta(widget.type);
     const paginationDefaults = getWidgetPaginationDefaults(widget.type);
+
+    return (
+      <ConfigDialogDataTab
+        form={form}
+        widget={widget}
+        apiPlaceholder={apiPlaceholder}
+        apiFieldMeta={apiFieldMeta}
+        paginationDefaults={paginationDefaults}
+        staticDataEditorMeta={genericStaticDataEditorMeta}
+        staticDataPreview={genericStaticDataPreview}
+      />
+    );
+
     const statsFieldPreview = (Array.isArray(statsItemsValue) && statsItemsValue.length > 0
       ? statsItemsValue
       : DEFAULT_STATS_ITEMS)
@@ -2898,8 +3030,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                   </div>
                 </Form.Item>
                 {apiFieldMeta ? (
-                  <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
-                    <Input placeholder={apiFieldMeta.placeholder} />
+                  <Form.Item name={apiFieldMeta!.name} label={apiFieldMeta!.label} tooltip={apiFieldMeta!.tooltip}>
+                    <Input placeholder={apiFieldMeta!.placeholder} />
                   </Form.Item>
                 ) : null}
                 <Form.Item label="参数配置" className="widget-api-form-item">
@@ -3209,8 +3341,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                   </div>
                 </Form.Item>
                 {apiFieldMeta ? (
-                  <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
-                    <Input placeholder={apiFieldMeta.placeholder} />
+                  <Form.Item name={apiFieldMeta!.name} label={apiFieldMeta!.label} tooltip={apiFieldMeta!.tooltip}>
+                    <Input placeholder={apiFieldMeta!.placeholder} />
                   </Form.Item>
                 ) : null}
                 <Form.Item label="参数配置" className="widget-api-form-item">
@@ -3658,11 +3790,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   // 判断是否有数据与交互配置
   const hasDataConfig = [
     'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
-    'microApp', 'search', 'queryFilter', 'navGroup', 'carousel',
+    'microApp', 'search', 'queryFilter', 'navGroup', 'carousel', 'headerBar',
     'news', 'topList'
   ].includes(widget.type);
 
-  const hasHeaderNavTab = !isGroup && widget.type === 'headerBar';
+  const hasHeaderNavTab = false;
   const headerNavTabs = hasHeaderNavTab
     ? [{ key: 'nav', label: '导航配置', children: renderHeaderNavTab(), forceRender: true }]
     : [];

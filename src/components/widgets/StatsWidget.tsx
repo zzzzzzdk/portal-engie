@@ -62,6 +62,7 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
           query: statsConfig?.apiQuery,
           body: statsConfig?.apiBody,
           dataField: statsConfig?.apiDataField || defaultDataField,
+          timeout: statsConfig?.timeout,
         })
         setStatsData(result.data || result.raw || {})
       } else if (isStaticDataSource && staticData && typeof staticData === 'object' && !Array.isArray(staticData)) {

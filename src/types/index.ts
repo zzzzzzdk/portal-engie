@@ -85,8 +85,20 @@ export interface WidgetConfig {
   backgroundPosition?: string; // 背景位置
   boxShadow?: string;          // 阴影效果
   navItems?: NavItem[];        // 头部导航静态数据
-  navDataSource?: 'static' | 'api';  // 导航数据来源
+  navDataSource?: 'static' | 'api' | 'customApi' | 'dataSource';  // 导航数据来源
   navApiEndpoint?: string;     // 导航接口地址
+  navApiMethod?: 'GET' | 'POST';
+  navApiHeaders?: Record<string, string>;
+  navApiQuery?: Record<string, any> | string;
+  navApiBody?: Record<string, any> | string;
+  navApiListField?: string;
+  navDataSourceId?: string;
+  navTimeout?: number;
+  navFieldMapping?: {
+    name?: string;
+    url?: string;
+    icon?: string;
+  };
   navTextColor?: string;       // 导航文字颜色
   showNavMenu?: boolean;       // 是否显示导航区域
   [key: string]: any; // Allow custom properties for different widgets
@@ -278,7 +290,7 @@ export interface AppState {
   removeGlobalMicroApp: (id: string) => void;
 }
 
-export type CarouselDataSourceType = 'static' | 'api';
+export type CarouselDataSourceType = 'static' | 'api' | 'customApi' | 'dataSource';
 
 export interface CarouselSlide {
   id?: string;
@@ -315,6 +327,7 @@ export interface CarouselApiMapping {
 export interface CarouselApiConfig {
   endpoint: string;
   method?: 'GET' | 'POST';
+  dataSourceId?: string;
   params?: Record<string, any>;
   queryParams?: Record<string, any> | string;
   headers?: Record<string, string>;
@@ -322,6 +335,7 @@ export interface CarouselApiConfig {
   body?: Record<string, any> | string;
   bodyParams?: Record<string, any> | string;
   listField?: string;
+  timeout?: number;
   mapping?: CarouselApiMapping;
 }
 

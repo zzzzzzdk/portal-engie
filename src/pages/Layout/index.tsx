@@ -977,7 +977,7 @@ const Layout: React.FC = () => {
                     disabled={!isEditMode}
                     onClick={() => openWorkspaceSidebar('ai')}
                   >
-                    AI辅助建模
+                    AI辅助设计
                   </Button>
 
                   {isEditMode && (
