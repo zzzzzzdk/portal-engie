@@ -1,21 +1,28 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portal Engine</title>
-    <script src="./static/fonts/iconfont.js?t=<%= buildTime %>"></script>
-    <script src="./static/fonts/qianyu-iconfont.js?t=<%= buildTime %>"></script>
-    <script>
-      window.__APP_CONFIG__ = {
-        // API_BASE_URL: 'http://192.168.5.60:29081/canglan-trial/api/',
-        MINIO_API_URL: 'http://192.168.16.26:8010/api'
-      }
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Engine</title>
+  <script src="./static/fonts/iconfont.js?t=__BUILD_TIME__"></script>
+  <script src="./static/fonts/qianyu-iconfont.js?t=__BUILD_TIME__"></script>
+  <script>
+    window.__APP_CONFIG__ = {
+      API_BASE_URL: 'http://192.168.5.60:29081/canglan-trial/api/',
+      MINIO_API_URL: 'http://192.168.16.26:8010/api',
+      // API_BASE_URL: '__API_BASE_URL__',
+      // MINIO_API_URL: '__MINIO_API_URL__',
+      APP_NAME: '__APP_NAME__',
+      VERSION: '__VERSION__'
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+
 </html>

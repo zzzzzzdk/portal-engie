@@ -29,6 +29,14 @@ export const useGlobalConfigStore = create<GlobalConfigState>((set, get) => ({
     if (!loadingPromise) {
       loadingPromise = requestGlobalConfigDetail()
         .then(detail => {
+          // 如果 documentStorageUrl 为空，使用 index.html 中的 MINIO_API_URL 作为默认值
+          if (!detail?.componentDataSource?.documentStorageUrl) {
+            const defaultMinioUrl =
+              (window as any).__APP_CONFIG__?.MINIO_API_URL || ''
+            if (defaultMinioUrl) {
+              detail.componentDataSource.documentStorageUrl = defaultMinioUrl
+            }
+          }
           set({ detail })
           return detail
         })
