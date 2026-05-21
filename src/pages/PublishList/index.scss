@@ -161,6 +161,25 @@
         &.is-success {
           background: rgba(19, 194, 107, 0.9);
         }
+
+        &.is-pending {
+          background: rgba(250, 140, 22, 0.92);
+          color: #fff7e8;
+        }
+      }
+
+      .publish-card__homepage-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 2;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b4e00;
+        background: rgba(255, 215, 0, 0.9);
+        box-shadow: 0 6px 16px rgba(107, 78, 0, 0.18);
       }
     }
 
@@ -232,26 +251,6 @@
       }
     }
 
-    &__share-trigger {
-      display: inline-flex;
-    }
-
-    &__url {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 10px;
-      background: #f4f6fb;
-      font-size: 12px;
-      color: var(--ant-color-text-tertiary, #8c8c8c);
-      width: 100%;
-
-      .ant-btn {
-        padding: 0;
-      }
-    }
-
     &__create-icon {
       width: 64px;
       height: 64px;
@@ -273,4 +272,18 @@
 
 .copy {
   color: var(--ant-color-primary);
+}
+
+.publish-list-share-popover {
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__url {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ant-color-text, #262626);
+    word-break: break-all;
+  }
 }

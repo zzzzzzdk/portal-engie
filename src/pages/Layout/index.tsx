@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Layout as AntdLayout, Button, Switch, Space, Tooltip, App as AntdApp, Modal, Form, Input, Menu, Spin } from 'antd';
+import { Layout as AntdLayout, Button, Switch, Space, App as AntdApp, Modal, Form, Input, Menu, Spin, Dropdown, Avatar } from 'antd';
 import type { MenuProps, InputRef } from 'antd';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined, RobotOutlined, DatabaseOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
+import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
-import { Outlet, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Outlet, useBeforeUnload, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import ThemeCustomizer from '@/components/ThemeCustomizer'
 import MicroAppMarket from '@/components/MicroAppMarket'
@@ -14,16 +16,23 @@ import DashboardConfigDialog from '@/components/DashboardConfigDialog';
 import ConfigDialog from '@/components/ConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WorkspaceSidebar, { WorkspaceSidebarTabKey } from '@/components/WorkspaceSidebar';
-import Icon from '@/components/Icon';
+import WorkspaceAiFloatingCard from '@/components/WorkspaceAiFloatingCard';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme'
 import { getStylePreset } from '@/theme/tokens/styles'
 import { useConfigStore } from '@/store/useConfigStore'
+import { useWorkspaceAiAssistantStore } from '@/store/useWorkspaceAiAssistantStore'
 import { lightPreset } from '@/theme/tokens/presets/light'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { publishDashboard, serializeDashboardSnapshot } from '@/services'
+import { abortAgentChatConversation } from '@/services/agent-chat'
 import captureDashboardCover from '@/utils/captureDashboardCover'
 import { createChartWidgetByPreset, isChartPresetWidgetKey } from '@/utils/chartWidgetPreset'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
+import {
+  getInvalidGlobalThemeFallbackBackground,
+  getInvalidGlobalThemeFallbackWidgetTitle,
+  hasGlobalThemeScheme,
+} from '@/utils/global-config'
 import Logo from '@/assets/images/logo.svg'
 import './index.scss';
 
@@ -33,6 +42,8 @@ const getTitleLength = (value: string) => Array.from(value).length;
 const waitForUiPaint = () => new Promise<void>((resolve) => {
   window.requestAnimationFrame(() => resolve());
 });
+const isDashboardHash = (hash: string) =>
+  hash === '#/' || hash.startsWith('#/?') || hash.includes('dashboard-gridstack')
 
 const Layout: React.FC = () => {
   const {
@@ -45,6 +56,7 @@ const Layout: React.FC = () => {
     addFloatingModuleMicroApp,
     createEmptyGroup,
     isFullScreen,
+    setFullScreen,
     toggleFullScreen,
     logout,
     widgets,
@@ -52,23 +64,35 @@ const Layout: React.FC = () => {
     floatingModules,
     configPanelTarget,
     dashboardConfig,
+    updateGroupConfig,
+    updateFloatingModuleConfig,
     clearDashboardCanvas,
     loadDashboardFromData,
     closeConfigPanel,
     updateDashboardConfig,
     currentCoverUrl,
     setCurrentCoverUrl,
+    isDirty,
     clearDirty,
     markDirty,
     pendingMicroAppDrop,
     setPendingMicroAppDrop,
   } = useStore();
   const sysConfig = useSystemStore((state) => state.sysConfig)
+  const userInfo = useSystemStore((state) => state.userInfo)
+  const globalConfigDetail = useGlobalConfigStore(state => state.detail)
+  const ensureGlobalConfigLoaded = useGlobalConfigStore(state => state.ensureLoaded)
+  const aiSending = useWorkspaceAiAssistantStore(state => state.sending)
+  const aiAbortController = useWorkspaceAiAssistantStore(state => state.abortController)
+  const aiFloatingVisible = useWorkspaceAiAssistantStore(state => state.floatingVisible)
+  const aiRequestState = useWorkspaceAiAssistantStore(state => state.requestState)
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isDashboardRoute =
+    location.pathname === '/' || location.pathname.includes('dashboard-gridstack');
+  const isDashboardFullScreen = isDashboardRoute && isFullScreen
   const editId = searchParams.get('editId'); // 从URL获取编辑的发布ID
-  const dashboardStatus = searchParams.get('status') === '1' ? 1 : 0;
   const { message, modal } = AntdApp.useApp();
   const canvasTheme = useCanvasTheme()
   const [customizerOpen, setCustomizerOpen] = useState(false)
@@ -91,7 +115,11 @@ const Layout: React.FC = () => {
   const jsonInputRef = useRef<HTMLInputElement>(null)
   const currentCoverUrlRef = useRef('')
   const titleInputRef = useRef<InputRef>(null)
+  const stableHashRef = useRef(window.location.hash || '#/')
+  const skipNextHashGuardRef = useRef(false)
+  const aiFloatingHideTimerRef = useRef<number | null>(null)
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
+  const hasActiveAiRequest = isDashboardRoute && (aiSending || Boolean(aiAbortController))
   const draftLoading = publishLoading && publishAction === 'draft'
   const publishButtonLoading = publishLoading && publishAction === 'publish'
   const showPublishingMask = Boolean(globalMaskText)
@@ -141,10 +169,158 @@ const Layout: React.FC = () => {
   }, [isEditMode, closeConfigPanel])
 
   useEffect(() => {
+    void ensureGlobalConfigLoaded()
+  }, [ensureGlobalConfigLoaded])
+
+  useEffect(() => {
+    if (!globalConfigDetail) {
+      return
+    }
+
+    const isInvalidTheme = (themeId?: string) => !hasGlobalThemeScheme(globalConfigDetail, themeId)
+    const pageConfig = dashboardConfig as typeof dashboardConfig & {
+      pageBackgroundUseGlobalConfig?: boolean
+      pageBackgroundGlobalThemeId?: string
+    }
+
+    if (
+      pageConfig.pageBackgroundUseGlobalConfig
+      && pageConfig.pageBackgroundGlobalThemeId
+      && isInvalidTheme(pageConfig.pageBackgroundGlobalThemeId)
+    ) {
+      updateDashboardConfig({
+        ...getInvalidGlobalThemeFallbackBackground('page'),
+        pageBackgroundUseGlobalConfig: false,
+        pageBackgroundGlobalThemeId: undefined,
+      } as any)
+    }
+
+    widgets.forEach(widgetItem => {
+      const widgetConfig = widgetItem.config as any
+      const nextConfig: Record<string, any> = {}
+
+      if (
+        widgetConfig.titleUseGlobalConfig
+        && widgetConfig.titleGlobalThemeId
+        && isInvalidTheme(widgetConfig.titleGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          titleUseGlobalConfig: false,
+          titleGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackWidgetTitle(widgetItem.type),
+        })
+      }
+
+      if (
+        widgetConfig.backgroundUseGlobalConfig
+        && widgetConfig.backgroundGlobalThemeId
+        && isInvalidTheme(widgetConfig.backgroundGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          backgroundUseGlobalConfig: false,
+          backgroundGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackBackground('widget'),
+        })
+      }
+
+      if (Object.keys(nextConfig).length > 0) {
+        updateWidget(widgetItem.id, {
+          config: {
+            ...widgetItem.config,
+            ...nextConfig,
+          },
+        })
+      }
+    })
+
+    groups.forEach(groupItem => {
+      const groupConfig = (groupItem.config || {}) as any
+      const nextConfig: Record<string, any> = {}
+
+      if (
+        groupConfig.titleUseGlobalConfig
+        && groupConfig.titleGlobalThemeId
+        && isInvalidTheme(groupConfig.titleGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          titleUseGlobalConfig: false,
+          titleGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackWidgetTitle('group'),
+        })
+      }
+
+      if (
+        groupConfig.backgroundUseGlobalConfig
+        && groupConfig.backgroundGlobalThemeId
+        && isInvalidTheme(groupConfig.backgroundGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          backgroundUseGlobalConfig: false,
+          backgroundGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackBackground('group'),
+        })
+      }
+
+      if (Object.keys(nextConfig).length > 0) {
+        updateGroupConfig(groupItem.id, nextConfig as any)
+      }
+    })
+
+    floatingModules.forEach(moduleItem => {
+      const moduleConfig = moduleItem.config as any
+      const nextConfig: Record<string, any> = {}
+
+      if (
+        moduleConfig.titleUseGlobalConfig
+        && moduleConfig.titleGlobalThemeId
+        && isInvalidTheme(moduleConfig.titleGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          titleUseGlobalConfig: false,
+          titleGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackWidgetTitle(moduleItem.type),
+        })
+      }
+
+      if (
+        moduleConfig.backgroundUseGlobalConfig
+        && moduleConfig.backgroundGlobalThemeId
+        && isInvalidTheme(moduleConfig.backgroundGlobalThemeId)
+      ) {
+        Object.assign(nextConfig, {
+          backgroundUseGlobalConfig: false,
+          backgroundGlobalThemeId: undefined,
+          ...getInvalidGlobalThemeFallbackBackground('widget'),
+        })
+      }
+
+      if (Object.keys(nextConfig).length > 0) {
+        updateFloatingModuleConfig(moduleItem.id, nextConfig as any)
+      }
+    })
+  }, [
+    dashboardConfig,
+    floatingModules,
+    globalConfigDetail,
+    groups,
+    updateDashboardConfig,
+    updateFloatingModuleConfig,
+    updateGroupConfig,
+    updateWidget,
+    widgets,
+  ])
+
+  useEffect(() => {
     if (!isEditingTitle) {
       setEditingTitle(currentAppName);
     }
   }, [currentAppName, isEditingTitle])
+
+  useEffect(() => {
+    if (!isDashboardRoute && isFullScreen) {
+      setFullScreen(false)
+    }
+  }, [isDashboardRoute, isFullScreen, setFullScreen])
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -207,9 +383,27 @@ const Layout: React.FC = () => {
   )
 
   const openWorkspaceSidebar = useCallback((tab: WorkspaceSidebarTabKey) => {
+    const aiStore = useWorkspaceAiAssistantStore.getState()
+    if (tab === 'ai') {
+      aiStore.expandPanel()
+    }
+    if (tab !== 'ai' && aiStore.sending && workspaceSidebarTab === 'ai') {
+      aiStore.minimizePanel()
+    }
     setWorkspaceSidebarTab(tab)
     setWidgetDrawerOpen(true)
-  }, [])
+  }, [workspaceSidebarTab])
+
+  const handleWorkspaceSidebarTabChange = useCallback((tab: WorkspaceSidebarTabKey) => {
+    const aiStore = useWorkspaceAiAssistantStore.getState()
+    if (tab === 'ai') {
+      aiStore.expandPanel()
+    }
+    if (tab !== 'ai' && aiStore.sending && workspaceSidebarTab === 'ai') {
+      aiStore.minimizePanel()
+    }
+    setWorkspaceSidebarTab(tab)
+  }, [workspaceSidebarTab])
 
   const handleApplyAiSnapshot = useCallback((snapshot: {
     widgets: Widget[];
@@ -230,9 +424,204 @@ const Layout: React.FC = () => {
   }, [])
 
   const handleClearWorkspaceForAi = useCallback(() => {
-    clearDashboardCanvas()
+    clearDashboardCanvas({ preserveTitle: true })
     resetGlobalThemeConfig()
   }, [clearDashboardCanvas, resetGlobalThemeConfig])
+
+  const abortActiveAiRequest = useCallback(async (
+    options: { keepalive?: boolean } = {},
+  ) => {
+    const { abortController, conversationId } =
+      useWorkspaceAiAssistantStore.getState()
+
+    abortController?.abort()
+
+    if (!conversationId) {
+      return
+    }
+
+    try {
+      await abortAgentChatConversation(conversationId, {
+        keepalive: options.keepalive,
+      })
+    } catch (error) {
+      if (!options.keepalive) {
+        console.error('中止 AI 请求失败:', error)
+      }
+    }
+  }, [])
+
+  const resetAiAssistantSession = useCallback(() => {
+    if (aiFloatingHideTimerRef.current) {
+      window.clearTimeout(aiFloatingHideTimerRef.current)
+      aiFloatingHideTimerRef.current = null
+    }
+    useWorkspaceAiAssistantStore.getState().resetSession()
+    setWidgetDrawerOpen(false)
+    setWorkspaceSidebarTab('widget')
+  }, [])
+
+  const handleCloseWidgetSidebar = useCallback(() => {
+    setWidgetDrawerOpen(false)
+  }, [])
+
+  const handleCloseAiSidebar = useCallback(() => {
+    const aiStore = useWorkspaceAiAssistantStore.getState()
+
+    if (aiStore.sending || aiStore.abortController) {
+      aiStore.minimizePanel()
+    }
+
+    setWidgetDrawerOpen(false)
+  }, [])
+
+  const handleExpandAiFromFloating = useCallback(() => {
+    useWorkspaceAiAssistantStore.getState().expandPanel()
+    setWorkspaceSidebarTab('ai')
+    setWidgetDrawerOpen(true)
+  }, [])
+
+  const confirmAbortAiRequest = useCallback(() => {
+    if (!hasActiveAiRequest) {
+      return Promise.resolve(true)
+    }
+
+    return new Promise<boolean>((resolve) => {
+      modal.confirm({
+        title: '确认取消当前 AI 请求？',
+        content: 'AI 助手仍在执行中，离开当前页面会停止本次请求。',
+        okText: '确认离开',
+        cancelText: '继续停留',
+        onOk: async () => {
+          await abortActiveAiRequest()
+          resetAiAssistantSession()
+          resolve(true)
+        },
+        onCancel: () => {
+          resolve(false)
+        },
+      })
+    })
+  }, [abortActiveAiRequest, hasActiveAiRequest, modal, resetAiAssistantSession])
+
+  const navigateWithAiGuard = useCallback(async (target: string) => {
+    const currentHash = window.location.hash || '#/'
+    const normalizedTargetHash = target.startsWith('#') ? target : `#${target}`
+    const shouldLeave = await confirmAbortAiRequest()
+
+    if (!shouldLeave) {
+      return
+    }
+
+    if (
+      !hasActiveAiRequest &&
+      isDashboardHash(currentHash) &&
+      !isDashboardHash(normalizedTargetHash)
+    ) {
+      resetAiAssistantSession()
+    }
+
+    skipNextHashGuardRef.current = true
+    stableHashRef.current = currentHash
+    navigate(target)
+  }, [confirmAbortAiRequest, hasActiveAiRequest, navigate, resetAiAssistantSession])
+
+  useEffect(() => {
+    if (aiFloatingHideTimerRef.current) {
+      window.clearTimeout(aiFloatingHideTimerRef.current)
+      aiFloatingHideTimerRef.current = null
+    }
+
+    if (!aiFloatingVisible) {
+      return
+    }
+
+    if (aiRequestState !== 'done' && aiRequestState !== 'error') {
+      return
+    }
+
+    aiFloatingHideTimerRef.current = window.setTimeout(() => {
+      useWorkspaceAiAssistantStore.getState().hideFloatingCard()
+      aiFloatingHideTimerRef.current = null
+    }, 4000)
+
+    return () => {
+      if (aiFloatingHideTimerRef.current) {
+        window.clearTimeout(aiFloatingHideTimerRef.current)
+        aiFloatingHideTimerRef.current = null
+      }
+    }
+  }, [aiFloatingVisible, aiRequestState])
+
+  useEffect(() => {
+    const handleHashChange = async () => {
+      const nextHash = window.location.hash || '#/'
+      const prevHash = stableHashRef.current
+
+      if (skipNextHashGuardRef.current) {
+        skipNextHashGuardRef.current = false
+        stableHashRef.current = nextHash
+        return
+      }
+
+      if (nextHash === prevHash) {
+        return
+      }
+
+      const { abortController, sending } = useWorkspaceAiAssistantStore.getState()
+      const hasRunningRequest = Boolean(abortController) || sending
+
+      if (!isDashboardHash(prevHash)) {
+        stableHashRef.current = nextHash
+        return
+      }
+
+      if (!hasRunningRequest) {
+        stableHashRef.current = nextHash
+        if (!isDashboardHash(nextHash)) {
+          resetAiAssistantSession()
+        }
+        return
+      }
+
+      const shouldLeave = window.confirm(
+        'AI 助手仍在执行中，离开当前页面会停止本次请求，是否继续？',
+      )
+
+      if (!shouldLeave) {
+        skipNextHashGuardRef.current = true
+        window.location.hash = prevHash
+        return
+      }
+
+      stableHashRef.current = nextHash
+      await abortActiveAiRequest()
+      resetAiAssistantSession()
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [abortActiveAiRequest, resetAiAssistantSession])
+
+  /* unstable_usePrompt({
+    when: hasActiveAiRequest,
+    message: 'AI 助手仍在执行中，离开当前页面会停止本次请求，是否继续？',
+  }) */
+
+  useBeforeUnload(
+    useCallback((event) => {
+      if (!hasActiveAiRequest) {
+        return
+      }
+
+      event.preventDefault()
+      event.returnValue = ''
+      void abortActiveAiRequest({ keepalive: true })
+    }, [abortActiveAiRequest, hasActiveAiRequest]),
+  )
+
 
   // 响应拖放微应用到画布：打开微应用市场选择器
   useEffect(() => {
@@ -363,6 +752,7 @@ const Layout: React.FC = () => {
       clock: '时钟',
       stats: '统计卡片',
       chart: '图表',
+      indicatorCard: '指标卡',
       link: '快捷链接',
       news: '新闻动态',
       topList: '排行榜',
@@ -377,6 +767,7 @@ const Layout: React.FC = () => {
       navGroup: '导航组',
       typography: '文本',
       carousel: '轮播图',
+      myDocuments: '我的文档',
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
@@ -449,18 +840,21 @@ const Layout: React.FC = () => {
     openPublishModal('publish');
   };
 
+  const showConfigValidationBlockedMessage = useCallback(() => {
+    message.warning('当前组件配置存在未完成的必填项，请先处理配置面板中的报错后再保存或返回');
+  }, [message]);
+
   const handleRegisterConfigSave = useCallback((handler: (() => Promise<boolean>) | null) => {
     configDialogSaveRef.current = handler;
   }, []);
 
-  const syncDashboardEditorParams = useCallback((responseId: string, status: number) => {
+  const syncDashboardEditorParams = useCallback((responseId: string) => {
     if (!responseId) {
       return;
     }
 
     const params = new URLSearchParams(searchParams);
     params.set('editId', responseId);
-    params.set('status', status === 1 ? '1' : '0');
     navigate({
       pathname: location.pathname,
       search: params.toString(),
@@ -492,19 +886,17 @@ const Layout: React.FC = () => {
 
   const persistDashboardSnapshot = useCallback(async ({
     title,
-    status,
     coverUrl,
   }: {
     title: string;
-    status: number;
     coverUrl: string;
   }) => {
     const res = await publishDashboard({
       id: editId || undefined,
       title,
       dashboardConfig: buildSnapshotPayload(title),
-      status,
       cover_url: coverUrl,
+      action: 'save_draft',
     });
 
     if (res.code !== 20000 || !res.data) {
@@ -516,7 +908,7 @@ const Layout: React.FC = () => {
       setCurrentCoverUrl(coverUrl);
     }
     if (responseId) {
-      syncDashboardEditorParams(responseId, status);
+      syncDashboardEditorParams(responseId);
     }
 
     updateDashboardConfig({
@@ -563,7 +955,6 @@ const Layout: React.FC = () => {
     try {
       await persistDashboardSnapshot({
         title: nextTitle,
-        status: dashboardStatus,
         coverUrl: currentCoverUrl || currentCoverUrlRef.current || '',
       });
       publishForm.setFieldsValue({ title: nextTitle });
@@ -575,7 +966,7 @@ const Layout: React.FC = () => {
     } finally {
       setTitleSaving(false);
     }
-  }, [currentAppName, dashboardStatus, editingTitle, message, persistDashboardSnapshot, publishForm]);
+  }, [currentAppName, editingTitle, message, persistDashboardSnapshot, publishForm]);
 
   const handlePublishSubmit = async () => {
     let currentAction: 'publish' | 'draft' = publishAction;
@@ -583,6 +974,7 @@ const Layout: React.FC = () => {
       if (configDialogSaveRef.current) {
         const configSaved = await configDialogSaveRef.current();
         if (!configSaved) {
+          showConfigValidationBlockedMessage();
           return;
         }
       }
@@ -624,8 +1016,8 @@ const Layout: React.FC = () => {
         id: editId || undefined,
         title: values.title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
-        status: currentAction === 'publish' ? 1 : 0,
         cover_url: coverImageBase64 || undefined,
+        action: currentAction === 'publish' ? 'publish' : 'save_draft',
       });
       if (res.code !== 20000 || !res.data) {
         throw new Error(res.message || '请求失败');
@@ -635,13 +1027,7 @@ const Layout: React.FC = () => {
         setCurrentCoverUrl(coverImageBase64);
       }
       if (responseId) {
-        const params = new URLSearchParams(searchParams);
-        params.set('editId', responseId);
-        params.set('status', currentAction === 'publish' ? '1' : '0');
-        navigate({
-          pathname: location.pathname,
-          search: params.toString(),
-        }, { replace: true });
+        syncDashboardEditorParams(responseId);
       }
       updateDashboardConfig({
         title: values.title,
@@ -757,7 +1143,7 @@ const Layout: React.FC = () => {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
-        clearDashboardCanvas();
+        clearDashboardCanvas({ preserveTitle: true });
         resetGlobalThemeConfig();
         message.success('已清空当前应用页面');
       },
@@ -766,7 +1152,15 @@ const Layout: React.FC = () => {
 
   const handleGoHome = async () => {
     if (!isDashboardRoute) {
+      resetAiAssistantSession()
+      skipNextHashGuardRef.current = true
+      stableHashRef.current = window.location.hash || '#/'
       navigate('/publish-list')
+      return
+    }
+
+    if (hasActiveAiRequest) {
+      await navigateWithAiGuard('/publish-list')
       return
     }
 
@@ -774,19 +1168,22 @@ const Layout: React.FC = () => {
       if (configDialogSaveRef.current) {
         const configSaved = await configDialogSaveRef.current();
         if (!configSaved) {
+          showConfigValidationBlockedMessage();
           return;
         }
       }
 
-      flushSync(() => {
-        setGlobalMaskText('正在保存并返回应用列表...');
-      });
-      await waitForUiPaint();
+      if (isDirty) {
+        flushSync(() => {
+          setGlobalMaskText('正在保存并返回应用列表...');
+        });
+        await waitForUiPaint();
 
-      const saved = await silentSave({ force: true });
-      if (!saved) {
-        message.error('自动保存失败，请稍后重试');
-        return;
+        const saved = await silentSave();
+        if (!saved) {
+          message.error('自动保存失败，请稍后重试');
+          return;
+        }
       }
 
       navigate('/publish-list')
@@ -828,13 +1225,11 @@ const Layout: React.FC = () => {
     if (path.includes('publish-list')) return '/publish-list';
     return '/publish-list';
   };
-  const isDashboardRoute = location.pathname === '/' || location.pathname.includes('dashboard-gridstack');
 
   // 自动保存
   const { silentSave, lastSaveTimeRef } = useAutoSave({
     enabled: isDashboardRoute && Boolean(editId),
     dashboardId: editId || undefined,
-    status: dashboardStatus,
     getCoverUrl: getCurrentCoverUrl,
     onSaveStatusChange: setAutoSaveStatus,
   });
@@ -862,12 +1257,12 @@ const Layout: React.FC = () => {
 
   // 导航菜单点击处理
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    navigate(key);
+    void navigateWithAiGuard(String(key));
   };
 
   return (
     <AntdLayout className={`app-layout${isCapturingCover ? ' is-capturing-cover' : ''}`}>
-      {!isFullScreen && (
+      {!isDashboardFullScreen && (
         <>
           {!isDashboardRoute && (
             <Header className="app-header">
@@ -885,11 +1280,40 @@ const Layout: React.FC = () => {
                 />
               </div>
 
-              <Space size="middle">
-                <Tooltip title="退出登录">
-                  <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
-                </Tooltip>
-              </Space>
+              <div className="app-header__right">
+                <Space size="middle">
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'user-info',
+                          label: (
+                            <div>
+                              <div style={{ textAlign: "center" }}>{userInfo?.user_info?.user_name || '用户'}</div>
+                            </div>
+                          ),
+                          // disabled: true,
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'logout',
+                          icon: <LogoutOutlined />,
+                          label: '退出登录',
+                          danger: true,
+                          onClick: handleLogout,
+                        },
+                      ],
+                    }}
+                    placement="bottomRight"
+                  >
+                    {/* <Avatar
+                    style={{ cursor: 'pointer', }}
+                    icon={<UserOutlined />}
+                  /> */}
+                    <UserOutlined />
+                  </Dropdown>
+                </Space>
+              </div>
             </Header>
           )}
 
@@ -974,6 +1398,7 @@ const Layout: React.FC = () => {
 
                   <Button
                     icon={<RobotOutlined />}
+                    loading={hasActiveAiRequest}
                     disabled={!isEditMode}
                     onClick={() => openWorkspaceSidebar('ai')}
                   >
@@ -1039,7 +1464,7 @@ const Layout: React.FC = () => {
         </>
       )}
 
-      {isFullScreen && isDashboardRoute && (
+      {isDashboardFullScreen && (
         <FloatingControlPanel
           onAddWidget={() => openWorkspaceSidebar('widget')}
           onOpenSettings={() => setDashboardConfigOpen(true)}
@@ -1059,8 +1484,9 @@ const Layout: React.FC = () => {
               <WorkspaceSidebar
                 open={widgetDrawerOpen}
                 activeTab={workspaceSidebarTab}
-                onTabChange={setWorkspaceSidebarTab}
-                onClose={() => setWidgetDrawerOpen(false)}
+                onTabChange={handleWorkspaceSidebarTabChange}
+                onCloseWidget={handleCloseWidgetSidebar}
+                onCloseAi={handleCloseAiSidebar}
                 onWidgetSelect={handleAddWidget}
                 currentSnapshot={currentSnapshot}
                 hasWorkspaceContent={hasWorkspaceContent}
@@ -1071,6 +1497,12 @@ const Layout: React.FC = () => {
           )}
           <div className="app-content__main">
             <Outlet />
+            {isDashboardRoute ? (
+              <WorkspaceAiFloatingCard
+                onExpand={handleExpandAiFromFloating}
+                onStop={() => void abortActiveAiRequest()}
+              />
+            ) : null}
             {/* 全局无边框微应用挂载点 */}
             <GlobalMicroAppContainer />
           </div>

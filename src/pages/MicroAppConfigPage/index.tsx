@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   Modal,
+  Pagination,
   Space,
   message,
   Popconfirm,
@@ -26,10 +27,12 @@ import {
   ReloadOutlined,
   LinkOutlined,
   QuestionCircleOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import {
   getMicroAppList,
+  type MicroAppListPageData,
   saveApp,
   saveModule,
   saveEvent,
@@ -50,10 +53,18 @@ type MicroAppConfig = MicroAppMetadata;
 
 const MicroAppConfigPage: React.FC = () => {
   const [config, setConfig] = useState<MicroAppConfig>({ version: '1.0.0', apps: [] });
-  const { scrollY } = useTableScroll({ headerHeight: 191, footerHeight: 44 })
+  const [systems, setSystems] = useState<MicroAppSystem[]>([]);
+  const { scrollY } = useTableScroll({ headerHeight: 190, footerHeight: 74 })
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [currentKeyword, setCurrentKeyword] = useState('');
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
   const [systemModalOpen, setSystemModalOpen] = useState(false);
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -75,15 +86,36 @@ const MicroAppConfigPage: React.FC = () => {
     microAppConfigLoader.setMetadata(nextConfig);
   }, []);
 
-  // 加载配置 - 使用API接口
-  const loadConfig = async () => {
+  const syncFullConfig = useCallback(async () => {
+    const res = await getMicroAppList({ all: true });
+    if (res.code === 20000 && res.data) {
+      updateConfigState(res.data as MicroAppMetadata);
+      return;
+    }
+
+    throw new Error(res.message || '加载全量微应用配置失败');
+  }, [updateConfigState]);
+
+  const fetchList = useCallback(async (page: number, pageSize: number, keywordValue = '') => {
     setLoading(true);
     try {
-      const res = await getMicroAppList();
+      const res = await getMicroAppList({
+        page,
+        page_size: pageSize,
+        keyword: keywordValue || undefined,
+      });
       if (res.code === 20000 && res.data) {
-        updateConfigState(res.data);
+        const pageData = res.data as MicroAppListPageData;
+        setSystems(pageData.apps || []);
+        setPagination((prev) => ({
+          ...prev,
+          current: pageData.page || page,
+          pageSize: pageData.page_size || pageSize,
+          total: pageData.total || 0,
+        }));
+        await syncFullConfig();
       } else {
-        message.error(res.message || '加载配置失败');
+        throw new Error(res.message || '加载配置失败');
       }
     } catch (error) {
       message.error('加载配置失败');
@@ -91,11 +123,11 @@ const MicroAppConfigPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [syncFullConfig]);
 
   useEffect(() => {
-    loadConfig();
-  }, []);
+    void fetchList(1, pagination.pageSize, '');
+  }, [fetchList]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -120,6 +152,19 @@ const MicroAppConfigPage: React.FC = () => {
         });
         return { ...prev, apps: nextApps };
       });
+      setSystems((prev) =>
+        prev.map((system) => {
+          if (system.id !== detail.systemId) {
+            return system;
+          }
+          return {
+            ...system,
+            modules: system.modules.map((module) =>
+              module.id === detail.moduleId ? { ...module, ...detail.updates } : module
+            ),
+          };
+        })
+      );
     };
 
     window.addEventListener(
@@ -197,9 +242,8 @@ const MicroAppConfigPage: React.FC = () => {
     try {
       const res = await importMicroAppConfig(file);
       if (res.code === 20000) {
-        const stats = res.data;
         message.success(`导入成功`);
-        await loadConfig();
+        await fetchList(1, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '导入配置失败');
       }
@@ -232,8 +276,7 @@ const MicroAppConfigPage: React.FC = () => {
         setSystemModalOpen(false);
         systemForm.resetFields();
         setEditingSystem(null);
-        // 刷新列表
-        await loadConfig();
+        await fetchList(1, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '保存失败');
       }
@@ -255,8 +298,12 @@ const MicroAppConfigPage: React.FC = () => {
       const res = await deleteMicroAppItem({ id: systemId, type: 'app' });
       if (res.code === 20000) {
         message.success('系统已删除');
-        // 刷新列表
-        await loadConfig();
+        const { current, pageSize, total } = pagination;
+        const remainingTotal = Math.max(0, total - 1);
+        const currentStartIndex = (current - 1) * pageSize;
+        const shouldGoPrev = current > 1 && currentStartIndex >= remainingTotal;
+        const targetPage = shouldGoPrev ? current - 1 : current;
+        await fetchList(targetPage, pageSize, currentKeyword);
       } else {
         message.error(res.message || '删除失败');
       }
@@ -297,8 +344,7 @@ const MicroAppConfigPage: React.FC = () => {
         setModuleModalOpen(false);
         moduleForm.resetFields();
         setEditingModule(undefined);
-        // 刷新列表
-        await loadConfig();
+        await fetchList(pagination.current, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '保存失败');
       }
@@ -319,8 +365,7 @@ const MicroAppConfigPage: React.FC = () => {
       const res = await deleteMicroAppItem({ id: moduleId, type: 'module' });
       if (res.code === 20000) {
         message.success('微应用已删除');
-        // 刷新列表
-        await loadConfig();
+        await fetchList(pagination.current, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '删除失败');
       }
@@ -354,8 +399,7 @@ const MicroAppConfigPage: React.FC = () => {
         setEventModalOpen(false);
         eventForm.resetFields();
         setEditingEvent(undefined);
-        // 刷新列表
-        await loadConfig();
+        await fetchList(pagination.current, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '保存失败');
       }
@@ -376,8 +420,7 @@ const MicroAppConfigPage: React.FC = () => {
       const res = await deleteMicroAppItem({ id: eventId, type: 'event' });
       if (res.code === 20000) {
         message.success('事件已删除');
-        // 刷新列表
-        await loadConfig();
+        await fetchList(pagination.current, pagination.pageSize, currentKeyword);
       } else {
         message.error(res.message || '删除失败');
       }
@@ -608,48 +651,95 @@ const MicroAppConfigPage: React.FC = () => {
     );
   };
 
+  const handlePaginationChange = (page: number, pageSize: number = pagination.pageSize) => {
+    const targetPage = pageSize !== pagination.pageSize ? 1 : page;
+    void fetchList(targetPage, pageSize, currentKeyword);
+  };
+
+  const handleSearch = () => {
+    const nextKeyword = keyword.trim();
+    setCurrentKeyword(nextKeyword);
+    void fetchList(1, pagination.pageSize, nextKeyword);
+  };
+
   return (
     <div className="micro-app-config-page">
       <div className="page-toolbar">
-        <Space size={12}>
-          <Button icon={<ReloadOutlined />} onClick={loadConfig} loading={loading}>
-            刷新
-          </Button>
-          <Upload beforeUpload={handleImport} showUploadList={false} accept=".json">
-            <Button icon={<UploadOutlined />}>导入配置</Button>
-          </Upload>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            导出配置
-          </Button>
-        </Space>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingSystem(null);
-            systemForm.resetFields();
-            setSystemModalOpen(true);
-          }}
-        >
-          添加系统
-        </Button>
+        <div className="page-toolbar__left">
+          <Space.Compact>
+            <Input
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              onPressEnter={handleSearch}
+              placeholder="搜索系统名称 / 微应用名称"
+              allowClear
+              className="micro-app-config-page__search-input"
+            />
+            <Button icon={<SearchOutlined />} type="primary" onClick={handleSearch}>
+              搜索
+            </Button>
+          </Space.Compact>
+        </div>
+        <div className="page-toolbar__right">
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => void fetchList(pagination.current, pagination.pageSize, currentKeyword)}
+              loading={loading}
+            >
+              刷新
+            </Button>
+            <Upload beforeUpload={handleImport} showUploadList={false} accept=".json">
+              <Button icon={<UploadOutlined />}>导入配置</Button>
+            </Upload>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+              导出配置
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditingSystem(null);
+                systemForm.resetFields();
+                setSystemModalOpen(true);
+              }}
+            >
+              添加系统
+            </Button>
+          </Space>
+        </div>
       </div>
 
-      <Table
-        bordered
-        columns={systemColumns}
-        dataSource={config.apps}
-        rowKey="id"
-        loading={loading}
-        expandable={{
-          expandedRowRender: renderModules,
-        }}
-        pagination={false}
-        className="system-table"
-        scroll={{
-          y: scrollY
-        }}
-      />
+      <div className="micro-app-config-page__content">
+        <Table
+          bordered
+          columns={systemColumns}
+          dataSource={systems}
+          rowKey="id"
+          loading={loading}
+          expandable={{
+            expandedRowRender: renderModules,
+          }}
+          pagination={false}
+          className="system-table"
+          scroll={{
+            y: scrollY
+          }}
+        />
+      </div>
+      <div className="micro-app-config-page__pagination">
+        <Pagination
+          current={pagination.current}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          showSizeChanger
+          showQuickJumper
+          showTotal={total => `共 ${total} 条`}
+          pageSizeOptions={['10', '20', '50', '100']}
+          onChange={handlePaginationChange}
+          onShowSizeChange={handlePaginationChange}
+        />
+      </div>
 
       {/* 系统编辑对话框 */}
       <Modal

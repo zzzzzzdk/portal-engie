@@ -1,10 +1,10 @@
 /**
  * IconPicker 组件
- * 统一的图标选择器，支持图标列表选择、URL输入、图片上传、SVG代码输入
+ * 统一的图标选择器，支持图标列表选择、URL 输入、图片上传、SVG 代码输入
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { Popover, Button, Input, Upload, Tabs, message, Space } from 'antd';
+import React, { useState, useCallback, useMemo } from 'react'
+import { Popover, Button, Input, Upload, Tabs, message, Space } from 'antd'
 import {
   AppstoreOutlined,
   LinkOutlined,
@@ -12,16 +12,16 @@ import {
   CodeOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
-} from '@ant-design/icons';
-import * as Icons from '@ant-design/icons';
-import Icon from '@/components/Icon';
-import { uploadImage } from '@/services';
-import { sanitizeSvg } from '@/utils/sanitizeSvg';
-import IconGrid from './IconGrid';
-import { findIconByName, ICONFONT_ICONS } from './iconData';
-import { getIconValueType } from './types';
-import type { IconPickerProps } from './types';
-import './index.scss';
+} from '@ant-design/icons'
+import * as Icons from '@ant-design/icons'
+import Icon from '@/components/Icon'
+import { uploadImage } from '@/services'
+import { sanitizeSvg } from '@/utils/sanitizeSvg'
+import IconGrid from './IconGrid'
+import { findIconByName } from './iconData'
+import { getIconValueType } from './types'
+import type { IconPickerProps } from './types'
+import './index.scss'
 
 const IconPicker: React.FC<IconPickerProps> = ({
   value,
@@ -33,49 +33,38 @@ const IconPicker: React.FC<IconPickerProps> = ({
   placeholder = '选择图标',
   disabled = false,
 }) => {
-  const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [urlInput, setUrlInput] = useState('');
-  const [svgInput, setSvgInput] = useState('');
+  const [open, setOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
+  const [svgInput, setSvgInput] = useState('')
 
-  // Popover 打开时回填已有值
   const handleOpenChange = useCallback((visible: boolean) => {
-    setOpen(visible);
+    setOpen(visible)
     if (visible && value) {
-      const type = getIconValueType(value);
+      const type = getIconValueType(value)
       if (type === 'svg') {
-        setSvgInput(value);
+        setSvgInput(value)
       } else if (type === 'url') {
-        setUrlInput(value);
+        setUrlInput(value)
       }
     }
-  }, [value]);
+  }, [value])
 
-  // 判断当前值的类型
-  const valueType = useMemo(() => getIconValueType(value), [value]);
+  const valueType = useMemo(() => getIconValueType(value), [value])
 
-  // 触发值变化
-  const handleChange = useCallback(
-    (newValue: string) => {
-      onChange?.(newValue);
-      setOpen(false);
-    },
-    [onChange]
-  );
+  const handleChange = useCallback((newValue: string) => {
+    onChange?.(newValue)
+    setOpen(false)
+  }, [onChange])
 
-  // 清除值
-  const handleClear = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onChange?.('');
-    },
-    [onChange]
-  );
+  const handleClear = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange?.('')
+  }, [onChange])
 
-  // 渲染图标预览
   const renderPreview = useCallback(() => {
     if (!value || valueType === 'empty') {
-      return <AppstoreOutlined className="icon-picker-placeholder-icon" />;
+      return <AppstoreOutlined className="icon-picker-placeholder-icon" />
     }
 
     if (valueType === 'svg') {
@@ -84,143 +73,129 @@ const IconPicker: React.FC<IconPickerProps> = ({
           className="icon-picker-svg-preview"
           dangerouslySetInnerHTML={{ __html: sanitizeSvg(value) }}
         />
-      );
+      )
     }
 
     if (valueType === 'url') {
-      return <img src={value} alt="icon" className="icon-picker-img-preview" />;
+      return <img src={value} alt="icon" className="icon-picker-img-preview" />
     }
 
-    // 图标名称 - 尝试 Ant Design 图标
-    const iconItem = findIconByName(value);
+    const iconItem = findIconByName(value)
     if (iconItem?.component) {
-      const IconComponent = iconItem.component;
-      return <IconComponent style={{ fontSize: 18 }} />;
+      const IconComponent = iconItem.component
+      return <IconComponent style={{ fontSize: 18 }} />
     }
 
-    // 尝试直接从 @ant-design/icons 获取
-    const AntdIcon = (Icons as any)[value];
+    const AntdIcon = (Icons as Record<string, unknown>)[value] as React.ComponentType<{
+      style?: React.CSSProperties
+    }> | undefined
     if (AntdIcon) {
-      return <AntdIcon style={{ fontSize: 18 }} />;
+      return <AntdIcon style={{ fontSize: 18 }} />
     }
 
-    // 尝试 Iconfont 图标
-    const isIconfont = ICONFONT_ICONS.some((icon) => icon.name === value);
-    if (isIconfont) {
-      return <Icon type={value} style={{ fontSize: 18 }} />;
+    if (iconItem) {
+      return <Icon type={value} style={{ fontSize: 18 }} />
     }
 
-    // 默认显示首字母
-    return <span className="icon-picker-letter">{value.charAt(0).toUpperCase()}</span>;
-  }, [value, valueType]);
+    return <span className="icon-picker-letter">{value.charAt(0).toUpperCase()}</span>
+  }, [value, valueType])
 
-  // 获取显示文本
   const getDisplayText = useCallback(() => {
     if (!value || valueType === 'empty') {
-      return placeholder;
+      return placeholder
     }
 
     if (valueType === 'svg') {
-      return 'SVG 图标';
+      return 'SVG 图标'
     }
 
     if (valueType === 'url') {
-      // 截取 URL 的文件名部分
       try {
-        const url = new URL(value);
-        const pathname = url.pathname;
-        const filename = pathname.split('/').pop() || 'image';
-        return filename.length > 20 ? filename.substring(0, 17) + '...' : filename;
+        const url = new URL(value)
+        const pathname = url.pathname
+        const filename = pathname.split('/').pop() || 'image'
+        return filename.length > 20 ? `${filename.substring(0, 17)}...` : filename
       } catch {
-        return value.length > 20 ? value.substring(0, 17) + '...' : value;
+        return value.length > 20 ? `${value.substring(0, 17)}...` : value
       }
     }
 
-    return value;
-  }, [value, valueType, placeholder]);
+    return value
+  }, [value, valueType, placeholder])
 
-  // 处理图标选择
-  const handleIconSelect = useCallback(
-    (iconName: string) => {
-      handleChange(iconName);
-    },
-    [handleChange]
-  );
+  const handleIconSelect = useCallback((iconName: string) => {
+    handleChange(iconName)
+  }, [handleChange])
 
-  // 处理 URL 确认
   const handleUrlConfirm = useCallback(() => {
-    const trimmed = urlInput.trim();
+    const trimmed = urlInput.trim()
     if (!trimmed) {
-      message.warning('请输入图标URL');
-      return;
+      message.warning('请输入图标 URL')
+      return
     }
+
     if (!/^(https?:\/\/|data:image\/)/.test(trimmed)) {
-      message.warning('请输入有效的图标URL，需以 http://、https:// 或 data:image/ 开头');
-      return;
+      message.warning('请输入有效的图标 URL，需以 http://、https:// 或 data:image/ 开头')
+      return
     }
-    handleChange(trimmed);
-    setUrlInput('');
-  }, [urlInput, handleChange]);
 
-  // 处理图片上传
-  const handleUpload = useCallback(
-    async (file: File) => {
-      const isImage = file.type.startsWith('image/');
-      if (!isImage) {
-        message.error('只能上传图片文件');
-        return false;
+    handleChange(trimmed)
+    setUrlInput('')
+  }, [urlInput, handleChange])
+
+  const handleUpload = useCallback(async (file: File) => {
+    const isImage = file.type.startsWith('image/')
+    if (!isImage) {
+      message.error('只能上传图片文件')
+      return false
+    }
+
+    const isLt10M = file.size / 1024 / 1024 < 10
+    if (!isLt10M) {
+      message.error('图片大小不能超过 10MB')
+      return false
+    }
+
+    setUploading(true)
+    try {
+      const res = await uploadImage(file)
+      if (res.data?.url) {
+        handleChange(res.data.url)
+        message.success('图标上传成功')
+      } else {
+        message.error(res.message || '上传失败')
       }
+    } catch {
+      message.error('上传失败，请稍后重试')
+    } finally {
+      setUploading(false)
+    }
 
-      const isLt10M = file.size / 1024 / 1024 < 10;
-      if (!isLt10M) {
-        message.error('图片大小不能超过 10MB');
-        return false;
-      }
+    return false
+  }, [handleChange])
 
-      setUploading(true);
-      try {
-        const res = await uploadImage(file);
-        if (res.data?.url) {
-          handleChange(res.data.url);
-          message.success('图标上传成功');
-        } else {
-          message.error(res.message || '上传失败');
-        }
-      } catch {
-        message.error('上传失败，请稍后重试');
-      } finally {
-        setUploading(false);
-      }
-      return false;
-    },
-    [handleChange]
-  );
-
-  // 处理 SVG 确认
   const handleSvgConfirm = useCallback(() => {
     if (!svgInput.trim()) {
-      message.warning('请输入SVG代码');
-      return;
+      message.warning('请输入 SVG 代码')
+      return
     }
 
-    const trimmed = svgInput.trim();
+    const trimmed = svgInput.trim()
     if (!trimmed.startsWith('<svg') && !trimmed.startsWith('<?xml')) {
-      message.error('请输入有效的SVG代码');
-      return;
+      message.error('请输入有效的 SVG 代码')
+      return
     }
 
-    // 净化 SVG，移除潜在的 XSS 攻击向量
-    const sanitized = sanitizeSvg(trimmed);
+    const sanitized = sanitizeSvg(trimmed)
     if (!sanitized) {
-      message.error('SVG 代码解析失败，请检查格式');
-      return;
+      message.error('SVG 代码解析失败，请检查格式')
+      return
     }
 
-    handleChange(sanitized);
-    setSvgInput('');
-  }, [svgInput, handleChange]);
+    handleChange(sanitized)
+    setSvgInput('')
+  }, [svgInput, handleChange])
 
-  // 构建 Tabs 项
   const tabItems = useMemo(() => {
     const items = [
       {
@@ -232,7 +207,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
         ),
         children: <IconGrid value={value} onSelect={handleIconSelect} />,
       },
-    ];
+    ]
 
     if (mode === 'full') {
       if (allowUrl) {
@@ -246,7 +221,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
           children: (
             <div className="icon-picker-url-panel">
               <Input
-                placeholder="输入图标URL地址"
+                placeholder="输入图标 URL 地址"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onPressEnter={handleUrlConfirm}
@@ -256,7 +231,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
               </Button>
             </div>
           ),
-        });
+        })
       }
 
       if (allowUpload) {
@@ -281,7 +256,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
               <p className="upload-hint">支持 jpg、png、gif 格式，大小不超过 10MB</p>
             </div>
           ),
-        });
+        })
       }
 
       if (allowSvg) {
@@ -305,11 +280,11 @@ const IconPicker: React.FC<IconPickerProps> = ({
               </Button>
             </div>
           ),
-        });
+        })
       }
     }
 
-    return items;
+    return items
   }, [
     mode,
     allowUrl,
@@ -323,14 +298,13 @@ const IconPicker: React.FC<IconPickerProps> = ({
     handleUrlConfirm,
     handleUpload,
     handleSvgConfirm,
-  ]);
+  ])
 
-  // Popover 内容
   const popoverContent = (
     <div className="icon-picker-popover">
       <Tabs items={tabItems} size="small" />
     </div>
-  );
+  )
 
   return (
     <Popover
@@ -351,7 +325,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
         )}
       </div>
     </Popover>
-  );
-};
+  )
+}
 
-export default IconPicker;
+export default IconPicker

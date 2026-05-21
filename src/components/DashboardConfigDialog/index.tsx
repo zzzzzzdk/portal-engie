@@ -10,6 +10,8 @@ import {
   getDefaultGlobalThemeId,
   getGlobalThemeOptions,
   getGlobalThemeScheme,
+  getInvalidGlobalThemeFallbackBackground,
+  hasGlobalThemeScheme,
 } from '@/utils/global-config'
 
 interface DashboardConfigDialogProps {
@@ -75,6 +77,18 @@ const DashboardConfigDialog: React.FC<DashboardConfigDialogProps> = ({ isOpen, o
 
   useEffect(() => {
     if (!isOpen || !globalConfigDetail || !pageBackgroundUseGlobalConfig) {
+      return
+    }
+
+    if (
+      pageBackgroundGlobalThemeId
+      && !hasGlobalThemeScheme(globalConfigDetail, pageBackgroundGlobalThemeId)
+    ) {
+      form.setFieldsValue({
+        pageBackgroundUseGlobalConfig: false,
+        pageBackgroundGlobalThemeId: undefined,
+        ...buildBackgroundFormValues(getInvalidGlobalThemeFallbackBackground('page')),
+      })
       return
     }
 

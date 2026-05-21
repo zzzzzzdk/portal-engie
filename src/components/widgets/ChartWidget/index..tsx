@@ -103,6 +103,11 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
     })
   }, [])
 
+  const resetChartInstance = useCallback(() => {
+    chartInstanceRef.current?.dispose()
+    chartInstanceRef.current = null
+  }, [])
+
   const loadData = useCallback(async () => {
     const isStaticDataSource = chartConfig.dataSource === 'static'
     const apiEndpoint = chartConfig.apiEndpoint?.trim()
@@ -115,6 +120,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
 
     setLoading(true)
     setError(null)
+    setChartData(presetDefinition.staticDataExample)
 
     try {
       const result = await requestWidgetApi({
@@ -246,12 +252,19 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
   }, [chartConfig, chartData, chartPreset, geoReady, mapName])
 
   useEffect(() => {
-    if (!chartRef.current || !chartOption || error) {
+    const chartDom = chartRef.current
+
+    if (!chartDom || !chartOption || error) {
+      resetChartInstance()
       return
     }
 
+    if (chartInstanceRef.current?.getDom() !== chartDom) {
+      resetChartInstance()
+    }
+
     if (!chartInstanceRef.current) {
-      chartInstanceRef.current = echarts.init(chartRef.current)
+      chartInstanceRef.current = echarts.init(chartDom)
     }
 
     const chart = chartInstanceRef.current
@@ -287,7 +300,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
         resizeTimerRef.current = null
       }
     }
-  }, [chartOption, error, resizeChart])
+  }, [chartOption, error, resetChartInstance, resizeChart])
 
   useEffect(() => () => {
     if (resizeFrameRef.current != null) {
@@ -300,9 +313,8 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
       resizeTimerRef.current = null
     }
 
-    chartInstanceRef.current?.dispose()
-    chartInstanceRef.current = null
-  }, [])
+    resetChartInstance()
+  }, [resetChartInstance])
 
   if (error) {
     return (

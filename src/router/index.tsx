@@ -19,6 +19,8 @@ const LoadingFallback = () => (
   </div>
 )
 
+const INTERNAL_AUTH_ROUTES = ['/portal-home']
+
 /**
  * 路由渲染器
  */
@@ -59,6 +61,10 @@ function APPRouter() {
     // 已登录，检查用户路由权限
     // 只有在 userRoutes 数组中的路径，用户才有权限访问
     const routePath = route.path?.startsWith('/') ? route.path : `/${route.path}`
+
+    if (routePath && INTERNAL_AUTH_ROUTES.includes(routePath)) {
+      return true
+    }
 
     // 严格权限验证：路径必须在用户的 route 数组中
     const hasRoutePermission = userRoutes?.includes(routePath) ?? false

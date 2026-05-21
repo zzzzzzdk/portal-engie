@@ -136,11 +136,13 @@ queryFilter + dataTable + pageNavigator
 - 多图标入口优先使用 `navGroup`
 - `config.staticItems` 为主字段
 - `staticItems[].icon` 优先使用 iconfont 名，必须以 `icon-` 开头
+- 涉及具体 icon 名时先查 `references/icon-map.md`
 
 ### `iconNav`
 
 - 只适合单个图标入口
 - “快捷入口、4-8 个图标、门户入口宫格” 这类描述不要落到 `iconNav`
+- `config.icon` 优先使用 `references/icon-map.md` 中的 Ant Design 白名单名
 
 ### `cardGrid`
 

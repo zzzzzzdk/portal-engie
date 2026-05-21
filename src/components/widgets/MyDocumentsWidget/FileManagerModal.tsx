@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Modal,
   Layout,
@@ -9,23 +10,23 @@ import {
   message,
   Spin,
   Upload,
-} from 'antd';
+} from 'antd'
 import {
   DatabaseOutlined,
   UploadOutlined,
   FolderAddOutlined,
   HomeOutlined,
-} from '@ant-design/icons';
-import type { UploadProps } from 'antd';
-import { useFileStore } from '@/store/useFileStore';
-import FileList from './components/FileList';
-import PreviewDialog from './components/PreviewDialog';
+} from '@ant-design/icons'
+import type { UploadProps } from 'antd'
+import { useFileStore } from '@/store/useFileStore'
+import FileList from './components/FileList'
+import PreviewDialog from './components/PreviewDialog'
 
-const { Sider, Content } = Layout;
+const { Sider, Content } = Layout
 
 interface FileManagerModalProps {
-  open: boolean;
-  onClose: () => void;
+  open: boolean
+  onClose: () => void
 }
 
 export default function FileManagerModal({ open, onClose }: FileManagerModalProps) {
@@ -38,58 +39,76 @@ export default function FileManagerModal({ open, onClose }: FileManagerModalProp
     navigateTo,
     uploadFile,
     createFolder,
-  } = useFileStore();
+  } = useFileStore()
 
-  const [createFolderVisible, setCreateFolderVisible] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [createLoading, setCreateLoading] = useState(false);
+  const [createFolderVisible, setCreateFolderVisible] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [createLoading, setCreateLoading] = useState(false)
+
+  const MAX_FOLDER_NAME_LENGTH = 80
 
   useEffect(() => {
     if (open) {
-      fetchBucket();
+      fetchBucket()
     }
-  }, [open, fetchBucket]);
+  }, [open, fetchBucket])
+
+  const stopContextMenuPropagation = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+  }
+
+  const renderModalContainer = (modal: React.ReactNode) => (
+    <div onContextMenuCapture={stopContextMenuPropagation}>
+      {modal}
+    </div>
+  )
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) {
-      message.warning('请输入文件夹名称');
-      return;
+    const folderName = newFolderName.trim()
+    if (!folderName) {
+      message.warning('请输入文件夹名称')
+      return
     }
-    setCreateLoading(true);
+    if (folderName.length > MAX_FOLDER_NAME_LENGTH) {
+      message.warning(`文件夹名称不能超过 ${MAX_FOLDER_NAME_LENGTH} 个字符`)
+      return
+    }
+
+    setCreateLoading(true)
     try {
-      await createFolder(newFolderName.trim());
-      message.success('文件夹创建成功');
-      setCreateFolderVisible(false);
-      setNewFolderName('');
+      await createFolder(folderName)
+      message.success('文件夹创建成功')
+      setCreateFolderVisible(false)
+      setNewFolderName('')
     } catch (err: any) {
-      message.error(err.message || '创建文件夹失败');
+      message.error(err.message || '创建文件夹失败')
     } finally {
-      setCreateLoading(false);
+      setCreateLoading(false)
     }
-  };
+  }
 
   const handleUpload = async (file: File) => {
     try {
-      await uploadFile(file);
-      message.success(`${file.name} 上传成功`);
+      await uploadFile(file)
+      message.success(`${file.name} 上传成功`)
     } catch (err: any) {
-      message.error(err.message || '上传失败');
+      message.error(err.message || '上传失败')
     }
-  };
+  }
 
   const uploadProps: UploadProps = {
-    beforeUpload: (file) => {
-      handleUpload(file);
-      return false;
+    beforeUpload: file => {
+      void handleUpload(file)
+      return false
     },
     showUploadList: false,
-  };
+  }
 
   const breadcrumbItems = [
     {
       title: (
         <span onClick={() => navigateTo([])} style={{ cursor: 'pointer' }}>
-          <HomeOutlined /> 
+          <HomeOutlined />
         </span>
       ),
     },
@@ -98,12 +117,13 @@ export default function FileManagerModal({ open, onClose }: FileManagerModalProp
         <span
           onClick={() => navigateTo(currentPath.slice(0, index + 1))}
           style={{ cursor: 'pointer' }}
+          title={segment}
         >
           {segment}
         </span>
       ),
     })),
-  ];
+  ]
 
   return (
     <Modal
@@ -115,9 +135,9 @@ export default function FileManagerModal({ open, onClose }: FileManagerModalProp
       destroyOnClose
       className="file-manager-modal"
       styles={{ body: { padding: 0, height: '70vh' } }}
+      modalRender={renderModalContainer}
     >
       <Layout className="file-manager" style={{ height: '100%' }}>
-        {/* 左侧边栏：固定显示 bucket 名称 */}
         <Sider width={200} theme="light" className="file-manager-sider">
           <div className="sider-header">
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>存储空间</h3>
@@ -136,7 +156,6 @@ export default function FileManagerModal({ open, onClose }: FileManagerModalProp
           </Spin>
         </Sider>
 
-        {/* 主内容区 */}
         <Content className="file-manager-content">
           <div className="content-toolbar">
             <Breadcrumb items={breadcrumbItems} />
@@ -164,28 +183,29 @@ export default function FileManagerModal({ open, onClose }: FileManagerModalProp
           </div>
         </Content>
 
-        {/* 预览弹窗 */}
         <PreviewDialog />
 
-        {/* 创建文件夹弹窗 */}
         <Modal
           title="新建文件夹"
           open={createFolderVisible}
-          onOk={handleCreateFolder}
+          onOk={() => void handleCreateFolder()}
           onCancel={() => {
-            setCreateFolderVisible(false);
-            setNewFolderName('');
+            setCreateFolderVisible(false)
+            setNewFolderName('')
           }}
           confirmLoading={createLoading}
+          modalRender={renderModalContainer}
         >
           <Input
             placeholder="请输入文件夹名称"
             value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onPressEnter={handleCreateFolder}
+            onChange={e => setNewFolderName(e.target.value)}
+            onPressEnter={() => void handleCreateFolder()}
+            maxLength={MAX_FOLDER_NAME_LENGTH}
+            showCount
           />
         </Modal>
       </Layout>
     </Modal>
-  );
+  )
 }

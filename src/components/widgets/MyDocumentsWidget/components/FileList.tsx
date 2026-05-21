@@ -70,7 +70,7 @@ export default function FileList() {
           ) : (
             <FileOutlined style={{ color: getFileIconColor(name, false), fontSize: 18 }} />
           )}
-          <span className="file-name">{name}</span>
+          <span className="file-name" title={name}>{name}</span>
         </Space>
       ),
     },

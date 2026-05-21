@@ -67,6 +67,7 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({
   const { message } = AntdApp.useApp()
   const { themeMode, styleMode, styleTokens } = useCanvasTheme()
   const backgroundTypeValue = Form.useWatch('backgroundType', form)
+  const backgroundImageValue = Form.useWatch('backgroundImage', form)
 
   const defaultBackgroundColor = useMemo(() => {
     if (styleTokens?.widget?.background) {
@@ -124,6 +125,22 @@ const BackgroundSettings: React.FC<BackgroundSettingsProps> = ({
       setActiveTab(backgroundTypeValue)
     }
   }, [activeTab, backgroundTypeValue])
+
+  useEffect(() => {
+    if (backgroundImageValue) {
+      setFileList([
+        {
+          uid: '-1',
+          name: 'current-bg.png',
+          status: 'done',
+          url: backgroundImageValue,
+        },
+      ])
+      return
+    }
+
+    setFileList([])
+  }, [backgroundImageValue])
 
   const handleTabChange = (key: string) => {
     if (disabled) {

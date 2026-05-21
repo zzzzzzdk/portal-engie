@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Table, Tag, Spin, Empty, Typography } from 'antd'
 import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
-import { requestWidgetApi } from '@/utils/widgetApi'
+import { getPaginationSizeOptions } from '@/constants/pagination'
+import { getValueByPath, requestWidgetApi } from '@/utils/widgetApi'
 import { getWidgetDefaultFieldValue, getWidgetPaginationDefaults } from '@/utils/widgetApiDefaults'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 
@@ -109,6 +110,14 @@ const normalizeTableRows = (list: any[], rowKey: string) =>
     [rowKey]: item?.[rowKey] || `row-${index}`,
   }))
 
+const getColumnValue = (record: any, dataIndex?: string) => {
+  if (!dataIndex) {
+    return undefined
+  }
+
+  return getValueByPath(record, dataIndex)
+}
+
 const buildDataTableViewStateKey = (params: {
   widgetId?: string
   dataSource: 'api' | 'static' | 'default'
@@ -160,6 +169,14 @@ const buildSharedTableViewState = (
   error,
   pagination: { ...pagination },
 })
+
+const stopEventPropagation = (event: React.MouseEvent<HTMLElement>) => {
+  event.stopPropagation()
+}
+
+const stopPointerEventPropagation = (event: React.MouseEvent<HTMLElement>) => {
+  event.stopPropagation()
+}
 
 const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
   const tableConfig = config as DataTableWidgetConfig
@@ -244,6 +261,11 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
         timeout: tableConfig?.timeout,
         paginationMode,
         paginationConfig: {
+          page: paginationConfig.page || 1,
+          pageSize:
+            paginationConfig.pageSize ||
+            (typeof legacyPaginationConfig === 'object' ? legacyPaginationConfig.pageSize : undefined) ||
+            10,
           pageParam: paginationConfig.pageParam || defaultPagination?.pageParam,
           pageSizeParam: paginationConfig.pageSizeParam || defaultPagination?.pageSizeParam,
           totalField: paginationConfig.totalField || defaultPagination?.totalField,
@@ -266,8 +288,11 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       defaultPagination?.pageSizeParam,
       defaultPagination?.totalField,
       isStaticDataSource,
+      legacyPaginationConfig,
+      paginationConfig.page,
       paginationConfig.currentField,
       paginationConfig.pageParam,
+      paginationConfig.pageSize,
       paginationConfig.pageSizeField,
       paginationConfig.pageSizeParam,
       paginationConfig.showTotal,
@@ -290,9 +315,14 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
   const [pageState, setPageState] = useState<SharedPaginationState>(
     () => cachedInitialViewState?.pagination || initialPaginationState,
   )
+  const tableContainerRef = useRef<HTMLDivElement>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const pageStateRef = useRef(pageState)
   const tableDataRef = useRef(tableData)
+  const pageSizeOptions = useMemo(
+    () => getPaginationSizeOptions(pageState.pageSize).map(value => String(value)),
+    [pageState.pageSize],
+  )
 
   useEffect(() => {
     pageStateRef.current = pageState
@@ -329,9 +359,13 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
   useEffect(() => {
     const cachedViewState = dataTableViewStateCache.get(viewStateKey)
     if (cachedViewState) {
+      pageStateRef.current = cachedViewState.pagination
       applySharedViewState(cachedViewState)
       return
     }
+
+    const nextInitialPagination = createPaginationState(initialCurrent, initialPageSize)
+    pageStateRef.current = nextInitialPagination
 
     setPageState(prev => {
       if (prev.current === initialCurrent && prev.pageSize === initialPageSize) {
@@ -583,15 +617,15 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       fixed: col.fixed,
       sorter: col.sorter
         ? (a: any, b: any) => {
-            const aVal = a[col.dataIndex]
-            const bVal = b[col.dataIndex]
+            const aVal = getColumnValue(a, col.dataIndex)
+            const bVal = getColumnValue(b, col.dataIndex)
             if (typeof aVal === 'number' && typeof bVal === 'number') {
               return aVal - bVal
             }
             return String(aVal || '').localeCompare(String(bVal || ''))
           }
         : undefined,
-      render: (value: any) => renderColumnContent(col, value),
+      render: (_value: any, record: any) => renderColumnContent(col, getColumnValue(record, col.dataIndex)),
     }))
   }, [columnsConfig])
 
@@ -608,19 +642,52 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
       current: pageState.current,
       pageSize: pageState.pageSize,
       total: pageState.total,
-      showSizeChanger: true,
+      pageSizeOptions,
+      showSizeChanger: pageSizeOptions.length > 1
+        ? {
+            getPopupContainer: triggerNode =>
+              tableContainerRef.current || triggerNode.parentElement || document.body,
+            onMouseDown: stopPointerEventPropagation,
+            onClick: stopEventPropagation,
+          }
+        : false,
       showTotal: showTotal ? total => `共 ${total} 条` : undefined,
-      onChange: (current, pageSize) => {
+      onShowSizeChange: (_current, size) => {
         const next = {
-          current,
-          pageSize: pageSize || pageState.pageSize,
+          current: 1,
+          pageSize: size,
           total: pageState.total,
           serverSide: pageState.serverSide,
         }
 
-        setPageState(next)
+        persistSharedViewState(buildSharedTableViewState(
+          tableDataRef.current,
+          next,
+          false,
+          error,
+        ))
 
-        if (pageState.serverSide && apiEndpoint) {
+        if (paginationMode === 'pagination' && apiEndpoint) {
+          loadData(next, { force: true })
+        }
+      },
+      onChange: (current, pageSize) => {
+        const nextPageSize = pageSize || pageState.pageSize
+        const next = {
+          current: nextPageSize !== pageState.pageSize ? 1 : current,
+          pageSize: nextPageSize,
+          total: pageState.total,
+          serverSide: pageState.serverSide,
+        }
+
+        persistSharedViewState(buildSharedTableViewState(
+          tableDataRef.current,
+          next,
+          false,
+          error,
+        ))
+
+        if (paginationMode === 'pagination' && apiEndpoint) {
           loadData(next, { force: true })
         }
       },
@@ -636,18 +703,24 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
   }
 
   return (
-    <Spin spinning={loading}>
-      <Table
-        columns={generateColumns()}
-        dataSource={tableData}
-        rowKey={rowKey}
-        pagination={getPagination()}
-        size={size}
-        bordered={bordered}
-        showHeader={showTableHeader}
-        scroll={{ y: scrollY, x: scrollX }}
-      />
-    </Spin>
+    <div
+      ref={tableContainerRef}
+      onMouseDown={stopPointerEventPropagation}
+      onClick={stopEventPropagation}
+    >
+      <Spin spinning={loading}>
+        <Table
+          columns={generateColumns()}
+          dataSource={tableData}
+          rowKey={rowKey}
+          pagination={getPagination()}
+          size={size}
+          bordered={bordered}
+          showHeader={showTableHeader}
+          scroll={{ y: scrollY, x: scrollX }}
+        />
+      </Spin>
+    </div>
   )
 }
 

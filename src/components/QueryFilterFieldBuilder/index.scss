@@ -8,9 +8,27 @@
     align-items: center;
     gap: 8px;
     width: 100%;
+    min-width: 0;
+
+    > span:first-child {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   &__meta {
+    flex: 0 1 45%;
+    display: inline-block;
+    min-width: 0;
+    width: 136px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
     color: var(--ant-color-text-tertiary);
     font-size: 12px;
   }

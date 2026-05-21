@@ -16,8 +16,8 @@ export interface PublishDashboardParams {
   id?: string;
   title: string;
   dashboardConfig: string; // JSON 字符串
-  status?: number;
   cover_url?: string;
+  action: 'save_draft' | 'publish';
 }
 
 // 发布响应
@@ -26,7 +26,11 @@ export interface PublishDashboardResponse {
   publishTime?: string | null;
   success: boolean;
   status?: number;
+  statusLabel?: string;
+  updatedAt?: string;
   cover_url?: string;
+  hasDraft?: boolean;
+  hasPublished?: boolean;
 }
 
 // 发布列表项
@@ -34,9 +38,13 @@ export interface PublishListItem {
   id: string;
   title: string;
   publishedAt: string;
-  status?: number;
+  updatedAt?: string;
+  status: number;
+  statusLabel?: string;
   componentCount?: number;
   cover_url?: string;
+  hasDraft?: boolean;
+  hasPublished?: boolean;
 }
 
 // 分页请求参数
@@ -60,7 +68,14 @@ export interface PublishedDashboardRecord {
   title: string;
   dashboardConfig: string;
   publishTime?: string;
+  publishedAt?: string;
+  updatedAt?: string;
   coverUrl?: string;
+  cover_url?: string;
+  status?: number;
+  statusLabel?: string;
+  hasDraft?: boolean;
+  hasPublished?: boolean;
 }
 
 // 解析后的工作台结构（供前端使用）
@@ -68,6 +83,11 @@ export interface PublishedDashboard extends DashboardSnapshot {
   id: string;
   title: string;
   publishTime?: string;
+}
+
+export interface SetHomepageResponse {
+  dashboardId: string;
+  setAt: string;
 }
 
 // 序列化工作台快照
@@ -121,7 +141,7 @@ export const getPublishList = (params: PublishListParams) => {
 /**
  * 获取已发布工作台详情（原始结构）
  */
-export const getPublishedDashboard = (data: { id: string }) => {
+export const getPublishedDashboard = (data: { id: string; version?: 'draft' | 'published' }) => {
   return ajax<PublishedDashboardRecord>({
     method: 'get',
     url: `/v1/dashboard/publish`,
@@ -132,11 +152,29 @@ export const getPublishedDashboard = (data: { id: string }) => {
 /**
  * 删除已发布工作台
  */
-export const deletePublishedDashboard = (data: { id: string }) => {
+export const deletePublishedDashboard = (data: {
+  id: string;
+  target?: 'draft' | 'published' | 'all';
+}) => {
   return ajax<{ success: boolean }>({
     method: 'post',
     url: `/v1/dashboard/publish/delete`,
     data,
+  });
+};
+
+export const setHomepageDashboard = (data: { id: string }) => {
+  return ajax<SetHomepageResponse>({
+    method: 'post',
+    url: '/v1/dashboard/homepage/set',
+    data,
+  });
+};
+
+export const getCurrentHomepageDashboard = () => {
+  return ajax<PublishedDashboardRecord | null>({
+    method: 'get',
+    url: '/v1/dashboard/homepage/current',
   });
 };
 

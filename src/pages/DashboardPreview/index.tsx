@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Spin, Result, Button } from 'antd'
 import { getPublishedDashboard, parseDashboardSnapshot, PublishedDashboard } from '@/services'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
@@ -19,11 +19,14 @@ import DashboardCanvasRenderer, { countDashboardMicroApps } from './dashboard-pr
 const DashboardPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { setEditMode } = useStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dashboardData, setDashboardData] = useState<PublishedDashboard | null>(null)
   const exportMicroAppCount = useMemo(() => countDashboardMicroApps(dashboardData), [dashboardData])
+
+  const version = searchParams.get('version') === 'draft' ? 'draft' : 'published'
 
   useEffect(() => {
     if (!id) {
@@ -37,7 +40,7 @@ const DashboardPreview: React.FC = () => {
     const fetchDashboard = async () => {
       try {
         setLoading(true)
-        const res = await getPublishedDashboard({ id })
+        const res = await getPublishedDashboard({ id, version })
         if (res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig)
           if (!snapshot) {
@@ -76,7 +79,7 @@ const DashboardPreview: React.FC = () => {
     }
 
     fetchDashboard()
-  }, [id, setEditMode])
+  }, [id, setEditMode, version])
 
   useEffect(() => {
     if (typeof document === 'undefined') {

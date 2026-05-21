@@ -5,6 +5,10 @@ const Random = Mock.Random;
 
 const mockDashboards = {};
 let seedsInitialized = false;
+const APP_STATUS_DRAFT = 0;
+const APP_STATUS_PENDING = 1;
+const APP_STATUS_PUBLISHED = 2;
+const homepageStorage = {};
 
 const ensureSeededDashboards = () => {
   if (seedsInitialized) {
@@ -643,23 +647,141 @@ const ensureSeededDashboards = () => {
   seedsInitialized = true;
 };
 
-const formatDashboardRecord = (dashboard, fallbackId) => {
-  if (!dashboard) {
-    return null;
+const formatTime = (value) => {
+  if (!value) {
+    return '';
   }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const buildVersionPayload = ({ snapshot, coverUrl = '', updatedAt = '', publishedAt = '' }) => ({
+  snapshot: snapshot || {},
+  coverUrl,
+  updatedAt,
+  publishedAt,
+});
+
+const buildLegacyPayload = (dashboard) => {
   const snapshot = {
     widgets: dashboard.widgets || [],
     groups: dashboard.groups || [],
     floatingModules: dashboard.floatingModules || [],
     dashboardConfig: dashboard.dashboardConfig || {},
   };
+  const time = dashboard.updatedAt || dashboard.publishedAt || new Date().toISOString();
+  const payload = {
+    schemaVersion: 2,
+    createdAt: dashboard.createdAt || time,
+    updatedAt: time,
+    draft: null,
+    published: null,
+  };
+  if (Number(dashboard.status) === APP_STATUS_DRAFT) {
+    payload.draft = buildVersionPayload({
+      snapshot,
+      coverUrl: dashboard.cover_url || '',
+      updatedAt: time,
+    });
+  } else {
+    payload.published = buildVersionPayload({
+      snapshot,
+      coverUrl: dashboard.cover_url || '',
+      updatedAt: time,
+      publishedAt: dashboard.publishedAt || time,
+    });
+  }
+  return payload;
+};
+
+const getStoragePayload = (dashboard) => {
+  if (!dashboard) {
+    return null;
+  }
+  if (dashboard.storagePayload?.schemaVersion === 2) {
+    return dashboard.storagePayload;
+  }
+  const payload = buildLegacyPayload(dashboard);
+  dashboard.storagePayload = payload;
+  return payload;
+};
+
+const snapshotSignature = (versionPayload) => JSON.stringify(versionPayload?.snapshot || {});
+
+const toTimeValue = (value) => {
+  if (!value) {
+    return null;
+  }
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+};
+
+const resolveStatus = (payload) => {
+  const draft = payload?.draft;
+  const published = payload?.published;
+  if (draft && !published) {
+    return { status: APP_STATUS_DRAFT, statusLabel: '暂存' };
+  }
+  if (published) {
+    if (draft) {
+      const draftUpdatedAt = toTimeValue(draft.updatedAt);
+      const publishedAt = toTimeValue(published.publishedAt);
+      if ((draftUpdatedAt && publishedAt && draftUpdatedAt > publishedAt) || !publishedAt) {
+        return { status: APP_STATUS_PENDING, statusLabel: '待发布更新' };
+      }
+    }
+    return { status: APP_STATUS_PUBLISHED, statusLabel: '已发布' };
+  }
+  return { status: APP_STATUS_DRAFT, statusLabel: '暂存' };
+};
+
+const getUpdatedAt = (payload) => {
+  return [
+    payload?.updatedAt || '',
+    payload?.draft?.updatedAt || '',
+    payload?.published?.updatedAt || '',
+    payload?.published?.publishedAt || '',
+  ].filter(Boolean).sort().slice(-1)[0] || '';
+};
+
+const getVersionPayload = (dashboard, version = 'draft') => {
+  const payload = getStoragePayload(dashboard);
+  if (!payload) {
+    return null;
+  }
+  if (version === 'published') {
+    return payload.published || null;
+  }
+  return payload.draft || payload.published || null;
+};
+
+const formatDashboardRecord = (dashboard, fallbackId, version = 'draft') => {
+  if (!dashboard) {
+    return null;
+  }
+  const payload = getStoragePayload(dashboard);
+  const currentVersion = getVersionPayload(dashboard, version);
+  if (!payload || !currentVersion) {
+    return null;
+  }
+  const { status, statusLabel } = resolveStatus(payload);
   return {
     id: dashboard.id || fallbackId,
     title: dashboard.title || '未命名工作台',
-    publishTime: dashboard.publishedAt || '',
-    status: dashboard.status ?? 1,
-    dashboardConfig: JSON.stringify(snapshot),
-    coverUrl: dashboard.cover_url || '',
+    publishTime: payload.published?.publishedAt ? formatTime(payload.published.publishedAt) : '',
+    publishedAt: payload.published?.publishedAt ? formatTime(payload.published.publishedAt) : '',
+    updatedAt: formatTime(getUpdatedAt(payload)),
+    status,
+    statusLabel,
+    hasDraft: Boolean(payload.draft),
+    hasPublished: Boolean(payload.published),
+    dashboardConfig: JSON.stringify(currentVersion.snapshot || {}),
+    coverUrl: currentVersion.coverUrl || '',
+    cover_url: currentVersion.coverUrl || '',
   };
 };
 
@@ -684,7 +806,7 @@ router.post('/v1/dashboard/publish', async (req, res) => {
   await req.sleep(0.5);
 
   try {
-    const { id: bodyId, title, dashboardConfig, status, cover_url } = req.body || {};
+    const { id: bodyId, title, dashboardConfig, cover_url, action = 'publish' } = req.body || {};
     if (!dashboardConfig || typeof dashboardConfig !== 'string') {
       throw new Error('缺少 dashboardConfig 字符串');
     }
@@ -695,28 +817,47 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       throw new Error('dashboardConfig 格式错误');
     }
 
-    const normalizedStatus = Number(status) === 0 ? 0 : 1;
     const trimmedId = typeof bodyId === 'string' && bodyId.trim() ? bodyId.trim() : '';
     const existingRecord = trimmedId ? mockDashboards[trimmedId] : null;
     const id = trimmedId || `pub_${Date.now()}`;
     const now = new Date().toISOString();
-    const createdAt = existingRecord?.createdAt || now;
-    const publishedAt = normalizedStatus === 1 ? now : existingRecord?.publishedAt || null;
+    const record = existingRecord || { id, createdAt: now };
+    const payload = getStoragePayload(record) || {
+      schemaVersion: 2,
+      createdAt: now,
+      updatedAt: now,
+      draft: null,
+      published: null,
+    };
+    const normalizedCoverUrl = cover_url || payload.draft?.coverUrl || payload.published?.coverUrl || '';
+    const nextDraft = buildVersionPayload({
+      snapshot: parsedSnapshot,
+      coverUrl: normalizedCoverUrl,
+      updatedAt: now,
+    });
+    payload.updatedAt = now;
+    payload.draft = nextDraft;
 
-    // 保存到内存，便于 mock 接口读取
+    if (action === 'publish') {
+      payload.published = buildVersionPayload({
+        snapshot: parsedSnapshot,
+        coverUrl: normalizedCoverUrl,
+        updatedAt: now,
+        publishedAt: now,
+      });
+    }
+
+    const { status, statusLabel } = resolveStatus(payload);
     mockDashboards[id] = {
-      ...existingRecord,
+      ...record,
       id,
       title: title || parsedSnapshot?.dashboardConfig?.title || '未命名工作台',
-      widgets: parsedSnapshot?.widgets || [],
-      groups: parsedSnapshot?.groups || [],
-      floatingModules: parsedSnapshot?.floatingModules || [],
-      dashboardConfig: parsedSnapshot?.dashboardConfig || {},
-      status: normalizedStatus,
-      cover_url: cover_url || existingRecord?.cover_url || '',
-      createdAt,
+      status,
+      storagePayload: payload,
+      cover_url: payload.draft?.coverUrl || payload.published?.coverUrl || '',
+      createdAt: record.createdAt || now,
       updatedAt: now,
-      publishedAt,
+      publishedAt: payload.published?.publishedAt || record.publishedAt || null,
     };
 
     console.log('[Mock] Dashboard published:', {
@@ -724,17 +865,21 @@ router.post('/v1/dashboard/publish', async (req, res) => {
       title,
       widgetCount: parsedSnapshot?.widgets?.length || 0,
       groupCount: parsedSnapshot?.groups?.length || 0,
-      status: normalizedStatus,
+      status,
     });
 
     req.json.code = 20000;
-    req.json.message = '发布成功';
+    req.json.message = action === 'publish' ? '发布成功' : '保存成功';
     req.json.data = {
       id,
-      publishTime: publishedAt,
-      status: normalizedStatus,
+      publishTime: payload.published?.publishedAt ? formatTime(payload.published.publishedAt) : '',
+      status,
+      statusLabel,
       success: true,
-      cover_url: cover_url || existingRecord?.cover_url || '',
+      updatedAt: formatTime(now),
+      cover_url: payload.draft?.coverUrl || payload.published?.coverUrl || '',
+      hasDraft: Boolean(payload.draft),
+      hasPublished: Boolean(payload.published),
     };
   } catch (error) {
     req.json.code = 1;
@@ -771,15 +916,22 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
   ensureSeededDashboards();
 
   const allRecords = Object.values(mockDashboards).map((record) => {
-    const publishTime = record.status === 1 ? record.publishedAt || '' : '';
+    const payload = getStoragePayload(record);
+    const { status, statusLabel } = resolveStatus(payload);
+    const previewPayload = payload?.draft || payload?.published || {};
+    const snapshot = previewPayload?.snapshot || {};
     const updatedAt = record.updatedAt || record.createdAt || record.publishedAt || '';
     return {
       id: record.id,
       title: record.title,
-      publishTime,
-      status: record.status ?? 0,
-      componentCount: Array.isArray(record.widgets) ? record.widgets.length : 0,
-      cover_url: record.cover_url || '',
+      publishTime: payload?.published?.publishedAt ? formatTime(payload.published.publishedAt) : '',
+      publishedAt: payload?.published?.publishedAt ? formatTime(payload.published.publishedAt) : '',
+      status,
+      statusLabel,
+      componentCount: Array.isArray(snapshot.widgets) ? snapshot.widgets.length : 0,
+      cover_url: previewPayload.coverUrl || '',
+      hasDraft: Boolean(payload?.draft),
+      hasPublished: Boolean(payload?.published),
       updatedAt,
     };
   });
@@ -806,16 +958,21 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
     id: item.id,
     title: item.title,
     publishTime: item.publishTime,
+    publishedAt: item.publishedAt,
+    updatedAt: formatTime(item.updatedAt),
     status: item.status,
+    statusLabel: item.statusLabel,
     componentCount: item.componentCount,
     cover_url: item.cover_url,
+    hasDraft: item.hasDraft,
+    hasPublished: item.hasPublished,
   }));
 
   req.json.code = 20000;
   req.json.message = '获取成功';
   req.json.data = {
     list,
-    total: 100,
+    total,
     page: currentPage,
     page_size: currentPageSize,
   };
@@ -840,7 +997,7 @@ router.get('/v1/dashboard/publish/list', async (req, res) => {
 router.get('/v1/dashboard/publish', async (req, res) => {
   await req.sleep(0.3);
 
-  const { id } = req.query;
+  const { id, version = 'draft' } = req.query;
 
   ensureSeededDashboards();
 
@@ -855,13 +1012,13 @@ router.get('/v1/dashboard/publish', async (req, res) => {
   const dashboard = mockDashboards[id];
 
   if (dashboard) {
-    const record = formatDashboardRecord(dashboard, id);
+    const record = formatDashboardRecord(dashboard, id, version);
     req.json.code = 20000;
-    req.json.message = '????';
+    req.json.message = '获取成功';
     req.json.data = record;
   } else {
     req.json.code = 404;
-    req.json.message = '??????';
+    req.json.message = '未找到工作台';
     req.json.data = null;
   }
 
@@ -871,7 +1028,7 @@ router.get('/v1/dashboard/publish', async (req, res) => {
 router.post('/v1/dashboard/publish/delete', async (req, res) => {
   await req.sleep(0.3);
 
-  const { id } = req.body;
+  const { id, target = 'all' } = req.body;
 
   if (!id) {
     req.json.code = 1;
@@ -881,6 +1038,38 @@ router.post('/v1/dashboard/publish/delete', async (req, res) => {
     return;
   }
 
+  const dashboard = mockDashboards[id];
+  if (!dashboard) {
+    req.json.code = 1;
+    req.json.message = '应用不存在';
+    req.json.data = { success: false };
+    res.json(req.json);
+    return;
+  }
+
+  if (target === 'draft') {
+    const payload = getStoragePayload(dashboard);
+    if (payload?.published) {
+      payload.draft = null;
+      payload.updatedAt = new Date().toISOString();
+      const { status, statusLabel } = resolveStatus(payload);
+      dashboard.status = status;
+      dashboard.storagePayload = payload;
+      dashboard.updatedAt = payload.updatedAt;
+      dashboard.cover_url = payload.published?.coverUrl || '';
+      console.log('[Mock] Dashboard draft deleted:', id);
+      req.json.code = 20000;
+      req.json.message = '删除成功';
+      req.json.data = { success: true, status, statusLabel };
+      res.json(req.json);
+      return;
+    }
+  }
+
+  delete mockDashboards[id];
+  if (homepageStorage.user_001?.dashboardId === id) {
+    delete homepageStorage.user_001;
+  }
   console.log('[Mock] Dashboard deleted:', id);
 
   req.json.code = 20000;
@@ -998,3 +1187,42 @@ router.get('/v1/dashboard/home/configuration-json', async (req, res) => {
 global.mockDashboards = mockDashboards;
 
 module.exports = router;
+router.post('/v1/dashboard/homepage/set', async (req, res) => {
+  await req.sleep(0.3);
+
+  const { id } = req.body || {};
+  const dashboard = mockDashboards[id];
+  const payload = getStoragePayload(dashboard);
+
+  if (!dashboard || !payload?.published) {
+    req.json.code = 1;
+    req.json.message = '仅已发布应用可以设置为首页';
+    req.json.data = null;
+    res.json(req.json);
+    return;
+  }
+
+  homepageStorage.user_001 = {
+    dashboardId: id,
+    setAt: formatTime(new Date().toISOString()),
+  };
+
+  req.json.code = 20000;
+  req.json.message = '设置成功';
+  req.json.data = homepageStorage.user_001;
+  res.json(req.json);
+});
+
+router.get('/v1/dashboard/homepage/current', async (req, res) => {
+  await req.sleep(0.3);
+
+  ensureSeededDashboards();
+  const setting = homepageStorage.user_001;
+  const dashboard = setting ? mockDashboards[setting.dashboardId] : null;
+  const record = dashboard ? formatDashboardRecord(dashboard, dashboard.id, 'published') : null;
+
+  req.json.code = 20000;
+  req.json.message = '获取成功';
+  req.json.data = record;
+  res.json(req.json);
+});

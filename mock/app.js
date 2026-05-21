@@ -12,14 +12,13 @@ var systemSettingsRouter = require("./routes/system-settings");
 var publishRouter = require("./routes/publish");
 var uploadRouter = require("./routes/upload");
 var microAppRouter = require("./routes/micro-app");
-var aiWorkbenchRouter = require("./routes/ai-workbench");
+var agentChatRouter = require("./routes/agent-chat");
 var dataSourceRouter = require("./routes/data-source");
 var globalConfigRouter = require("./routes/global-config");
 
 var baseApi = "/";
 var app = express();
 
-// view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
@@ -33,12 +32,6 @@ app.use(
 );
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
-
-/**
- * @apiDefine APICommon  全局方法,定义了一个全局apiDoc方法
- * @apiSuccess  {String} message  成功信息
- * @apiSuccess  {Number} status 状态码 <code>20000 成功, 30009、40006、40005 token失效</code>
- */
 
 app.use("*", function (req, res, next) {
   const { origin, Origin, referer, Referer } = req.headers;
@@ -73,7 +66,6 @@ app.use("*", function (req, res, next) {
   }
 });
 
-// token需求测试
 let lastTime = Date.now();
 app.use("*", function (req, res, next) {
   let nowTime = Date.now();
@@ -91,22 +83,17 @@ app.use(baseApi, systemSettingsRouter);
 app.use(baseApi, publishRouter);
 app.use(baseApi, uploadRouter);
 app.use(baseApi, microAppRouter);
-app.use(baseApi, aiWorkbenchRouter);
+app.use(baseApi, agentChatRouter);
 app.use(baseApi, dataSourceRouter);
 app.use(baseApi, globalConfigRouter);
 
-// catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// error handler
 app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // render the error page
   res.status(err.status || 500);
   res.render("error");
 });

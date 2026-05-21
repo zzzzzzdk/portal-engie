@@ -38,6 +38,27 @@ type PersistHelpers = {
   onFinishHydration?: (fn: (state?: AppState, error?: unknown) => void) => () => void;
 };
 
+const GRIDSTACK_DRAG_CANCEL_SELECTOR = [
+  'input',
+  'textarea',
+  'button',
+  'select',
+  'option',
+  '.widget-content .ant-select',
+  '.widget-content .ant-select-dropdown',
+  '.widget-content .ant-select-dropdown *',
+  '.widget-content .ant-picker',
+  '.widget-content .ant-cascader',
+  '.widget-content .ant-input-number',
+  '.widget-content .ant-input-affix-wrapper',
+  '.widget-content .ant-input',
+  '.widget-content .ant-pagination',
+  '.widget-content .ant-pagination *',
+  '.widget-content .ant-radio-wrapper',
+  '.widget-content .ant-checkbox-wrapper',
+  '.widget-content [contenteditable="true"]',
+].join(', ');
+
 /**
  * Dashboard 内部组件（在 Provider 内部）
  */
@@ -966,6 +987,7 @@ const DashboardGridStack: React.FC = () => {
       float: true,
       draggable: {
         handle: '.grid-drag-handle',
+        cancel: GRIDSTACK_DRAG_CANCEL_SELECTOR,
         appendTo: 'parent',  // 添加这行
         scroll: false,   // 禁用自动滚动
       },
@@ -1044,7 +1066,7 @@ const DashboardGridStack: React.FC = () => {
       setRemoteDataLoaded(false);
 
       try {
-        const res = await getPublishedDashboard({ id: editId });
+        const res = await getPublishedDashboard({ id: editId, version: 'draft' });
         if (res.code === 20000 && res.data) {
           const snapshot = parseDashboardSnapshot(res.data.dashboardConfig);
           if (!snapshot) {
@@ -1243,6 +1265,12 @@ function createGroupGridWidget(
       column: 'auto',
       cellHeight: preset.cellHeight,
       margin: preset.margin,
+      draggable: {
+        handle: '.grid-drag-handle',
+        cancel: GRIDSTACK_DRAG_CANCEL_SELECTOR,
+        appendTo: 'parent',
+        scroll: false,
+      },
       minRow: 1,  // 确保空分组至少有一行高度，可作为拖拽目标
       // alwaysShowResizeHandle: false,
       animate: true,

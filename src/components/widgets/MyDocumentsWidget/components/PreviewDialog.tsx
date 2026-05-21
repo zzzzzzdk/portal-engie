@@ -1,11 +1,12 @@
-import { Modal, Spin } from 'antd';
-import { useFileStore } from '@/store/useFileStore';
-import { getPreviewType, isOfficePreviewType } from '@/utils/fileUtils';
-import OnlyOfficeEditor from './OnlyOfficeEditor';
-import MonacoPreview from './MonacoPreview';
-import PdfPreview from './PdfPreview';
-import WordPreview from './WordPreview';
-import ExcelPreview from './ExcelPreview';
+import type { MouseEvent } from 'react'
+import { Modal, Spin } from 'antd'
+import { useFileStore } from '@/store/useFileStore'
+import { getPreviewType, isOfficePreviewType } from '@/utils/fileUtils'
+import OnlyOfficeEditor from './OnlyOfficeEditor'
+import MonacoPreview from './MonacoPreview'
+import PdfPreview from './PdfPreview'
+import WordPreview from './WordPreview'
+import ExcelPreview from './ExcelPreview'
 
 export default function PreviewDialog() {
   const {
@@ -15,9 +16,19 @@ export default function PreviewDialog() {
     previewLoading,
     closePreview,
     currentBucket,
-  } = useFileStore();
+  } = useFileStore()
 
-  const previewType = previewFile ? getPreviewType(previewFile.name) : 'none';
+  const previewType = previewFile ? getPreviewType(previewFile.name) : 'none'
+
+  const stopContextMenuPropagation = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+  }
+
+  const renderModalContainer = (modal: React.ReactNode) => (
+    <div onContextMenuCapture={stopContextMenuPropagation}>
+      {modal}
+    </div>
+  )
 
   const renderContent = () => {
     if (previewLoading) {
@@ -25,14 +36,13 @@ export default function PreviewDialog() {
         <div className="preview-loading">
           <Spin size="large" />
         </div>
-      );
+      )
     }
 
     if (!previewInfo || !previewFile) {
-      return <div className="preview-empty">暂无预览</div>;
+      return <div className="preview-empty">暂无预览</div>
     }
 
-    // OnlyOffice 预览（word/excel/ppt/pdf）
     if (isOfficePreviewType(previewType) && currentBucket) {
       return (
         <OnlyOfficeEditor
@@ -41,7 +51,7 @@ export default function PreviewDialog() {
           fileName={previewFile.name}
           mode={previewInfo.can_edit ? 'edit' : 'view'}
         />
-      );
+      )
     }
 
     switch (previewType) {
@@ -50,7 +60,7 @@ export default function PreviewDialog() {
           <div className="image-preview">
             <img src={previewInfo.url} alt={previewFile.name} />
           </div>
-        );
+        )
 
       case 'video':
         return (
@@ -60,7 +70,7 @@ export default function PreviewDialog() {
               您的浏览器不支持视频播放
             </video>
           </div>
-        );
+        )
 
       case 'audio':
         return (
@@ -70,14 +80,13 @@ export default function PreviewDialog() {
               您的浏览器不支持音频播放
             </audio>
           </div>
-        );
+        )
 
-      // 以下 case 作为 OnlyOffice 不可用时的回退
       case 'pdf':
-        return <PdfPreview url={previewInfo.url} />;
+        return <PdfPreview url={previewInfo.url} />
 
       case 'word':
-        return <WordPreview url={previewInfo.url} />;
+        return <WordPreview url={previewInfo.url} />
 
       case 'excel':
         return (
@@ -86,7 +95,7 @@ export default function PreviewDialog() {
             fileName={previewFile.name}
             canEdit={previewInfo.can_edit}
           />
-        );
+        )
 
       case 'text':
         return (
@@ -97,20 +106,20 @@ export default function PreviewDialog() {
             bucket={currentBucket}
             canEdit={previewInfo.can_edit}
           />
-        );
+        )
 
       default:
-        return <div className="preview-empty">无法预览此文件类型</div>;
+        return <div className="preview-empty">无法预览此文件类型</div>
     }
-  };
+  }
 
-  const isOfficeType = isOfficePreviewType(previewType);
+  const isOfficeType = isOfficePreviewType(previewType)
 
   const getModalWidth = () => {
-    if (isOfficeType) return '90%';
-    if (previewType === 'text') return '80%';
-    return '60%';
-  };
+    if (isOfficeType) return '90%'
+    if (previewType === 'text') return '80%'
+    return '60%'
+  }
 
   return (
     <Modal
@@ -122,10 +131,11 @@ export default function PreviewDialog() {
       destroyOnClose
       className="preview-dialog"
       styles={isOfficeType ? { body: { padding: 0, height: '80vh', overflow: 'hidden' } } : undefined}
+      modalRender={renderModalContainer}
     >
       <div className={isOfficeType ? 'preview-content-office' : 'preview-content'}>
         {renderContent()}
       </div>
     </Modal>
-  );
+  )
 }

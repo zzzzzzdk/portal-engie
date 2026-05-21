@@ -15,6 +15,45 @@ interface WidgetApiDebugButtonProps {
   disabled?: boolean
 }
 
+const getReadableDataType = (value: unknown) => {
+  if (value === undefined) {
+    return '未解析到数据'
+  }
+
+  if (value === null) {
+    return '空值'
+  }
+
+  if (Array.isArray(value)) {
+    return '数组'
+  }
+
+  switch (typeof value) {
+    case 'object':
+      return '对象'
+    case 'string':
+      return '字符串'
+    case 'number':
+      return '数字'
+    case 'boolean':
+      return '布尔值'
+    default:
+      return '未知类型'
+  }
+}
+
+const getDataDebugTip = (value: unknown, dataField?: string) => {
+  if (value !== undefined) {
+    return undefined
+  }
+
+  if (dataField?.trim()) {
+    return `当前数据字段未取到值，请检查字段路径“${dataField}”是否正确`
+  }
+
+  return '接口未返回可解析的数据'
+}
+
 const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
   form,
   buildConfig,
@@ -50,12 +89,13 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
                 {JSON.stringify(requestConfig, null, 2)}
               </pre>
             </div>
-            <div>
+            {/* <div>
               <Typography.Text strong>{'解析结果'}</Typography.Text>
               <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {JSON.stringify(
                   {
-                    dataType: Array.isArray(result.data) ? 'array' : typeof result.data,
+                    dataType: getReadableDataType(result.data),
+                    dataTip: getDataDebugTip(result.data, config.dataField),
                     listLength: result.list.length,
                     resolvedPaths: result.resolvedPaths,
                     pagination: result.pagination,
@@ -64,7 +104,7 @@ const WidgetApiDebugButton: React.FC<WidgetApiDebugButtonProps> = ({
                   2,
                 )}
               </pre>
-            </div>
+            </div> */}
             <div>
               <Typography.Text strong>{'响应预览'}</Typography.Text>
               <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

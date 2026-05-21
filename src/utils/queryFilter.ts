@@ -11,6 +11,9 @@ import {
   parseJsonConfig,
 } from '@/utils/widgetApi';
 
+export const QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION = 6;
+export const QUERY_FILTER_FIELD_NAME_MAX_LENGTH = 50;
+
 const isEmptyValue = (value: unknown) => {
   if (value == null) {
     return true;
@@ -70,8 +73,34 @@ const QUERY_FILTER_FIELD_DEFAULTS: Record<QueryFilterFieldType, Partial<QueryFil
     type: 'select',
     mode: 'single',
     showSearch: false,
+    maxTagCount: 'responsive',
     dataSourceType: 'manual',
   },
+};
+
+const clampQueryFilterInputNumberPrecision = (precision?: number) => {
+  if (typeof precision !== 'number' || !Number.isFinite(precision)) {
+    return undefined;
+  }
+
+  return Math.min(
+    Math.max(Math.trunc(precision), 0),
+    QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION,
+  );
+};
+
+const normalizeQueryFilterSelectMaxTagCount = (
+  maxTagCount?: QueryFilterFieldConfig['maxTagCount'],
+) => {
+  if (maxTagCount === 'responsive') {
+    return maxTagCount;
+  }
+
+  if (typeof maxTagCount !== 'number' || !Number.isFinite(maxTagCount)) {
+    return undefined;
+  }
+
+  return Math.max(Math.trunc(maxTagCount), 1);
 };
 
 export const hydrateQueryFilterFields = (fields?: QueryFilterFieldConfig[]) => {
@@ -92,6 +121,9 @@ export const hydrateQueryFilterFields = (fields?: QueryFilterFieldConfig[]) => {
       type,
       label: nextLabel || `${defaults.label || '字段'}${index + 1}`,
       field: nextField || `${defaults.field || 'field'}_${index + 1}`,
+      precision: type === 'inputNumber'
+        ? clampQueryFilterInputNumberPrecision(field?.precision)
+        : field?.precision,
     } as QueryFilterFieldConfig;
   });
 };
@@ -200,6 +232,14 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
       placeholder: placeholderFieldTypes.includes(field.type)
         ? field.placeholder?.trim() || undefined
         : undefined,
+      rangeStartPlaceholder:
+        field.type === 'datePicker' && field.pickerType === 'range'
+          ? field.rangeStartPlaceholder?.trim() || undefined
+          : undefined,
+      rangeEndPlaceholder:
+        field.type === 'datePicker' && field.pickerType === 'range'
+          ? field.rangeEndPlaceholder?.trim() || undefined
+          : undefined,
       defaultValue: normalizeDefaultValue(field),
       maxLength: typeof field.maxLength === 'number' ? field.maxLength : undefined,
       addonBefore: field.addonBefore?.trim() || undefined,
@@ -211,6 +251,7 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
       direction: field.direction || 'horizontal',
       mode: field.mode || 'single',
       showSearch: field.showSearch ?? false,
+      maxTagCount: normalizeQueryFilterSelectMaxTagCount(field.maxTagCount),
       pickerType: field.pickerType || 'date',
       disablePastDates: field.disablePastDates ?? false,
       dataSourceType: field.dataSourceType || 'manual',
@@ -267,6 +308,9 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
     if (field.type !== 'select') {
       normalizedField.mode = undefined;
       normalizedField.showSearch = undefined;
+      normalizedField.maxTagCount = undefined;
+    } else if (field.mode !== 'multiple') {
+      normalizedField.maxTagCount = undefined;
     }
 
     return normalizedField;
@@ -276,6 +320,15 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
 const parseArrayValue = (value: any) => {
   const parsed = parseJsonConfig(value);
   return Array.isArray(parsed) ? parsed : undefined;
+};
+
+const parseDateValue = (value: unknown) => {
+  if (value == null || value === '') {
+    return undefined;
+  }
+
+  const parsed = dayjs(String(value));
+  return parsed.isValid() ? parsed : undefined;
 };
 
 export const parseQueryFilterDefaultValue = (field: QueryFilterFieldConfig) => {
@@ -295,9 +348,10 @@ export const parseQueryFilterDefaultValue = (field: QueryFilterFieldConfig) => {
       if (!rangeValue || rangeValue.length !== 2) {
         return undefined;
       }
-      return rangeValue.map(item => dayjs(String(item)));
+      const parsedRangeValue = rangeValue.map(item => parseDateValue(item));
+      return parsedRangeValue.every(Boolean) ? parsedRangeValue : undefined;
     }
-    return dayjs(String(raw));
+    return parseDateValue(raw);
   }
 
   if (field.type === 'checkboxGroup' || field.type === 'cascader') {
@@ -371,8 +425,8 @@ export const mapQueryFilterOptions = (
   const valueField = requestConfig?.valueField?.trim();
 
   const resolveLabel = (item: any) => {
-    if (labelField && item?.[labelField] !== undefined) {
-      return item[labelField];
+    if (labelField) {
+      return item?.[labelField];
     }
 
     const fallbackLabelField = ['label', 'name', 'title', 'text']
@@ -382,8 +436,8 @@ export const mapQueryFilterOptions = (
   };
 
   const resolveValue = (item: any) => {
-    if (valueField && item?.[valueField] !== undefined) {
-      return item[valueField];
+    if (valueField) {
+      return item?.[valueField];
     }
 
     const fallbackValueField = ['value', 'id', 'code', 'key', 'name']

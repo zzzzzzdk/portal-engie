@@ -3,18 +3,14 @@ var express = require('express');
 var router = express.Router();
 
 const {
-  createAIModel,
-  deleteAIModel,
-  getAIModels,
-  setDefaultAIModel,
-  updateAIModel,
-} = require('../config/ai-models-state');
-
-const nowText = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+  getGlobalConfig,
+  nowText,
+  setGlobalConfig,
+} = require('../config/global-config-state');
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
-
 const normalizeText = (value) => String(value || '').trim();
+const normalizeBaseUrl = (value) => normalizeText(value).replace(/\/+$/, '');
 
 const normalizeColor = (value) => {
   if (!value) {
@@ -105,73 +101,9 @@ const createDefaultTheme = (name) => ({
   updatedAt: nowText(),
 });
 
-let globalConfig = {
-  currentThemeId: 'theme_001',
-  themes: [
-    {
-      id: 'theme_001',
-      name: '平台默认主题',
-      pageBackground: {
-        backgroundType: 'gradient',
-        backgroundGradient: 'linear-gradient(135deg, #f7f9fc 0%, #edf2ff 100%)',
-      },
-      widgetBackground: {
-        backgroundType: 'color',
-        backgroundColor: 'rgba(255, 255, 255, 0.92)',
-        backdropBlur: 10,
-        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
-      },
-      widgetTitle: {
-        showTitle: true,
-        titleColor: '#1f1f1f',
-        titleFontSize: 16,
-        titleFontWeight: 600,
-      },
-      createdAt: '2026-04-10 09:00:00',
-      updatedAt: '2026-04-12 14:20:00',
-    },
-    {
-      id: 'theme_002',
-      name: '海洋蓝主题',
-      pageBackground: {
-        backgroundType: 'image',
-        backgroundImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-      },
-      widgetBackground: {
-        backgroundType: 'gradient',
-        backgroundGradient: 'linear-gradient(135deg, rgba(12, 74, 110, 0.82) 0%, rgba(14, 116, 144, 0.72) 100%)',
-        backdropBlur: 8,
-        boxShadow: '0 16px 36px rgba(8, 47, 73, 0.22)',
-      },
-      widgetTitle: {
-        showTitle: true,
-        titleColor: '#ffffff',
-        titleFontSize: 18,
-        titleFontWeight: 600,
-      },
-      createdAt: '2026-04-09 16:40:00',
-      updatedAt: '2026-04-13 10:15:00',
-    },
-  ],
-  componentDataSource: {
-    businessApiUrl: '/api',
-    documentStorageUrl: 'http://192.168.16.26:8010/api',
-  },
-  messageCopies: {
-    'form.success': '表单提交成功',
-    'form.error': '表单提交失败，请稍后重试',
-  },
-};
-
 router.get('/v1/global-config/detail', async (req, res) => {
   await req.sleep(0.15);
-  req.json.data = {
-    ...clone(globalConfig),
-    aiModels: getAIModels(),
-  };
+  req.json.data = getGlobalConfig();
   res.json(req.json);
 });
 
@@ -179,6 +111,7 @@ router.post('/v1/global-config/theme/create', async (req, res) => {
   await req.sleep(0.15);
 
   const name = normalizeText(req.body?.name);
+  const globalConfig = getGlobalConfig();
   if (!name) {
     req.json.code = 40000;
     req.json.message = '主题方案名称不能为空';
@@ -196,6 +129,7 @@ router.post('/v1/global-config/theme/create', async (req, res) => {
   const newTheme = createDefaultTheme(name);
   globalConfig.themes.push(newTheme);
   globalConfig.currentThemeId = newTheme.id;
+  setGlobalConfig(globalConfig);
 
   req.json.data = { id: newTheme.id };
   res.json(req.json);
@@ -204,6 +138,7 @@ router.post('/v1/global-config/theme/create', async (req, res) => {
 router.post('/v1/global-config/theme/update', async (req, res) => {
   await req.sleep(0.15);
 
+  const globalConfig = getGlobalConfig();
   const id = normalizeText(req.body?.id);
   const name = normalizeText(req.body?.name);
   const currentTheme = globalConfig.themes.find((item) => item.id === id);
@@ -240,6 +175,7 @@ router.post('/v1/global-config/theme/update', async (req, res) => {
 
   globalConfig.themes = globalConfig.themes.map((item) => (item.id === id ? updatedTheme : item));
   globalConfig.currentThemeId = id;
+  setGlobalConfig(globalConfig);
 
   req.json.data = { id };
   res.json(req.json);
@@ -248,6 +184,7 @@ router.post('/v1/global-config/theme/update', async (req, res) => {
 router.post('/v1/global-config/theme/delete', async (req, res) => {
   await req.sleep(0.15);
 
+  const globalConfig = getGlobalConfig();
   const id = normalizeText(req.body?.id);
   if (!globalConfig.themes.some((item) => item.id === id)) {
     req.json.code = 40004;
@@ -267,6 +204,7 @@ router.post('/v1/global-config/theme/delete', async (req, res) => {
   if (globalConfig.currentThemeId === id) {
     globalConfig.currentThemeId = globalConfig.themes[0]?.id;
   }
+  setGlobalConfig(globalConfig);
 
   req.json.data = {
     success: true,
@@ -278,6 +216,7 @@ router.post('/v1/global-config/theme/delete', async (req, res) => {
 router.post('/v1/global-config/component-data-source/save', async (req, res) => {
   await req.sleep(0.12);
 
+  const globalConfig = getGlobalConfig();
   const businessApiUrl = normalizeText(req.body?.businessApiUrl);
   const documentStorageUrl = normalizeText(req.body?.documentStorageUrl);
 
@@ -299,6 +238,7 @@ router.post('/v1/global-config/component-data-source/save', async (req, res) => 
     businessApiUrl,
     documentStorageUrl,
   };
+  setGlobalConfig(globalConfig);
 
   req.json.data = clone(globalConfig.componentDataSource);
   res.json(req.json);
@@ -307,6 +247,7 @@ router.post('/v1/global-config/component-data-source/save', async (req, res) => 
 router.post('/v1/global-config/message-copy/save', async (req, res) => {
   await req.sleep(0.12);
 
+  const globalConfig = getGlobalConfig();
   const successText = normalizeText(req.body?.['form.success']);
   const errorText = normalizeText(req.body?.['form.error']);
 
@@ -321,68 +262,32 @@ router.post('/v1/global-config/message-copy/save', async (req, res) => {
     'form.success': successText,
     'form.error': errorText,
   };
+  setGlobalConfig(globalConfig);
 
   req.json.data = clone(globalConfig.messageCopies);
   res.json(req.json);
 });
 
-router.post('/v1/global-config/ai-model/create', async (req, res) => {
+router.post('/v1/global-config/opencode/save', async (req, res) => {
   await req.sleep(0.12);
 
-  try {
-    const createdModel = createAIModel(req.body || {});
-    req.json.data = { id: createdModel.id };
-    res.json(req.json);
-  } catch (error) {
+  const globalConfig = getGlobalConfig();
+  const serviceUrl = normalizeBaseUrl(req.body?.serviceUrl);
+
+  if (!serviceUrl) {
     req.json.code = 40000;
-    req.json.message = error instanceof Error ? error.message : '新增模型配置失败';
+    req.json.message = 'OpenCode 服务地址不能为空';
     req.json.data = null;
-    res.json(req.json);
+    return res.json(req.json);
   }
-});
 
-router.post('/v1/global-config/ai-model/update', async (req, res) => {
-  await req.sleep(0.12);
+  globalConfig.opencode = {
+    serviceUrl,
+  };
+  setGlobalConfig(globalConfig);
 
-  try {
-    const updatedModel = updateAIModel(req.body || {});
-    req.json.data = { id: updatedModel.id };
-    res.json(req.json);
-  } catch (error) {
-    req.json.code = 40000;
-    req.json.message = error instanceof Error ? error.message : '保存模型配置失败';
-    req.json.data = null;
-    res.json(req.json);
-  }
-});
-
-router.post('/v1/global-config/ai-model/delete', async (req, res) => {
-  await req.sleep(0.12);
-
-  try {
-    req.json.data = deleteAIModel(req.body?.id);
-    res.json(req.json);
-  } catch (error) {
-    req.json.code = 40000;
-    req.json.message = error instanceof Error ? error.message : '删除模型配置失败';
-    req.json.data = null;
-    res.json(req.json);
-  }
-});
-
-router.post('/v1/global-config/ai-model/set-default', async (req, res) => {
-  await req.sleep(0.12);
-
-  try {
-    const defaultModel = setDefaultAIModel(req.body?.id);
-    req.json.data = { id: defaultModel.id };
-    res.json(req.json);
-  } catch (error) {
-    req.json.code = 40000;
-    req.json.message = error instanceof Error ? error.message : '设置默认模型失败';
-    req.json.data = null;
-    res.json(req.json);
-  }
+  req.json.data = clone(globalConfig.opencode);
+  res.json(req.json);
 });
 
 module.exports = router;

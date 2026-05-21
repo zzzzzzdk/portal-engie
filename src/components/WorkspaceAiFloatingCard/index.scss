@@ -1,0 +1,108 @@
+.workspace-ai-floating-card {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 1400;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: 320px;
+  padding: 12px;
+  border: 1px solid rgba(22, 119, 255, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(22, 119, 255, 0.12), transparent 42%),
+    rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(10px);
+
+  &.is-done {
+    border-color: rgba(19, 194, 107, 0.22);
+  }
+
+  &.is-error {
+    border-color: rgba(255, 77, 79, 0.24);
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  &__icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(22, 119, 255, 0.1);
+    color: var(--ant-color-primary, #1677ff);
+    font-size: 16px;
+  }
+
+  &__body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ant-color-text, #1f1f1f);
+  }
+
+  &__status {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ant-color-text-secondary, #595959);
+    word-break: break-word;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    flex: 0 0 auto;
+
+    .ant-btn {
+      min-width: 68px;
+    }
+  }
+}
+
+:global(.theme-dark) {
+  .workspace-ai-floating-card {
+    background:
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 42%),
+      rgba(15, 23, 42, 0.96);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+
+    &__icon {
+      background: rgba(59, 130, 246, 0.16);
+    }
+
+    &__title {
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    &__status {
+      color: rgba(255, 255, 255, 0.72);
+    }
+  }
+}

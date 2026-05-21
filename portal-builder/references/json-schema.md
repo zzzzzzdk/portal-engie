@@ -293,6 +293,12 @@ Portal Builder 生成时统一以 **compact 36 列** 为准。
 
 只适合单图标入口。
 
+图标规则：
+
+- `config.icon` 优先使用 Ant Design Outlined 图标名
+- 只从 `references/icon-map.md` 的白名单中选
+- 不要给 `iconNav` 写 iconfont 名
+
 ```json
 {
   "showTitle": false,
@@ -311,6 +317,13 @@ Portal Builder 生成时统一以 **compact 36 列** 为准。
 ### `navGroup`
 
 多图标入口优先使用这个组件。
+
+图标规则：
+
+- `staticItems[].icon` 只用 iconfont 名
+- 必须带 `icon-` 前缀
+- 只从 `references/icon-map.md` 的白名单中选
+- 拿不准时用 `icon-line_duixiang`
 
 ```json
 {
@@ -573,6 +586,15 @@ Portal Builder 生成时统一以 **compact 36 列** 为准。
 }
 ```
 
+## 页面标题与页面状态规则
+
+- `dashboardConfig.title` 是页面主标题
+- 若存在 `headerBar`，则其 `title` 与 `config.headerTitle` 应与页面主标题保持一致
+- 编辑现有页面时，若当前标题是正式名称，则保留，不要因本次生成再次改名
+- 只有当前标题为空、空白、`undefined`、`null`、`未命名`、`未定义` 等占位值时，才可生成新标题
+- 当用户明确要求“创建新页面 / 新建页面 / 从空白开始”时，应先返回一个新的完整快照，而不是在旧快照基础上追加组件
+- “创建新页面”场景下，`widgets`、`groups`、`floatingModules` 都应按新页面内容重新生成，布局从顶部重新开始
+
 ## 关键提醒
 
 - 写 `backgroundColor` 时同步写 `backgroundType: 'color'`
@@ -581,3 +603,5 @@ Portal Builder 生成时统一以 **compact 36 列** 为准。
 - `queryFilter` 用 `queryFields`
 - `dataTable` 静态数据用 `staticData`
 - `topList` 和 `news` 的 `dataSource` 是字符串，不是数组
+- 涉及图标时先读 `references/icon-map.md`
+- 不要输出不存在的图标名，也不要省略 `navGroup` 的 `icon-` 前缀

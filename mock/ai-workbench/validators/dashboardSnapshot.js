@@ -5,6 +5,9 @@ const {
   applyThemeByPrompt,
   createEmptySnapshot,
   detectClearIntent,
+  detectRenameIntent,
+  extractExplicitTitle,
+  getSnapshotTitle,
   reflowWidgetsCompact36,
 } = require('../skills/portalBuilderRuntime');
 
@@ -57,6 +60,7 @@ const AI_WORKBENCH_RESPONSE_SCHEMA = {
 const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const trimString = (value) => String(value || '').trim();
 
 const normalizeSnapshot = (snapshot) => ({
   widgets: Array.isArray(snapshot?.widgets) ? clone(snapshot.widgets) : [],
@@ -262,11 +266,12 @@ const normalizeModelSnapshot = (snapshot, titleFallback = '') => {
   };
 };
 
-const mergeEditSnapshot = (currentSnapshot, incomingSnapshot, titleFallback) => {
+const mergeEditSnapshot = (currentSnapshot, incomingSnapshot, titleFallback, options = {}) => {
   const baseSnapshot = normalizeModelSnapshot(currentSnapshot, titleFallback);
   const nextSnapshot = normalizeModelSnapshot(incomingSnapshot, titleFallback);
+  const resolvedTitle = trimString(options.resolvedTitle);
 
-  return {
+  const mergedSnapshot = {
     widgets: nextSnapshot.widgets.length ? nextSnapshot.widgets : baseSnapshot.widgets,
     groups: nextSnapshot.groups.length ? nextSnapshot.groups : baseSnapshot.groups,
     floatingModules: nextSnapshot.floatingModules.length ? nextSnapshot.floatingModules : baseSnapshot.floatingModules,
@@ -275,6 +280,57 @@ const mergeEditSnapshot = (currentSnapshot, incomingSnapshot, titleFallback) => 
       ...nextSnapshot.dashboardConfig,
     },
   };
+
+  if (resolvedTitle) {
+    mergedSnapshot.dashboardConfig.title = resolvedTitle;
+  }
+
+  return mergedSnapshot;
+};
+
+const syncSnapshotTitle = (snapshot, title) => {
+  const resolvedTitle = trimString(title);
+  if (!resolvedTitle || !snapshot || typeof snapshot !== 'object') return snapshot;
+
+  if (!snapshot.dashboardConfig || typeof snapshot.dashboardConfig !== 'object') {
+    snapshot.dashboardConfig = {};
+  }
+  snapshot.dashboardConfig.title = resolvedTitle;
+
+  const header = Array.isArray(snapshot.widgets)
+    ? snapshot.widgets.find((item) => item?.type === 'headerBar')
+    : null;
+
+  if (header) {
+    header.title = resolvedTitle;
+    header.config = normalizeWidgetConfig('headerBar', {
+      ...header.config,
+      title: resolvedTitle,
+      headerTitle: resolvedTitle,
+    }, resolvedTitle);
+  }
+
+  return snapshot;
+};
+
+const resolveResultTitle = ({ mode, prompt, currentSnapshot, result, snapshot, fallbackTitle }) => {
+  const currentTitle = getSnapshotTitle(currentSnapshot);
+  const explicitTitle = extractExplicitTitle(prompt);
+  const renameIntent = detectRenameIntent(prompt);
+  const candidateTitle = [
+    getSnapshotTitle(snapshot),
+    trimString(result?.summary?.title),
+    explicitTitle,
+    trimString(fallbackTitle),
+  ].find(Boolean) || '';
+
+  if (mode === 'edit') {
+    if (currentTitle && !renameIntent) return currentTitle;
+    if (explicitTitle) return explicitTitle;
+    if (currentTitle) return currentTitle;
+  }
+
+  return explicitTitle || candidateTitle;
 };
 
 const normalizeModelResult = (result, fallbackResult, options = {}) => {
@@ -291,13 +347,37 @@ const normalizeModelResult = (result, fallbackResult, options = {}) => {
   );
 
   if (mode === 'edit' && result?.snapshot) {
-    snapshot = mergeEditSnapshot(normalizedOptions.currentSnapshot, result.snapshot, titleFallback);
+    snapshot = mergeEditSnapshot(normalizedOptions.currentSnapshot, result.snapshot, titleFallback, {
+      resolvedTitle: resolveResultTitle({
+        mode,
+        prompt: normalizedOptions.prompt,
+        currentSnapshot: normalizedOptions.currentSnapshot,
+        result,
+        snapshot,
+        fallbackTitle: titleFallback,
+      }),
+    });
   }
 
   if (isClearIntent) {
     snapshot = createEmptySnapshot();
   } else if (typeof normalizedOptions.prompt === 'string' && normalizedOptions.prompt.trim()) {
     applyThemeByPrompt(snapshot, normalizedOptions.prompt, { defaultPreset: null });
+  }
+
+  const resolvedTitle = isClearIntent
+    ? ''
+    : resolveResultTitle({
+      mode,
+      prompt: normalizedOptions.prompt,
+      currentSnapshot: normalizedOptions.currentSnapshot,
+      result,
+      snapshot,
+      fallbackTitle: titleFallback,
+    });
+
+  if (!isClearIntent) {
+    syncSnapshotTitle(snapshot, resolvedTitle);
   }
 
   const widgetTypes = Array.from(new Set(snapshot.widgets.map((item) => item.type)));
@@ -329,7 +409,7 @@ const normalizeModelResult = (result, fallbackResult, options = {}) => {
     summary: {
       title: isClearIntent
         ? ''
-        : String(result?.summary?.title || snapshot.dashboardConfig?.title || fallbackResult.summary.title),
+        : String(resolvedTitle || snapshot.dashboardConfig?.title || fallbackResult.summary.title),
       widgetCount: snapshot.widgets.length,
       widgetTypes,
       mode,

@@ -3,23 +3,25 @@
  * 统一的图标渲染组件，支持多种图标来源
  */
 
-export type IconValueType = 'svg' | 'url' | 'antd' | 'iconfont' | 'empty';
+import { findIconByName } from '@/components/IconPicker/iconData'
+
+export type IconValueType = 'svg' | 'url' | 'antd' | 'iconfont' | 'empty'
 
 export interface IconRendererProps {
-  /** 图标值：可以是 SVG 代码、URL、Ant Design 图标名、Iconfont 名称 */
-  value?: string;
+  /** 图标值：可以是 SVG 代码、URL、Ant Design 图标名、Iconfont 图标名 */
+  value?: string
   /** 图标大小（像素），默认 24 */
-  size?: number;
+  size?: number
   /** 自定义样式 */
-  style?: React.CSSProperties;
+  style?: React.CSSProperties
   /** 自定义类名 */
-  className?: string;
-  /** 降级显示的文本（用于生成首字母头像） */
-  fallbackText?: string;
-  /** 降级头像的背景色 */
-  fallbackColor?: string;
-  /** 图标颜色（对 Ant Design 和 Iconfont 有效） */
-  color?: string;
+  className?: string
+  /** 降级显示的文本 */
+  fallbackText?: string
+  /** 降级头像背景色 */
+  fallbackColor?: string
+  /** 图标颜色 */
+  color?: string
 }
 
 /**
@@ -27,43 +29,43 @@ export interface IconRendererProps {
  */
 export function getIconValueType(value?: string): IconValueType {
   if (!value || value.trim() === '') {
-    return 'empty';
+    return 'empty'
   }
 
-  const trimmed = value.trim();
+  const trimmed = value.trim()
 
-  // SVG 代码
   if (trimmed.startsWith('<svg') || trimmed.startsWith('<?xml')) {
-    return 'svg';
+    return 'svg'
   }
 
-  // URL（http/https/data:）
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
     trimmed.startsWith('data:')
   ) {
-    return 'url';
+    return 'url'
   }
 
-  // Iconfont（以 icon- 开头或在已知列表中）
-  // 注意：Iconfont 使用 #icon-xxx 格式
   if (trimmed.startsWith('icon-')) {
-    return 'iconfont';
+    return 'iconfont'
   }
 
-  // 其他情况尝试作为 Ant Design 图标名
-  return 'antd';
+  const iconItem = findIconByName(trimmed)
+  if (iconItem && iconItem.type === 'iconfont') {
+    return 'iconfont'
+  }
+
+  return 'antd'
 }
 
 /**
  * 根据字符串生成 HSL 颜色
  */
 export function getColorFromString(str: string): string {
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
   }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 60%, 55%)`;
+  const hue = Math.abs(hash % 360)
+  return `hsl(${hue}, 60%, 55%)`
 }

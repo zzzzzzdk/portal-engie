@@ -96,6 +96,16 @@
     }
 
     .floating-control-panel__actions {
+      .add.ant-btn-primary {
+        &:disabled {
+          color: rgba(255, 255, 255, 0.7);
+          background: rgba(22, 119, 255, 0.22);
+          border-color: rgba(22, 119, 255, 0.32);
+          box-shadow: none;
+          opacity: 1;
+        }
+      }
+
       .ant-btn-default {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.15);

@@ -5,6 +5,7 @@ import DataSourceSelect from '@/components/DataSourceSelect';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
 import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import type { DataSourceItem } from '@/services/dataSource';
+import { getPaginationSizeOptions } from '@/constants/pagination';
 import { keyValueListToObject } from '@/utils/widgetApi';
 import type { Widget } from '@/types';
 import type { WidgetApiFieldMeta } from '@/utils/widgetApiDefaults';
@@ -53,6 +54,9 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
   staticDataPreview,
 }) => {
   const dataSourceValue = Form.useWatch('dataSource', form) || 'customApi';
+  const dataSourceIdValue = Form.useWatch('dataSourceId', form);
+  const paginationPageSizeValue = Form.useWatch(['paginationConfig', 'pageSize'], form);
+  const paginationSizeOptions = getPaginationSizeOptions(paginationPageSizeValue);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue(
@@ -109,10 +113,10 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
           {dataSourceValue === 'dataSource' ? (
             <Form.Item
               label="选择数据源接口"
-              extra="支持按名称、接口地址、描述模糊检索，选择后会自动带入接口配置。"
+              extra="支持按名称模糊检索，选择后会自动带入接口配置。"
             >
               <DataSourceSelect
-                value={form.getFieldValue('dataSourceId')}
+                value={dataSourceIdValue}
                 onChange={handleDataSourceSelect}
                 placeholder="请选择数据源接口"
               />
@@ -236,7 +240,12 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
                       <InputNumber min={1} precision={0} style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name={['paginationConfig', 'pageSize']} label="每页条数" initialValue={10}>
-                      <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+                      <Select
+                        options={paginationSizeOptions.map(value => ({
+                          label: String(value),
+                          value,
+                        }))}
+                      />
                     </Form.Item>
                     <Form.Item
                       name={['paginationConfig', 'showTotal']}
@@ -259,12 +268,12 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
                     <Form.Item name={['paginationConfig', 'totalField']} label="总数字段路径">
                       <Input placeholder={paginationDefaults?.totalField || 'data.total'} />
                     </Form.Item>
-                    <Form.Item name={['paginationConfig', 'currentField']} label="当前页字段路径">
+                    {/* <Form.Item name={['paginationConfig', 'currentField']} label="当前页字段路径">
                       <Input placeholder={paginationDefaults?.currentField || 'data.page'} />
                     </Form.Item>
                     <Form.Item name={['paginationConfig', 'pageSizeField']} label="每页条数字段路径">
                       <Input placeholder={paginationDefaults?.pageSizeField || 'data.page_size'} />
-                    </Form.Item>
+                    </Form.Item> */}
                   </div>
                 </>
               );

@@ -77,6 +77,45 @@
         "包含 [精确] 或等价的识别标记",
         "不直接输出最终页面 JSON"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "生成一个门户工作台首页，包含首页、应用中心、用户管理、系统设置四个快捷入口",
+      "expected_output": "生成包含 navGroup 的 DashboardSnapshot JSON，且 staticItems[].icon 使用项目内真实存在的 iconfont 白名单名，不臆造 icon 名。",
+      "files": [],
+      "expectations": [
+        "至少一个 widget 的 type 为 'navGroup'",
+        "navGroup 的 config 包含 staticItems 数组",
+        "staticItems 至少包含 4 个入口",
+        "staticItems[].icon 的值全部以 'icon-' 开头",
+        "staticItems[].icon 只使用项目内真实存在的 iconfont 名，如 icon-fill_shouye、icon-fill_yingyongguanli、icon-line_yonghu、icon-line_shezhi",
+        "不输出 line_shouye、icon-home、UserFill、SettingLine 等不存在或格式错误的名字"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "当前页面标题已经是“能源运营总览”，现在加一个告警趋势图",
+      "expected_output": "在编辑当前页面时保留已有正式标题“能源运营总览”，新增所需组件，但不重命名页面。",
+      "files": [],
+      "expectations": [
+        "若当前页面标题已有真实值，则保持该标题不变",
+        "不因为本次补充组件而将标题改成新的推断名称",
+        "若输出包含 headerBar，则其 title 或 headerTitle 与页面标题一致",
+        "除非用户明确要求改名，否则不修改页面标题"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "新建一个页面，做成销售数据看板，包含收入趋势、区域排行和今日销售额",
+      "expected_output": "识别为创建新页面，先清空旧页面配置，再生成新的完整 DashboardSnapshot，而不是把组件追加到旧页面末尾。",
+      "files": [],
+      "expectations": [
+        "识别出这是“创建新页面”而不是普通编辑",
+        "输出应是新的完整 DashboardSnapshot",
+        "不复用旧页面 widgets、groups、floatingModules",
+        "布局从新页面顶部开始，而不是沿用旧页面最后一行之后的 y 坐标继续追加",
+        "生成的结果包含 indicatorCard 或 stats、chart、topList 或 dataTable 等销售看板核心组件"
+      ]
     }
   ]
 }

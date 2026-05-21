@@ -74,6 +74,23 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+
+    .ant-descriptions-item-label {
+      min-width: 135px;
+    }
+
+    // Prevent long URLs from breaking the layout
+    .ant-descriptions-item-content {
+      &>span {
+        word-break: break-all;
+        overflow-wrap: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
   }
 
   &__detail-section {

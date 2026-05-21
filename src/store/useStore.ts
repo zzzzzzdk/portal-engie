@@ -1104,6 +1104,7 @@ export const useStore = create<AppState>()(
       markDirty: () => set({ isDirty: true }),
       clearDirty: () => set({ isDirty: false }),
 
+      setFullScreen: (isFullScreen: boolean) => set({ isFullScreen }),
       toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
       openConfigPanel: (target) => set({ configPanelTarget: target }),
       closeConfigPanel: () => set({ configPanelTarget: null }),

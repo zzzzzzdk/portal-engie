@@ -469,9 +469,11 @@ export async function exportPageWithProgress(options?: ExportOptions): Promise<v
 
 export async function exportDashboardFromList(
   dashboardId: string,
-  fileName?: string
+  fileName?: string,
+  version: 'draft' | 'published' = 'published',
 ): Promise<void> {
-  const previewUrl = `${window.location.origin + window.location.pathname}#/preview/${dashboardId}`;
+  const versionQuery = version === 'draft' ? '?version=draft' : ''
+  const previewUrl = `${window.location.origin + window.location.pathname}#/preview/${dashboardId}${versionQuery}`;
 
   await exportPageWithProgress({
     url: previewUrl,

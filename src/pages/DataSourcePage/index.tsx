@@ -51,6 +51,11 @@ const HEADER_KEY_OPTIONS: WidgetApiConfigTabOption[] = [
   { label: 'Cache-Control', value: 'Cache-Control' },
 ]
 
+const DATA_SOURCE_DEBUG_PAGE_STATE = {
+  current: 1,
+  pageSize: 10,
+}
+
 const DEFAULT_FORM_VALUES = {
   name: '',
   method: 'GET',
@@ -64,8 +69,6 @@ const DEFAULT_FORM_VALUES = {
     bodyList: [],
     pagination: {
       mode: 'none',
-      page: 1,
-      pageSize: 10,
       pageParam: 'page',
       pageSizeParam: 'page_size',
       totalField: 'data.total',
@@ -121,8 +124,25 @@ const buildSubmitPayload = (
           ? values.requestConfig.bodyList
           : [],
       pagination: {
-        ...DEFAULT_FORM_VALUES.requestConfig.pagination,
-        ...(values.requestConfig?.pagination || {}),
+        mode: values.requestConfig?.pagination?.mode || DEFAULT_FORM_VALUES.requestConfig.pagination.mode,
+        pageParam:
+          String(values.requestConfig?.pagination?.pageParam || '').trim()
+          || DEFAULT_FORM_VALUES.requestConfig.pagination.pageParam,
+        pageSizeParam:
+          String(values.requestConfig?.pagination?.pageSizeParam || '').trim()
+          || DEFAULT_FORM_VALUES.requestConfig.pagination.pageSizeParam,
+        totalField:
+          String(values.requestConfig?.pagination?.totalField || '').trim()
+          || DEFAULT_FORM_VALUES.requestConfig.pagination.totalField,
+        currentField:
+          String(values.requestConfig?.pagination?.currentField || '').trim()
+          || DEFAULT_FORM_VALUES.requestConfig.pagination.currentField,
+        pageSizeField:
+          String(values.requestConfig?.pagination?.pageSizeField || '').trim()
+          || DEFAULT_FORM_VALUES.requestConfig.pagination.pageSizeField,
+        showTotal:
+          values.requestConfig?.pagination?.showTotal
+          ?? DEFAULT_FORM_VALUES.requestConfig.pagination.showTotal,
       },
     },
   }
@@ -189,10 +209,8 @@ const DataSourcePage: React.FC = () => {
         return
       }
 
-      message.error(res.message || '加载数据源列表失败')
     } catch (error) {
       console.error('加载数据源列表失败:', error)
-      message.error('加载数据源列表失败')
     } finally {
       setLoading(false)
     }
@@ -211,11 +229,9 @@ const DataSourcePage: React.FC = () => {
         return res.data
       }
 
-      message.error(res.message || '加载数据源详情失败')
       return null
     } catch (error) {
       console.error('加载数据源详情失败:', error)
-      message.error('加载数据源详情失败')
       return null
     } finally {
       setDetailLoading(false)
@@ -263,7 +279,6 @@ const DataSourcePage: React.FC = () => {
     try {
       const res = await deleteDataSource({ id: record.id })
       if (res.code !== 20000) {
-        message.error(res.message || '删除数据源失败')
         return
       }
 
@@ -274,8 +289,16 @@ const DataSourcePage: React.FC = () => {
       fetchList(targetPage, pagination.pageSize, currentKeyword)
     } catch (error) {
       console.error('删除数据源失败:', error)
-      message.error('删除数据源失败')
     }
+  }
+
+  const handleFormModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      return
+    }
+
+    form.resetFields()
+    setCurrentRecord(null)
   }
 
   const handleSubmit = async () => {
@@ -290,21 +313,17 @@ const DataSourcePage: React.FC = () => {
       const res = await request
 
       if (res.code !== 20000) {
-        message.error(res.message || '保存数据源失败')
         return
       }
 
       message.success(formMode === 'create' ? '新增数据源成功' : '更新数据源成功')
       setFormModalOpen(false)
-      form.resetFields()
-      setCurrentRecord(null)
       fetchList(formMode === 'create' ? 1 : pagination.current, pagination.pageSize, currentKeyword)
     } catch (error: any) {
       if (error?.errorFields) {
         return
       }
       console.error('保存数据源失败:', error)
-      message.error(error?.message || '保存数据源失败')
     } finally {
       setSaving(false)
     }
@@ -450,9 +469,8 @@ const DataSourcePage: React.FC = () => {
         onOk={() => void handleSubmit()}
         onCancel={() => {
           setFormModalOpen(false)
-          form.resetFields()
-          setCurrentRecord(null)
         }}
+        afterOpenChange={handleFormModalAfterOpenChange}
         confirmLoading={saving}
         width={980}
         destroyOnHidden
@@ -493,9 +511,12 @@ const DataSourcePage: React.FC = () => {
               name="url"
               label="接口地址"
               className="data-source-page__form-grid-span-2"
-              rules={[{ required: true, whitespace: true, message: '请输入接口地址' }]}
+              rules={[
+                { required: true, whitespace: true, message: '请输入接口地址' },
+                { max: 500, message: '接口地址不能超过 500 个字符' },
+              ]}
             >
-              <Input placeholder="请输入接口地址，例如 /api/demo/table 或 http://127.0.0.1:3000/api" />
+              <Input placeholder="请输入接口地址，例如 /api/demo/table 或 http://127.0.0.1:3000/api" maxLength={500} showCount />
             </Form.Item>
 
             <Form.Item
@@ -521,9 +542,12 @@ const DataSourcePage: React.FC = () => {
             <Form.Item
               name="listField"
               label="列表字段路径"
-              rules={[{ required: true, whitespace: true, message: '请输入列表字段路径' }]}
+              rules={[
+                { required: true, whitespace: true, message: '请输入列表字段路径' },
+                { max: 100, message: '列表字段路径不能超过 100 个字符' },
+              ]}
             >
-              <Input placeholder="data.list" />
+              <Input placeholder="data.list" maxLength={100} showCount />
             </Form.Item>
 
             <Form.Item
@@ -539,8 +563,9 @@ const DataSourcePage: React.FC = () => {
                   },
                 },
               ]}
+              tooltip="查询超时（2-300秒）"
             >
-              <InputNumber min={2} precision={0} style={{ width: '100%' }} placeholder="请输入查询超时" />
+              <InputNumber min={2} max={300} precision={0} style={{ width: '100%' }} placeholder="请输入查询超时（2-300秒）" />
             </Form.Item>
           </div>
 
@@ -568,7 +593,13 @@ const DataSourcePage: React.FC = () => {
                         : undefined,
                     listField: formValues.listField || 'data.list',
                     pagination: {
-                      ...formValues.requestConfig?.pagination,
+                      mode: formValues.requestConfig?.pagination?.mode,
+                      pageParam: formValues.requestConfig?.pagination?.pageParam,
+                      pageSizeParam: formValues.requestConfig?.pagination?.pageSizeParam,
+                      totalField: formValues.requestConfig?.pagination?.totalField,
+                      currentField: formValues.requestConfig?.pagination?.currentField,
+                      pageSizeField: formValues.requestConfig?.pagination?.pageSizeField,
+                      showTotal: formValues.requestConfig?.pagination?.showTotal,
                     },
                   })}
                   buildPageState={(formValues) => {
@@ -576,14 +607,11 @@ const DataSourcePage: React.FC = () => {
                       return undefined
                     }
 
-                    return {
-                      current: Number(formValues.requestConfig?.pagination?.page) || 1,
-                      pageSize: Number(formValues.requestConfig?.pagination?.pageSize) || 10,
-                    }
+                    return DATA_SOURCE_DEBUG_PAGE_STATE
                   }}
                 />
               )}
-              debugHint="调试时将使用当前接口地址、请求头、Query / Body 参数、列表字段路径和分页设置。"
+              debugHint="调试时将使用当前接口地址、请求头、Query / Body 参数、列表字段路径和分页参数名称。服务端分页调试固定使用第 1 页、每页 10 条。"
             />
 
             <div className="data-source-page__pagination-settings">
@@ -596,20 +624,6 @@ const DataSourcePage: React.FC = () => {
                       { label: '服务端分页', value: 'pagination' },
                     ]}
                   />
-                </Form.Item>
-
-                <Form.Item
-                  name={['requestConfig', 'pagination', 'page']}
-                  label="调试页码"
-                >
-                  <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-                </Form.Item>
-
-                <Form.Item
-                  name={['requestConfig', 'pagination', 'pageSize']}
-                  label="调试每页条数"
-                >
-                  <InputNumber min={1} precision={0} style={{ width: '100%' }} />
                 </Form.Item>
 
                 {paginationMode === 'pagination' && (
@@ -635,7 +649,7 @@ const DataSourcePage: React.FC = () => {
                       <Input placeholder="data.total" />
                     </Form.Item>
 
-                    <Form.Item
+                    {/* <Form.Item
                       name={['requestConfig', 'pagination', 'currentField']}
                       label="当前页字段路径"
                     >
@@ -647,7 +661,7 @@ const DataSourcePage: React.FC = () => {
                       label="每页数字段路径"
                     >
                       <Input placeholder="data.page_size" />
-                    </Form.Item>
+                    </Form.Item> */}
                   </>
                 )}
               </div>
@@ -696,8 +710,11 @@ const DataSourcePage: React.FC = () => {
                     {detailRecord.method}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="接口地址" span={2}>
-                  {detailRecord.url}
+                <Descriptions.Item
+                  label="接口地址"
+                  span={2}
+                >
+                  <span title={detailRecord.url}>{detailRecord.url}</span>
                 </Descriptions.Item>
                 <Descriptions.Item label="描述" span={2}>
                   {detailRecord.description || '--'}
@@ -735,27 +752,25 @@ const DataSourcePage: React.FC = () => {
                 <Descriptions.Item label="分页模式">
                   {detailRecord.requestConfig?.pagination?.mode === 'pagination' ? '服务端分页' : '不分页'}
                 </Descriptions.Item>
-                <Descriptions.Item label="调试页码">
-                  {detailRecord.requestConfig?.pagination?.page || 1}
-                </Descriptions.Item>
-                <Descriptions.Item label="调试每页条数">
-                  {detailRecord.requestConfig?.pagination?.pageSize || 10}
-                </Descriptions.Item>
-                <Descriptions.Item label="页码参数名">
-                  {detailRecord.requestConfig?.pagination?.pageParam || 'page'}
-                </Descriptions.Item>
-                <Descriptions.Item label="每页条数参数名">
-                  {detailRecord.requestConfig?.pagination?.pageSizeParam || 'page_size'}
-                </Descriptions.Item>
-                <Descriptions.Item label="总数字段路径">
-                  {detailRecord.requestConfig?.pagination?.totalField || 'data.total'}
-                </Descriptions.Item>
-                <Descriptions.Item label="当前页字段路径">
-                  {detailRecord.requestConfig?.pagination?.currentField || 'data.page'}
-                </Descriptions.Item>
-                <Descriptions.Item label="每页数字段路径">
-                  {detailRecord.requestConfig?.pagination?.pageSizeField || 'data.page_size'}
-                </Descriptions.Item>
+                {detailRecord.requestConfig?.pagination?.mode === 'pagination' && (
+                  <>
+                    <Descriptions.Item label="页码参数名">
+                      {detailRecord.requestConfig?.pagination?.pageParam || 'page'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="每页条数参数名">
+                      {detailRecord.requestConfig?.pagination?.pageSizeParam || 'page_size'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="总数字段路径">
+                      {detailRecord.requestConfig?.pagination?.totalField || 'data.total'}
+                    </Descriptions.Item>
+                    {/* <Descriptions.Item label="当前页字段路径">
+                      {detailRecord.requestConfig?.pagination?.currentField || 'data.page'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="每页数字段路径">
+                      {detailRecord.requestConfig?.pagination?.pageSizeField || 'data.page_size'}
+                    </Descriptions.Item> */}
+                  </>
+                )}
               </Descriptions>
             </div>
           </div>

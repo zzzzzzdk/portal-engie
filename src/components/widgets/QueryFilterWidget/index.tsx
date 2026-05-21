@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
   Cascader,
@@ -29,6 +29,7 @@ import {
   hydrateQueryFilterFields,
   mapQueryFilterCascaderOptions,
   mapQueryFilterOptions,
+  QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION,
   resolveQueryFilterOptionList,
 } from '@/utils/queryFilter'
 import './index.scss'
@@ -116,6 +117,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
   const failureMessage =
     queryFilterConfig?.failureMessage || getGlobalMessageCopy(globalConfigDetail, 'form.error')
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({})
+  const fieldsJsonRef = useRef<string>('')
   const formStyle = useMemo(() => {
     const alignSelfMap = {
       top: 'flex-start',
@@ -142,6 +144,11 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
   }, [isHorizontalLayout, labelAlignSelf, labelTextAlign])
 
   useEffect(() => {
+    const nextFieldsJson = JSON.stringify(fields)
+    if (nextFieldsJson === fieldsJsonRef.current) {
+      return
+    }
+    fieldsJsonRef.current = nextFieldsJson
     form.resetFields()
     form.setFieldsValue(buildQueryFilterInitialValues(fields))
   }, [fields, form])
@@ -337,7 +344,12 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
     form.resetFields()
   }, [form])
 
-  const renderField = (field: QueryFilterFieldConfig) => {
+  const selectFilterOption = (input: string, option: any) => {
+    const labelText = String(option?.label ?? '').trim().toLowerCase()
+    return labelText.includes(input.trim().toLowerCase())
+  }
+
+  const renderField = useCallback((field: QueryFilterFieldConfig) => {
     const options = fieldOptionsMap[field.id] || []
 
     switch (field.type) {
@@ -370,7 +382,10 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
           return (
             <RangePicker
               style={{ width: '100%' }}
-              placeholder={['开始日期', '结束日期']}
+              placeholder={[
+                field.rangeStartPlaceholder || field.placeholder || '开始日期',
+                field.rangeEndPlaceholder || field.placeholder || '结束日期',
+              ]}
               disabledDate={field.disablePastDates
                 ? current => !!current && current < dayjs().startOf('day')
                 : undefined}
@@ -383,7 +398,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
             style={{ width: '100%' }}
             placeholder={getFieldPlaceholder(field)}
             disabledDate={field.disablePastDates
-              ? current => !!current && current < dayjs().startOf('day')
+              ? current => !!current && current < dayjs(). startOf('day')
               : undefined}
           />
         )
@@ -394,7 +409,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
             placeholder={getFieldPlaceholder(field)}
             min={field.min}
             max={field.max}
-            precision={field.precision}
+            precision={Math.min(field.precision ?? 0, QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION)}
             addonAfter={field.unit}
           />
         )
@@ -412,18 +427,15 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
             placeholder={getFieldPlaceholder(field)}
             allowClear
             showSearch={field.showSearch}
-            optionFilterProp="label"
-            filterOption={(input, option) => {
-              const labelText = String(option?.label ?? '').trim().toLowerCase()
-              return labelText.includes(input.trim().toLowerCase())
-            }}
+            filterOption={selectFilterOption as any}
             mode={field.mode === 'multiple' ? 'multiple' : undefined}
+            maxTagCount={field.mode === 'multiple' ? field.maxTagCount ?? 'responsive' : undefined}
           />
         )
       default:
         return <Input placeholder={getFieldPlaceholder(field)} allowClear />
     }
-  }
+  }, [fieldOptionsMap])
 
   return (
     <div className="query-filter-widget">
@@ -477,4 +489,3 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
 }
 
 export default QueryFilterWidget
-

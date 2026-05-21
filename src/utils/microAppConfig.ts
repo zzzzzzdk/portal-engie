@@ -34,9 +34,9 @@ class MicroAppConfigLoader {
 
     this.loading = true;
     try {
-      const res = await getMicroAppList();
+      const res = await getMicroAppList({ all: true });
       if (res.code === 20000 && res.data) {
-        this.metadata = res.data;
+        this.metadata = res.data as MicroAppMetadata;
         return this.metadata;
       }
       throw new Error(res.message || 'Failed to load micro-app metadata');

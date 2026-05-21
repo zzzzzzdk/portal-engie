@@ -1,7 +1,7 @@
 // 微应用配置相关接口服务
 import ajax from '../utils/axios.config';
 import axios from 'axios';
-import type { MicroAppMetadata } from '@/types';
+import type { MicroAppMetadata, MicroAppSystem } from '@/types';
 
 // ============================================
 // 类型定义
@@ -60,6 +60,21 @@ export interface ExportConfigDownload {
   download_url: string;
 }
 
+export interface MicroAppListParams {
+  page?: number;
+  page_size?: number;
+  all?: boolean;
+  keyword?: string;
+}
+
+export interface MicroAppListPageData {
+  version: string;
+  apps: MicroAppSystem[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
 // ============================================
 // 接口方法
 // ============================================
@@ -68,10 +83,11 @@ export interface ExportConfigDownload {
  * 获取微应用列表
  * @returns 微应用配置数据
  */
-export const getMicroAppList = () => {
-  return ajax<MicroAppMetadata>({
+export const getMicroAppList = (params?: MicroAppListParams) => {
+  return ajax<MicroAppMetadata | MicroAppListPageData>({
     method: 'get',
     url: '/v1/micro_apps/list',
+    data: params,
   });
 };
 

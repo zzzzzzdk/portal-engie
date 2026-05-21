@@ -3,72 +3,66 @@
  * 图标网格展示，支持搜索和分组过滤
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { Input, Segmented, Empty, Tooltip } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
-import Icon from '@/components/Icon';
+import React, { useState, useMemo, useCallback } from 'react'
+import { Input, Segmented, Empty, Tooltip } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
+import Icon from '@/components/Icon'
 import {
   ANTD_OUTLINED_ICONS,
   ANTD_FILLED_ICONS,
   ICONFONT_ICONS,
+  WANXIANG_ICONS,
   searchIcons,
-} from './iconData';
-import type { IconGridProps, IconItem, IconType } from './types';
+} from './iconData'
+import type { IconGridProps, IconItem, IconType } from './types'
 
-type FilterType = 'all' | IconType;
+type FilterType = 'all' | IconType
 
 const FILTER_OPTIONS = [
   { label: '全部', value: 'all' },
   { label: 'Outlined', value: 'antd-outlined' },
   { label: 'Filled', value: 'antd-filled' },
   { label: 'Iconfont', value: 'iconfont' },
-];
+]
 
 const IconGrid: React.FC<IconGridProps> = ({ value, onSelect }) => {
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [filterType, setFilterType] = useState<FilterType>('all')
 
-  // 根据过滤类型获取图标列表
   const baseIcons = useMemo(() => {
     switch (filterType) {
       case 'antd-outlined':
-        return ANTD_OUTLINED_ICONS;
+        return ANTD_OUTLINED_ICONS
       case 'antd-filled':
-        return ANTD_FILLED_ICONS;
+        return ANTD_FILLED_ICONS
       case 'iconfont':
-        return ICONFONT_ICONS;
+        return [...ICONFONT_ICONS, ...WANXIANG_ICONS]
       default:
-        return [...ANTD_OUTLINED_ICONS, ...ANTD_FILLED_ICONS, ...ICONFONT_ICONS];
+        return [...ANTD_OUTLINED_ICONS, ...ANTD_FILLED_ICONS, ...ICONFONT_ICONS, ...WANXIANG_ICONS]
     }
-  }, [filterType]);
+  }, [filterType])
 
-  // 搜索过滤
-  const filteredIcons = useMemo(() => {
-    return searchIcons(searchKeyword, baseIcons);
-  }, [searchKeyword, baseIcons]);
+  const filteredIcons = useMemo(() => searchIcons(searchKeyword, baseIcons), [searchKeyword, baseIcons])
 
-  // 渲染单个图标
   const renderIcon = useCallback((icon: IconItem) => {
     if (icon.type === 'iconfont') {
-      return <Icon type={icon.name} style={{ fontSize: 20 }} />;
+      return <Icon type={icon.name} style={{ fontSize: 20 }} />
     }
 
     if (icon.component) {
-      const IconComponent = icon.component;
-      return <IconComponent style={{ fontSize: 20 }} />;
+      const IconComponent = icon.component
+      return <IconComponent style={{ fontSize: 20 }} />
     }
 
-    return null;
-  }, []);
+    return null
+  }, [])
 
-  // 处理图标点击
   const handleIconClick = useCallback((icon: IconItem) => {
-    onSelect(icon.name);
-  }, [onSelect]);
+    onSelect(icon.name)
+  }, [onSelect])
 
   return (
     <div className="icon-grid-container">
-      {/* 搜索框 */}
       <Input
         placeholder="搜索图标名称..."
         prefix={<SearchOutlined />}
@@ -79,7 +73,6 @@ const IconGrid: React.FC<IconGridProps> = ({ value, onSelect }) => {
         className="icon-search-input"
       />
 
-      {/* 分组过滤 */}
       <Segmented
         options={FILTER_OPTIONS}
         value={filterType}
@@ -89,7 +82,6 @@ const IconGrid: React.FC<IconGridProps> = ({ value, onSelect }) => {
         className="icon-filter-segmented"
       />
 
-      {/* 图标网格 */}
       <div className="icon-grid">
         {filteredIcons.length > 0 ? (
           filteredIcons.map((icon) => (
@@ -111,7 +103,7 @@ const IconGrid: React.FC<IconGridProps> = ({ value, onSelect }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default IconGrid;
+export default IconGrid

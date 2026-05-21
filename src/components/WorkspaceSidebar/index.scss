@@ -55,6 +55,17 @@
   &__content {
     flex: 1;
     min-width: 0;
+    position: relative;
+  }
+
+  &__panel {
+    display: none;
+    width: 100%;
+    height: 100%;
+
+    &.is-active {
+      display: block;
+    }
   }
 }
 

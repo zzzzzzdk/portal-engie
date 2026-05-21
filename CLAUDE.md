@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 所有回答均使用中文
-
 ## Project Overview
 
 Portal Engine is an enterprise-grade dashboard application built with React + TypeScript + Vite. Users can create personalized data display panels through drag-and-drop configuration with a 12-column responsive grid system. **This project runs in an intranet environment without internet access**.

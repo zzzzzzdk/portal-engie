@@ -36,20 +36,31 @@ const ChartDataConfig: React.FC<WidgetConfigProps> = () => {
     <>
       <Divider>字段映射</Divider>
 
-      {['basic-line', 'basic-bar', 'basic-horizontal-bar', 'progress-bar', 'dual-axis'].includes(chartPreset) && (
+      {['progress-bar', 'dual-axis'].includes(chartPreset) && (
         <div className="form-row-3">
           <Form.Item name="categoryField" label="类目字段" initialValue="name">
             <Input placeholder="name" />
           </Form.Item>
-          <Form.Item name="valueField" label="主数值字段" initialValue="value">
-            <Input placeholder={chartPreset === 'dual-axis' ? 'barValue' : 'value'} />
+          <Form.Item name="valueField" label="数值字段" initialValue="value">
+            <Input placeholder="value" />
           </Form.Item>
           <Form.Item
             name="valueField2"
-            label={chartPreset === 'progress-bar' ? '目标值字段' : chartPreset === 'dual-axis' ? '折线值字段' : '备用数值字段'}
-            initialValue={chartPreset === 'progress-bar' ? 'target' : chartPreset === 'dual-axis' ? 'lineValue' : ''}
+            label={chartPreset === 'progress-bar' ? '目标值字段' : '折线值字段'}
+            initialValue={chartPreset === 'progress-bar' ? 'target' : 'lineValue'}
           >
             <Input placeholder={chartPreset === 'progress-bar' ? 'target' : 'lineValue'} />
+          </Form.Item>
+        </div>
+      )}
+
+      {['basic-line', 'basic-bar', 'basic-horizontal-bar'].includes(chartPreset) && (
+        <div className="form-row-2">
+          <Form.Item name="categoryField" label="类目字段" initialValue="name">
+            <Input placeholder="name" />
+          </Form.Item>
+          <Form.Item name="valueField" label="主数值字段" initialValue="value">
+            <Input placeholder="value" />
           </Form.Item>
         </div>
       )}
@@ -190,12 +201,12 @@ const ChartDataConfig: React.FC<WidgetConfigProps> = () => {
               <Radio.Button value="url">远程地址</Radio.Button>
             </Radio.Group>
           </Form.Item>
-          <div className="form-row-2">
+          {/* <div className="form-row-2">
             <Form.Item name="geoJsonNameProperty" label="区域名称属性" initialValue="name">
               <Input placeholder="name" />
             </Form.Item>
             <div />
-          </div>
+          </div> */}
           {geoJsonSource === 'inline' ? (
             <Form.Item
               name="geoJsonText"

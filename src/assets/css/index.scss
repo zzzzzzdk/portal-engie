@@ -28,6 +28,12 @@ body {
   height: 36px;
 }
 
+// 输入框拼接的按钮
+.ant-input-affix-wrapper+.ant-btn {
+  min-height: 36px !important;
+  height: 36px;
+}
+
 // 带前缀/后缀的输入框内部 input
 .ant-input-affix-wrapper .ant-input {
   height: auto;
@@ -44,7 +50,7 @@ body {
 
   .ant-select-selection-item,
   .ant-select-selection-placeholder {
-    line-height: 34px !important;
+    line-height: 26px !important;
   }
 }
 

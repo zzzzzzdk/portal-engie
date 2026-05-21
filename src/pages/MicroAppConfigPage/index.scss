@@ -1,15 +1,61 @@
 .micro-app-config-page {
   height: 100%;
+  display: flex;
+  flex-flow: column;
+
+  &__content {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 16px;
+
+    .ant-spin-nested-loading {
+      min-height: 200px;
+      height: 100%;
+    }
+
+    .ant-spin-container,
+    .ant-table-wrapper {
+      height: 100%;
+    }
+  }
+
+  &__pagination {
+    position: sticky;
+    bottom: 0;
+    background: var(--ant-color-bg-container, #fff);
+    border-top: 1px solid var(--ant-color-border, #f0f0f0);
+    padding-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 -4px 12px rgba(15, 18, 44, 0.05);
+    z-index: 5;
+  }
 
   .page-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     margin-bottom: 16px;
 
-    .ant-btn {
-      border-radius: 8px;
+    &__left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
+
+    &__right {
+      .ant-btn {
+        border-radius: 8px;
+      }
+    }
+
+  }
+
+  &__search-input {
+    width: 260px;
+    // border-radius: 999px;
   }
 
   .system-card {

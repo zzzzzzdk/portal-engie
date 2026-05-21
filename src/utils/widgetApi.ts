@@ -219,12 +219,63 @@ export const buildWidgetApiRequest = (
   }
 }
 
+const translateApiError = (error: any): never => {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status
+    const statusText = error.response?.statusText
+    const baseUrl = error.config?.baseURL || ''
+    const url = error.config?.url || ''
+
+    if (error.message === 'Network Error' || error.message.includes('Network')) {
+      throw new Error('网络连接失败，请检查接口地址是否正确或网络是否正常')
+    }
+
+    if (status) {
+      const detail = statusText ? `（${statusText}）` : ''
+      switch (status) {
+        case 400:
+          throw new Error(`请求参数错误${detail}，请检查接口地址、请求参数或请求方式是否正确`)
+        case 401:
+          throw new Error(`接口未授权${detail}，请检查是否需要登录或配置授权信息`)
+        case 403:
+          throw new Error(`接口无权限访问${detail}，请确认当前账号是否有权访问该接口`)
+        case 404:
+          throw new Error(`接口地址不存在${detail}，请检查接口地址是否正确`)
+        case 405:
+          throw new Error(`请求方式不被允许${detail}，请确认接口支持 ${error.config?.method || 'GET'} 请求方式`)
+        case 422:
+          throw new Error(`请求参数校验失败${detail}，请检查请求参数格式是否正确`)
+        case 429:
+          throw new Error(`请求过于频繁${detail}，请稍后再试`)
+        case 500:
+          throw new Error(`服务器内部错误${detail}，请联系后端开发人员`)
+        case 502:
+        case 503:
+        case 504:
+          throw new Error(`网关或服务端异常${detail}，请稍后再试或联系后端开发人员`)
+        default:
+          throw new Error(`请求失败（${status}）${detail}，${url ? `接口：${baseUrl}${url}` : '请检查接口配置'}`)
+      }
+    }
+
+    throw new Error(`接口请求失败：${error.message}`)
+  }
+
+  throw new Error(error?.message || '接口调试失败')
+}
+
 export const requestWidgetApi = async (
   config: WidgetApiConfig,
   pageState?: WidgetApiPageState,
 ): Promise<WidgetApiRequestResult> => {
   const requestConfig = buildWidgetApiRequest(config, pageState)
-  const response = await axios(requestConfig)
+
+  let response: any
+  try {
+    response = await axios(requestConfig)
+  } catch (error) {
+    translateApiError(error)
+  }
   const raw = response.data
   const data = config.dataField ? getValueByPath(raw, config.dataField) : raw
   const explicitList = config.listField ? getValueByPath(raw, config.listField) : undefined

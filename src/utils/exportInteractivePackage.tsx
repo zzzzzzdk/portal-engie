@@ -8,6 +8,7 @@ import type { ExportRuntimePayload } from '@/types/export-runtime'
 interface InteractiveExportOptions {
   dashboardId: string
   fileName?: string
+  version?: 'draft' | 'published'
   onProgress?: (info: { phase: string; message: string; progress?: number }) => void
 }
 
@@ -205,7 +206,7 @@ async function addRuntimeAssetsToZip(args: {
 export async function exportInteractiveDashboardPackage(
   options: InteractiveExportOptions,
 ): Promise<void> {
-  const { dashboardId, fileName, onProgress } = options
+  const { dashboardId, fileName, onProgress, version = 'published' } = options
 
   const updateProgress = (phase: string, text: string, progress?: number) => {
     onProgress?.({ phase, message: text, progress })
@@ -214,7 +215,7 @@ export async function exportInteractiveDashboardPackage(
 
   updateProgress('init', '正在准备导出交互包...', 5)
 
-  const res = await getPublishedDashboard({ id: dashboardId })
+  const res = await getPublishedDashboard({ id: dashboardId, version })
   if (!res.data) {
     throw new Error(res.message || '获取工作台数据失败')
   }
@@ -349,9 +350,11 @@ export async function exportInteractiveDashboardPackageWithProgress(
 export async function exportInteractiveDashboardFromList(
   dashboardId: string,
   fileName?: string,
+  version: 'draft' | 'published' = 'published',
 ): Promise<void> {
   await exportInteractiveDashboardPackageWithProgress({
     dashboardId,
     fileName,
+    version,
   })
 }

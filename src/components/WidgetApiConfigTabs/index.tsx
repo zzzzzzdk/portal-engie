@@ -35,7 +35,7 @@ const renderKeyValueList = (
               {...restField}
               name={[fieldName, 'key']}
               noStyle
-              rules={[{ required: true, message: '请输入参数名' }]}
+              rules={[{ required: true, message: '' }]}
             >
               {keyOptions?.length ? (
                 <Select

@@ -51,9 +51,16 @@ import {
   getGlobalMessageCopy,
   getGlobalThemeOptions,
   getGlobalThemeScheme,
+  getInvalidGlobalThemeFallbackBackground,
+  getInvalidGlobalThemeFallbackWidgetTitle,
+  hasGlobalThemeScheme,
 } from '@/utils/global-config';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
-import { hydrateQueryFilterFields, normalizeQueryFilterFields } from '@/utils/queryFilter';
+import {
+  hydrateQueryFilterFields,
+  normalizeQueryFilterFields,
+  QUERY_FILTER_FIELD_NAME_MAX_LENGTH,
+} from '@/utils/queryFilter';
 import { getChartPresetDefinition, resolveChartLegacyPreset } from '@/components/widgets/chart/presets';
 import './index.scss';
 
@@ -365,8 +372,6 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const valueFieldValue = Form.useWatch('valueField', form);
   const changeFieldValue = Form.useWatch('changeField', form);
   const unitFieldValue = Form.useWatch('unitField', form);
-  const richTextPlaceholderValue = Form.useWatch('placeholder', form);
-  const richTextMinHeightValue = Form.useWatch('minHeight', form);
   const genericDataSourceValue = Form.useWatch('dataSource', form) || 'customApi';
   const genericStaticDataValue = Form.useWatch('staticData', form) || '';
   const genericStaticDataText =
@@ -501,6 +506,27 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       void ensureGlobalConfigLoaded();
     }
   }, [ensureGlobalConfigLoaded, isOpen]);
+
+  const resetTitleGlobalThemeReference = useCallback(() => {
+    form.setFieldsValue({
+      titleUseGlobalConfig: false,
+      titleGlobalThemeId: undefined,
+      ...buildWidgetTitleStyleFormValues(
+        getInvalidGlobalThemeFallbackWidgetTitle(isGroup ? 'group' : widget.type),
+      ),
+    });
+  }, [form, isGroup, widget.type]);
+
+  const resetBackgroundGlobalThemeReference = useCallback(() => {
+    form.setFieldsValue({
+      backgroundUseGlobalConfig: false,
+      backgroundGlobalThemeId: undefined,
+      ...buildBackgroundFormValues(
+        getInvalidGlobalThemeFallbackBackground(isGroup ? 'group' : 'widget'),
+      ),
+    });
+    setFileList([]);
+  }, [form, isGroup]);
 
   useEffect(() => {
     if (isOpen) {
@@ -824,8 +850,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             apiHeadersList: widget.config.apiHeaders
               ? Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value }))
               : [],
-            successMessage: widget.config.successMessage || '提交成功',
-            failureMessage: widget.config.failureMessage || '提交失败',
+            successMessage: widget.config.successMessage,
+            failureMessage: widget.config.failureMessage,
             successAction: widget.config.successAction || (widget.config.successResetForm ? 'resetForm' : 'none'),
             failureAction: widget.config.failureAction || 'none',
           });
@@ -936,6 +962,11 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       return;
     }
 
+    if (titleGlobalThemeId && !hasGlobalThemeScheme(globalConfigDetail, titleGlobalThemeId)) {
+      resetTitleGlobalThemeReference();
+      return;
+    }
+
     const nextThemeId = titleGlobalThemeId || getDefaultGlobalThemeId(globalConfigDetail);
     if (!titleGlobalThemeId && nextThemeId) {
       form.setFieldValue('titleGlobalThemeId', nextThemeId);
@@ -948,10 +979,25 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     }
 
     form.setFieldsValue(buildWidgetTitleStyleFormValues(theme.widgetTitle));
-  }, [form, globalConfigDetail, isOpen, titleGlobalThemeId, titleUseGlobalConfig]);
+  }, [
+    form,
+    globalConfigDetail,
+    isOpen,
+    resetTitleGlobalThemeReference,
+    titleGlobalThemeId,
+    titleUseGlobalConfig,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !globalConfigDetail || !backgroundUseGlobalConfig) {
+      return;
+    }
+
+    if (
+      backgroundGlobalThemeId
+      && !hasGlobalThemeScheme(globalConfigDetail, backgroundGlobalThemeId)
+    ) {
+      resetBackgroundGlobalThemeReference();
       return;
     }
 
@@ -967,7 +1013,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
     }
 
     form.setFieldsValue(buildBackgroundFormValues(theme.widgetBackground));
-  }, [backgroundGlobalThemeId, backgroundUseGlobalConfig, form, globalConfigDetail, isOpen]);
+  }, [
+    backgroundGlobalThemeId,
+    backgroundUseGlobalConfig,
+    form,
+    globalConfigDetail,
+    isOpen,
+    resetBackgroundGlobalThemeReference,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !globalConfigDetail || !['search', 'queryFilter', 'customForm'].includes(widget.type)) {
@@ -990,6 +1043,29 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const handleOk = useCallback(async (): Promise<boolean> => {
     try {
       const values = await form.validateFields();
+      if (widget?.type === 'chart' && values.chartPreset === 'gauge') {
+        const gaugeMin = values.gaugeMin
+        const gaugeMax = values.gaugeMax
+
+        if (
+          gaugeMin != null
+          && gaugeMax != null
+          && Number(gaugeMax) < Number(gaugeMin)
+        ) {
+          form.setFields([
+            { name: 'gaugeMin', errors: ['最小值不能大于最大值'] },
+            { name: 'gaugeMax', errors: ['最大值不能小于最小值'] },
+          ])
+          message.warning('最大值不能小于最小值')
+          return false
+        }
+
+        form.setFields([
+          { name: 'gaugeMin', errors: [] },
+          { name: 'gaugeMax', errors: [] },
+        ])
+      }
+
       if (widget?.type === 'queryFilter') {
         const rawQueryFields = form.getFieldValue('queryFields') || values.queryFields;
         values.queryFields = Array.isArray(rawQueryFields)
@@ -1053,11 +1129,17 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         const fieldNameCountMap: Record<string, number> = {};
 
         for (const field of queryFields) {
-          if (!field.field || !field.field.trim()) {
+          const trimmedFieldName = field.field?.trim();
+
+          if (!trimmedFieldName) {
             fieldError = `字段「${field.label || '未命名字段'}」的 field 名不能为空`;
             break;
           }
-          fieldNameCountMap[field.field.trim()] = (fieldNameCountMap[field.field.trim()] || 0) + 1;
+          if (trimmedFieldName.length > QUERY_FILTER_FIELD_NAME_MAX_LENGTH) {
+            fieldError = `字段「${field.label || '未命名字段'}」的 field 名不能超过 ${QUERY_FILTER_FIELD_NAME_MAX_LENGTH} 个字符`;
+            break;
+          }
+          fieldNameCountMap[trimmedFieldName] = (fieldNameCountMap[trimmedFieldName] || 0) + 1;
         }
 
         if (!fieldError) {
@@ -2014,7 +2096,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
       message.success('配置保存成功');
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.errorFields) {
+        message.warning('当前组件配置存在未完成的必填项，请先处理表单中的报错后再保存');
+        return false;
+      }
+
       console.error('Failed to save widget config:', error);
       return false;
     }
@@ -2163,18 +2250,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
               rules={[{ required: true, message: '请输入富文本内容' }]}
             >
               <RichTextEditor
-                key={`${richTextPlaceholderValue || 'default'}-${richTextMinHeightValue || 220}`}
-                placeholder={richTextPlaceholderValue || '请输入富文本内容'}
-                minHeight={richTextMinHeightValue || 220}
+                key="rich-text-editor"
+                placeholder="请输入富文本内容"
+                minHeight={220}
               />
-            </Form.Item>
-            <div className="form-row-2">
-              <Form.Item name="minHeight" label="编辑区最小高度">
-                <InputNumber min={160} max={600} style={{ width: '100%' }} addonAfter="px" />
-              </Form.Item>
-            </div>
-            <Form.Item name="placeholder" label="占位提示">
-              <Input placeholder="请输入富文本内容" />
             </Form.Item>
           </>
         )}
@@ -3136,12 +3215,12 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                           <Form.Item name={['paginationConfig', 'totalField']} label="总数字段路径">
                             <Input placeholder={paginationDefaults?.totalField || 'data.total'} />
                           </Form.Item>
-                          <Form.Item name={['paginationConfig', 'currentField']} label="当前页字段路径">
+                          {/* <Form.Item name={['paginationConfig', 'currentField']} label="当前页字段路径">
                             <Input placeholder={paginationDefaults?.currentField || 'data.page'} />
                           </Form.Item>
                           <Form.Item name={['paginationConfig', 'pageSizeField']} label="每页条数字段路径">
                             <Input placeholder={paginationDefaults?.pageSizeField || 'data.page_size'} />
-                          </Form.Item>
+                          </Form.Item> */}
                         </div>
                       </>
                     );

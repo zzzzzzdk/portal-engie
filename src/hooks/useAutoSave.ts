@@ -11,7 +11,6 @@ const AUTO_SAVE_INTERVAL = 5 * 60 * 1000;
 interface UseAutoSaveOptions {
   enabled: boolean;
   dashboardId?: string;
-  status?: number;
   getCoverUrl?: () => string;
   onSaveStatusChange?: (status: 'saving' | 'saved' | 'error' | 'idle') => void;
 }
@@ -23,7 +22,6 @@ interface SilentSaveOptions {
 export const useAutoSave = ({
   enabled,
   dashboardId,
-  status = 0,
   getCoverUrl,
   onSaveStatusChange,
 }: UseAutoSaveOptions) => {
@@ -80,8 +78,8 @@ export const useAutoSave = ({
         id: dashboardId,
         title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
-        status,
         cover_url: getCoverUrl?.() ?? '',
+        action: 'save_draft',
       });
 
       if (res.code !== 20000 || !res.data) {
@@ -99,7 +97,7 @@ export const useAutoSave = ({
     } finally {
       isSavingRef.current = false;
     }
-  }, [dashboardId, getCoverUrl, onSaveStatusChange, status]);
+  }, [dashboardId, getCoverUrl, onSaveStatusChange]);
 
   useEffect(() => {
     if (!enabled) return;

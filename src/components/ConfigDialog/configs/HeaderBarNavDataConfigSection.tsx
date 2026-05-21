@@ -132,7 +132,7 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
           {navDataSource === 'dataSource' ? (
             <Form.Item
               label="选择数据源接口"
-              extra="支持按名称、接口地址、描述模糊检索，选择后会自动带入接口配置。"
+              extra="支持按名称模糊检索，选择后会自动带入接口配置。"
             >
               <DataSourceSelect
                 value={form.getFieldValue('navDataSourceId')}

@@ -1,10 +1,9 @@
 /**
  * 图标数据定义
- * 包含 Ant Design 常用图标和自定义 Iconfont 图标
+ * 包含 Ant Design 常用图标和项目内的 Iconfont 图标
  */
 
 import {
-  // Outlined 图标（约50个常用）
   HomeOutlined,
   SettingOutlined,
   UserOutlined,
@@ -56,7 +55,6 @@ import {
   DashboardOutlined,
   ShoppingCartOutlined,
   WalletOutlined,
-  // Filled 图标（约30个常用）
   HomeFilled,
   SettingFilled,
   StarFilled,
@@ -87,19 +85,16 @@ import {
   AccountBookFilled,
   FundFilled,
   GoldFilled,
-} from '@ant-design/icons';
+} from '@ant-design/icons'
 
-import type { IconItem } from './types';
+import type { IconItem } from './types'
 
-/**
- * Ant Design Outlined 图标列表
- */
 export const ANTD_OUTLINED_ICONS: IconItem[] = [
   { name: 'HomeOutlined', component: HomeOutlined, type: 'antd-outlined', keywords: ['home', '首页', '主页'] },
   { name: 'SettingOutlined', component: SettingOutlined, type: 'antd-outlined', keywords: ['setting', '设置', '配置'] },
   { name: 'UserOutlined', component: UserOutlined, type: 'antd-outlined', keywords: ['user', '用户', '个人'] },
   { name: 'SearchOutlined', component: SearchOutlined, type: 'antd-outlined', keywords: ['search', '搜索', '查找'] },
-  { name: 'PlusOutlined', component: PlusOutlined, type: 'antd-outlined', keywords: ['plus', 'add', '添加', '新增'] },
+  { name: 'PlusOutlined', component: PlusOutlined, type: 'antd-outlined', keywords: ['plus', 'add', '新增', '添加'] },
   { name: 'EditOutlined', component: EditOutlined, type: 'antd-outlined', keywords: ['edit', '编辑', '修改'] },
   { name: 'DeleteOutlined', component: DeleteOutlined, type: 'antd-outlined', keywords: ['delete', '删除', '移除'] },
   { name: 'CloseOutlined', component: CloseOutlined, type: 'antd-outlined', keywords: ['close', '关闭', '取消'] },
@@ -146,11 +141,8 @@ export const ANTD_OUTLINED_ICONS: IconItem[] = [
   { name: 'DashboardOutlined', component: DashboardOutlined, type: 'antd-outlined', keywords: ['dashboard', '工作台', '面板'] },
   { name: 'ShoppingCartOutlined', component: ShoppingCartOutlined, type: 'antd-outlined', keywords: ['cart', '购物车', '购物'] },
   { name: 'WalletOutlined', component: WalletOutlined, type: 'antd-outlined', keywords: ['wallet', '钱包', '支付'] },
-];
+]
 
-/**
- * Ant Design Filled 图标列表
- */
 export const ANTD_FILLED_ICONS: IconItem[] = [
   { name: 'HomeFilled', component: HomeFilled, type: 'antd-filled', keywords: ['home', '首页'] },
   { name: 'SettingFilled', component: SettingFilled, type: 'antd-filled', keywords: ['setting', '设置'] },
@@ -172,7 +164,7 @@ export const ANTD_FILLED_ICONS: IconItem[] = [
   { name: 'PauseCircleFilled', component: PauseCircleFilled, type: 'antd-filled', keywords: ['pause', '暂停'] },
   { name: 'StopFilled', component: StopFilled, type: 'antd-filled', keywords: ['stop', '停止'] },
   { name: 'FireFilled', component: FireFilled, type: 'antd-filled', keywords: ['fire', '热门', '火'] },
-  { name: 'ThunderboltFilled', component: ThunderboltFilled, type: 'antd-filled', keywords: ['thunder', '闪电', '快速'] },
+  { name: 'ThunderboltFilled', component: ThunderboltFilled, type: 'antd-filled', keywords: ['thunder', '闪电', '速度'] },
   { name: 'CrownFilled', component: CrownFilled, type: 'antd-filled', keywords: ['crown', '皇冠', 'VIP'] },
   { name: 'GiftFilled', component: GiftFilled, type: 'antd-filled', keywords: ['gift', '礼物', '奖品'] },
   { name: 'TrophyFilled', component: TrophyFilled, type: 'antd-filled', keywords: ['trophy', '奖杯', '成就'] },
@@ -182,16 +174,11 @@ export const ANTD_FILLED_ICONS: IconItem[] = [
   { name: 'AccountBookFilled', component: AccountBookFilled, type: 'antd-filled', keywords: ['account', '账本', '财务'] },
   { name: 'FundFilled', component: FundFilled, type: 'antd-filled', keywords: ['fund', '基金', '投资'] },
   { name: 'GoldFilled', component: GoldFilled, type: 'antd-filled', keywords: ['gold', '黄金', '会员'] },
-];
+]
 
-/**
- * 自定义 Iconfont 图标列表
- * 对应 public/static/fonts/iconfont.js 中定义的图标
- */
 export const ICONFONT_ICONS: IconItem[] = [
-  // Line 类型
   { name: 'line_xia', type: 'iconfont', keywords: ['下', 'down', '箭头'] },
-  { name: 'line_huanjing', type: 'iconfont', keywords: ['环境', 'environment', '太阳'] },
+  { name: 'line_huanjing', type: 'iconfont', keywords: ['环境', 'environment'] },
   { name: 'line_bianji', type: 'iconfont', keywords: ['编辑', 'edit', '修改'] },
   { name: 'line_shuaxin', type: 'iconfont', keywords: ['刷新', 'refresh', '更新'] },
   { name: 'line_daoru', type: 'iconfont', keywords: ['导入', 'import'] },
@@ -206,20 +193,38 @@ export const ICONFONT_ICONS: IconItem[] = [
   { name: 'line_you', type: 'iconfont', keywords: ['右', 'right', '箭头'] },
   { name: 'line_zuo', type: 'iconfont', keywords: ['左', 'left', '箭头'] },
   { name: 'line_shangchuan', type: 'iconfont', keywords: ['上传', 'upload'] },
-  // Fill 类型
+  { name: 'line_jichuzhexiantu', type: 'iconfont', keywords: ['折线图', '基础折线图', '图表', 'chart'] },
+  { name: 'line_huanxingtu', type: 'iconfont', keywords: ['环形图', '环图', '图表', 'chart'] },
+  { name: 'line_fenzuzhuxianzuhetu', type: 'iconfont', keywords: ['分组柱线组合图', '组合图', '双轴图', 'chart'] },
+  { name: 'line_fenzuzhuzhuangtu', type: 'iconfont', keywords: ['分组柱状图', '柱状图', '图表', 'chart'] },
+  { name: 'line_baifenbizhuzhuangtu', type: 'iconfont', keywords: ['百分比柱状图', '柱状图', '图表', 'chart'] },
+  { name: 'line_duidiezhuzhuangtu', type: 'iconfont', keywords: ['堆叠柱状图', '柱状图', '图表', 'chart'] },
+  { name: 'line_duidietiaoxingtu', type: 'iconfont', keywords: ['堆叠条形图', '条形图', '图表', 'chart'] },
+  { name: 'line_bingtu', type: 'iconfont', keywords: ['饼图', '图表', 'chart'] },
+  { name: 'line_liuxiangditu', type: 'iconfont', keywords: ['流向地图', '地图', '图表', 'chart'] },
+  { name: 'line_zhibiaoka', type: 'iconfont', keywords: ['指标卡', '卡片', '指标', 'card'] },
+  { name: 'line_yibiaopan', type: 'iconfont', keywords: ['仪表盘', '统计卡片', '图表', 'chart'] },
+  { name: 'line_zhuxianzuhetu', type: 'iconfont', keywords: ['柱线组合图', '组合图', '双轴图', 'chart'] },
+  { name: 'line_tupianlunbo', type: 'iconfont', keywords: ['图片轮播', '轮播图', 'carousel'] },
+  { name: 'line_sandiantu', type: 'iconfont', keywords: ['散点图', '图表', 'chart'] },
+  { name: 'line_loudoutu', type: 'iconfont', keywords: ['漏斗图', '图表', 'chart'] },
+  { name: 'line_leidatu', type: 'iconfont', keywords: ['雷达图', '图表', 'chart'] },
+  { name: 'line_quyuditu', type: 'iconfont', keywords: ['区域地图', '地图', '图表', 'chart'] },
+  { name: 'line_jindutiao', type: 'iconfont', keywords: ['进度条', '进度图', '图表', 'chart'] },
+  { name: 'line_jichuzhuzhuangtu', type: 'iconfont', keywords: ['基础柱状图', '柱状图', '图表', 'chart'] },
+  { name: 'line_jichutiaoxingtu', type: 'iconfont', keywords: ['基础条形图', '条形图', '图表', 'chart'] },
   { name: 'fill_xiaoyan', type: 'iconfont', keywords: ['小眼', '验证', 'check'] },
   { name: 'fill_guanbi', type: 'iconfont', keywords: ['关闭', 'close', '取消'] },
   { name: 'fill_shaixuan', type: 'iconfont', keywords: ['筛选', 'filter', '过滤'] },
   { name: 'fill_paixu', type: 'iconfont', keywords: ['排序', 'sort', '顺序'] },
   { name: 'fill_jinggao', type: 'iconfont', keywords: ['警告', 'warning', '注意'] },
-  { name: 'fill_yuandian', type: 'iconfont', keywords: ['圆点', 'dot', '点'] },
+  { name: 'fill_yuandian', type: 'iconfont', keywords: ['圆点', 'dot'] },
   { name: 'fill_gongzuotai', type: 'iconfont', keywords: ['工作台', 'workspace', '桌面'] },
   { name: 'fill_shouye', type: 'iconfont', keywords: ['首页', 'home', '主页'] },
   { name: 'fill_bushuguanli', type: 'iconfont', keywords: ['部署管理', 'deploy', '部署'] },
   { name: 'fill_moxingguanli', type: 'iconfont', keywords: ['模型管理', 'model', '模型'] },
   { name: 'fill_yangbenguanli', type: 'iconfont', keywords: ['样本管理', 'sample', '样本'] },
   { name: 'fill_yingyongguanli', type: 'iconfont', keywords: ['应用管理', 'app', '应用'] },
-  // 千语 AI 助手图标 (qianyu-iconfont.js)
   { name: 'buheguitousuhuifuzhushou', type: 'iconfont', keywords: ['不合规', '投诉', '回复', '助手'] },
   { name: 'a-110', type: 'iconfont', keywords: ['110', '报警', '电话'] },
   { name: 'AIPPT', type: 'iconfont', keywords: ['AI', 'PPT', '演示', '文档'] },
@@ -227,10 +232,10 @@ export const ICONFONT_ICONS: IconItem[] = [
   { name: 'bianminzixunzhushou', type: 'iconfont', keywords: ['便民', '咨询', '助手', '服务'] },
   { name: 'gongjijinxiaoguanjia', type: 'iconfont', keywords: ['公积金', '管家', '住房'] },
   { name: 'fatiaozhisou', type: 'iconfont', keywords: ['法条', '智搜', '法律', '搜索'] },
-  { name: 'dianweixunlian', type: 'iconfont', keywords: ['电位', '训练', '培训'] },
+  { name: 'dianweixunlian', type: 'iconfont', keywords: ['点位', '训练', '培训'] },
   { name: 'gonganxiaobangshou', type: 'iconfont', keywords: ['公安', '帮手', '警务'] },
   { name: 'shipintiaoyuezhushou', type: 'iconfont', keywords: ['视频', '调阅', '助手', '监控'] },
-  { name: 'tufaanshijianyuanzhiyin', type: 'iconfont', keywords: ['突发', '案事件', '指引', '应急'] },
+  { name: 'tufaanshijianyuanzhiyin', type: 'iconfont', keywords: ['突发', '事件', '指引', '应急'] },
   { name: 'morenyingyong', type: 'iconfont', keywords: ['默认', '应用', 'default', 'app'] },
   { name: 'zhongfujingqingshuli', type: 'iconfont', keywords: ['重复', '警情', '梳理', '分析'] },
   { name: 'wenshu', type: 'iconfont', keywords: ['文书', '文档', 'AI', '写作'] },
@@ -241,64 +246,225 @@ export const ICONFONT_ICONS: IconItem[] = [
   { name: 'qingbaoxiansuotongjifenxi', type: 'iconfont', keywords: ['情报', '线索', '统计', '分析'] },
   { name: 'jingdanzhiliangtisheng', type: 'iconfont', keywords: ['警单', '质量', '提升'] },
   { name: 'jijiananlifenxi', type: 'iconfont', keywords: ['基建', '案例', '分析'] },
-  { name: 'huiyizhiji', type: 'iconfont', keywords: ['会议', '纪记', '记录', '笔记'] },
+  { name: 'huiyizhiji', type: 'iconfont', keywords: ['会议', '纪要', '记录', '笔记'] },
   { name: 'gongwenxiezuozhushou', type: 'iconfont', keywords: ['公文', '写作', '助手', '文档'] },
   { name: 'chujingjianyizhushou', type: 'iconfont', keywords: ['出警', '建议', '助手', '处置'] },
-];
+]
 
-/**
- * 所有图标列表
- */
+const WANXIANG_ICON_NAMES = [
+  'tansuofaxian-shujushichang',
+  'wodeziyuan-shujuziyuan',
+  'gongzuotai-shujujianmo',
+  'wodeziyuan-moxingtiaodu',
+  'shujuzhiliang-zhiliangfenxi',
+  'zifuchuantianchong',
+  'wenjianshuru',
+  'hive',
+  'Doris',
+  'fasong',
+  'tingzhi',
+  'shujuzhiliang',
+  'jingweidu',
+  'SQLServer',
+  'MariaDB',
+  'PostgreSQL',
+  'MySQL',
+  'hangao',
+  'rendajincang',
+  'StarRocks',
+  'oracle',
+  'ClickHouse',
+  'api',
+  'kafka',
+  'wenben-tongyong',
+  'a-zhexiantu3',
+  'wenben1',
+  'line-zidongshengcheng',
+  'line-tupiancaijian',
+  'line-kaijijiance',
+  'line-diedai',
+  'line-guolv',
+  'line-tiaojianfenzhi',
+  'line-shujucharu',
+  'line-jieshu1',
+  'line-duomotaidamoxing',
+  'line-daimazhihang',
+  'line-suanfazuhe',
+  'line-hulianwang',
+  'fill-ziyuan',
+  'fill_suanliziyuan',
+  'fill_shipinziyuan',
+  'fill_lixianshuju',
+  'fill_zaixianshuju',
+  'line-shezhi',
+  'fil-xiaoxitongzhi',
+  'line-yingyongchangjingshezhi',
+  'xiazai',
+  'shangchuan1',
+  'zhiliangfenxi',
+  'fill-yujing2',
+  'neicun',
+  'CPU',
+  'ku',
+  'lijizhihang',
+  'ziduanfenxiguize',
+  'biaofenxiguize',
+  'a-lujing62995',
+  'fenxishujuliang',
+  'wentishujuliang',
+  'guanli',
+  'jiance',
+  'shuju',
+  'cai2',
+  'chexiao',
+  'shenqing',
+  'guanyu',
+  'xiugaimima',
+  'daochu',
+  'shenpi',
+  'zhengshu',
+  'xiaoshu',
+  'shijianchuo',
+  'shijian',
+  'riqi',
+  'wenben',
+  'naruwodeziyuan',
+  'jiancelianjie',
+  'shouye',
+  'shujujicheng',
+  'moxingtubiao',
+  'shangjia',
+  'xiajia',
+  'bianjimoxingxinxi',
+  'moxingtiaodu',
+  'fuzhiweixinmoxing',
+  'fanhui',
+  'bianji',
+  'shanchu',
+  'tianjia',
+  'line-duichengchaji',
+  'line-fenzutongji',
+  'line-shijianchazhi',
+  'line-jianqieziduan',
+  'line-congyoujiequ',
+  'line-youlianjie',
+  'line-liangbiaoguanlian',
+  'line-zhitihuan',
+  'line-shujuquzhong',
+  'line-zhiyingshe',
+  'line-zuolianjie',
+  'line-SQLyunsuan',
+  'line-tiquziduan',
+  'line-quanlianjie',
+  'line-hangzhuanlie',
+  'line-quanbuhebing',
+  'line-quzhonghebing',
+  'line-chaji',
+  'line-liezhuanhang',
+  'line-ziduanpaixu',
+  'line-shujushaixuan',
+  'line-chaifenziduan',
+  'line-TOPfenxi',
+  'line-ziduanleixingzhuanhuan',
+  'line-jieshu',
+  'line-biaoshuru',
+  'line-quanbiaotongji',
+  'line-congzuojiequ',
+  'line-pinjieziduan',
+  'line-neilianjie',
+  'line-shijiangeshizhuanhuan',
+  'line-shujujisuan',
+  'line-shujupaixu',
+  'line-shuzhixiaoyan',
+  'line-liangliehebing',
+  'line-ziduanzhongmingming',
+  'line-zuopaichu',
+  'ziyuan',
+  'gaojing',
+  'suanfa',
+  'jiancha',
+  'lishi',
+  'jiantou',
+  'jian',
+  'huitui',
+  'guanbi',
+  'gongzuotai',
+  'gengduo2',
+  'gengduo',
+  'fangda',
+  'gerenzhongxin',
+  'fabu',
+  'baocun',
+  'banben',
+  'yunhang',
+  'yulan',
+  'wodeziyuan',
+  'yuanshujuguanli',
+  'youjiantou',
+  'yidong',
+  'tuozhuai',
+  'xiayibu',
+  'renwutiaodu',
+  'tansuofaxian',
+  'suoxiao',
+  'shiyunhang',
+  'meihua',
+  'sousuo',
+  'shangyibu',
+  'shangchuan',
+  'zhuye',
+  'biaoqian',
+  'dengchu',
+  'cha',
+  'bangzhu',
+] as const
+
+export const WANXIANG_ICONS: IconItem[] = WANXIANG_ICON_NAMES.map((name) => ({
+  name,
+  type: 'iconfont',
+  keywords: [name],
+}))
+
 export const ALL_ICONS: IconItem[] = [
   ...ANTD_OUTLINED_ICONS,
   ...ANTD_FILLED_ICONS,
   ...ICONFONT_ICONS,
-];
+  ...WANXIANG_ICONS,
+]
 
-/**
- * 根据类型获取图标列表
- */
 export function getIconsByType(type: 'all' | 'antd-outlined' | 'antd-filled' | 'iconfont'): IconItem[] {
   switch (type) {
     case 'antd-outlined':
-      return ANTD_OUTLINED_ICONS;
+      return ANTD_OUTLINED_ICONS
     case 'antd-filled':
-      return ANTD_FILLED_ICONS;
+      return ANTD_FILLED_ICONS
     case 'iconfont':
-      return ICONFONT_ICONS;
+      return [...ICONFONT_ICONS, ...WANXIANG_ICONS]
     default:
-      return ALL_ICONS;
+      return ALL_ICONS
   }
 }
 
-/**
- * 搜索图标
- */
 export function searchIcons(keyword: string, icons: IconItem[] = ALL_ICONS): IconItem[] {
   if (!keyword || keyword.trim() === '') {
-    return icons;
+    return icons
   }
 
-  const lowerKeyword = keyword.toLowerCase().trim();
+  const lowerKeyword = keyword.toLowerCase().trim()
 
   return icons.filter(icon => {
-    // 匹配图标名称
     if (icon.name.toLowerCase().includes(lowerKeyword)) {
-      return true;
+      return true
     }
 
-    // 匹配关键词
     if (icon.keywords?.some(kw => kw.toLowerCase().includes(lowerKeyword))) {
-      return true;
+      return true
     }
 
-    return false;
-  });
+    return false
+  })
 }
 
-/**
- * 根据名称查找图标
- */
 export function findIconByName(name: string): IconItem | undefined {
-  return ALL_ICONS.find(icon => icon.name === name);
+  return ALL_ICONS.find(icon => icon.name === name)
 }

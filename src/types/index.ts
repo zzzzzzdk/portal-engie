@@ -245,6 +245,7 @@ export interface AppState {
   setEditMode: (isEditMode: boolean) => void;
   markDirty: () => void;
   clearDirty: () => void;
+  setFullScreen: (isFullScreen: boolean) => void;
   toggleFullScreen: () => void;
   openConfigPanel: (target: ConfigPanelTarget) => void;
   closeConfigPanel: () => void;
@@ -457,6 +458,8 @@ export interface QueryFilterFieldConfig {
   layoutCols?: QueryFilterLayoutCols;
   defaultValue?: any;
   placeholder?: string;
+  rangeStartPlaceholder?: string;
+  rangeEndPlaceholder?: string;
   maxLength?: number;
   addonBefore?: string;
   addonAfter?: string;
@@ -467,6 +470,7 @@ export interface QueryFilterFieldConfig {
   direction?: 'horizontal' | 'vertical';
   mode?: 'single' | 'multiple';
   showSearch?: boolean;
+  maxTagCount?: number | 'responsive';
   pickerType?: 'date' | 'range';
   disablePastDates?: boolean;
   dataSourceType?: QueryFilterDataSourceType;

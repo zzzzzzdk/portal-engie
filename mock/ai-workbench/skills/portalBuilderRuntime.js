@@ -520,12 +520,63 @@ const detectClearIntent = (prompt = '') => CLEAR_INTENT_PATTERN.test(String(prom
 const inferIntent = (prompt = '') => detectClearIntent(prompt) ? 'clear' : (textMatches(prompt, MANAGEMENT_PATTERNS) ? 'management' : (textMatches(prompt, DASHBOARD_PATTERNS) ? 'dashboard' : 'portal'));
 const inferChartType = (prompt = '') => CHART_TYPE_RULES.find((rule) => textMatches(prompt, rule.patterns))?.chartType || 'basic-line';
 
-const inferTitle = (prompt, intent) => {
-  const explicit = String(prompt || '').match(/(?:title|named|called|命名|标题(?:为|是)?|叫)\s*[:：]?\s*([^\n,，。]{2,40})/i);
-  if (explicit?.[1]) return explicit[1].trim();
+const TITLE_EXTRACTION_PATTERNS = [
+  /(?:重命名为|重命名成|标题改为|标题改成|标题设置为|标题设为|页面标题改为|页面标题改成|页面标题设置为|页面标题设为|页面名改为|页面名改成|页面名设置为|页面名设为|命名为|命名成|标题为|标题是|页面标题为|页面标题是|页面名为|页面名是|叫做|叫)\s*[:：]?\s*["“']?([^\n,，。"'”]{2,40})/i,
+  /(?:rename(?:\s+page)?(?:\s+to)?|change(?:\s+the)?\s+title(?:\s+to)?|set(?:\s+the)?\s+title(?:\s+to)?|named|called|title)\s*[:：]?\s*["“']?([^\n,，。"'”]{2,40})/i,
+];
+
+const RENAME_INTENT_PATTERNS = [
+  /重命名|改标题|修改标题|标题改为|标题改成|标题设置为|标题设为|页面标题改为|页面标题改成|页面标题设置为|页面标题设为|页面名改为|页面名改成|页面名设置为|页面名设为/i,
+  /(?:rename(?:\s+page)?|change(?:\s+the)?\s+title|update(?:\s+the)?\s+title|set(?:\s+the)?\s+title)/i,
+];
+
+const extractExplicitTitle = (prompt = '') => {
+  const source = String(prompt || '').trim();
+  if (!source) return '';
+
+  for (const pattern of TITLE_EXTRACTION_PATTERNS) {
+    const matched = source.match(pattern);
+    if (matched?.[1]) {
+      return matched[1]
+        .trim()
+        .replace(/^["“']+|["”']+$/g, '')
+        .replace(/[。；;，,]+$/g, '')
+        .trim();
+    }
+  }
+
+  return '';
+};
+
+const detectRenameIntent = (prompt = '') => textMatches(prompt, RENAME_INTENT_PATTERNS);
+
+const inferDefaultTitle = (prompt, intent) => {
   if (intent === 'management') return containsChinese(prompt) ? '业务管理工作台' : 'Business Management Workspace';
   if (intent === 'dashboard') return containsChinese(prompt) ? '区域态势监测大屏' : 'Regional Operations Dashboard';
   return containsChinese(prompt) ? '企业门户首页' : 'Enterprise Portal Homepage';
+};
+
+const inferTitle = (prompt, intent) => extractExplicitTitle(prompt) || inferDefaultTitle(prompt, intent);
+
+const getSnapshotTitle = (snapshot) => {
+  const dashboardTitle = trimString(snapshot?.dashboardConfig?.title);
+  if (dashboardTitle) return dashboardTitle;
+  const header = Array.isArray(snapshot?.widgets) ? snapshot.widgets.find((item) => item?.type === 'headerBar') : null;
+  return trimString(header?.config?.headerTitle || header?.config?.title || header?.title);
+};
+
+const resolveTitleForTask = ({ prompt, intent, mode, currentSnapshot }) => {
+  const currentTitle = getSnapshotTitle(currentSnapshot);
+  const explicitTitle = extractExplicitTitle(prompt);
+  const renameIntent = detectRenameIntent(prompt);
+
+  if (mode === 'edit') {
+    if (currentTitle && !renameIntent) return currentTitle;
+    if (explicitTitle) return explicitTitle;
+    if (currentTitle) return currentTitle;
+  }
+
+  return explicitTitle || inferDefaultTitle(prompt, intent);
 };
 
 const deriveRequestedWidgetTypes = (prompt = '') => {
@@ -599,6 +650,9 @@ const buildPortalBuilderContext = ({ prompt, mode, currentSnapshot }) => {
   const existingWidgetTypes = Array.isArray(currentSnapshot?.widgets)
     ? Array.from(new Set(currentSnapshot.widgets.map((item) => item?.type).filter(Boolean)))
     : [];
+  const currentTitle = getSnapshotTitle(currentSnapshot);
+  const explicitRequestedTitle = extractExplicitTitle(prompt);
+  const renameIntent = detectRenameIntent(prompt);
 
   const terms = Array.from(new Set([
     intent,
@@ -630,6 +684,14 @@ const buildPortalBuilderContext = ({ prompt, mode, currentSnapshot }) => {
     requestedWidgetTypes,
     existingWidgetTypes,
     chartType: inferChartType(prompt),
+    titleRules: {
+      currentTitle,
+      explicitRequestedTitle,
+      preserveExistingTitleOnEdit: Boolean(currentTitle),
+      renameOnlyWhenUserExplicitlyRequests: true,
+      keepSummaryTitleAlignedWithSnapshotTitle: true,
+      renameIntent,
+    },
     referenceDigest: PORTAL_BUILDER_REFERENCE_DIGEST,
     selectedSections,
   };
@@ -647,7 +709,14 @@ const buildSystemPrompt = (portalBuilderContext) => [
   `Requested widget types from the user: ${portalBuilderContext.requestedWidgetTypes.join(', ') || 'none explicitly requested'}.`,
   `Existing workspace widget types: ${portalBuilderContext.existingWidgetTypes.join(', ') || 'none'}.`,
   `Preferred chart type when relevant: ${portalBuilderContext.chartType}.`,
+  `Current workspace title: ${portalBuilderContext.titleRules.currentTitle || 'none'}.`,
+  `Explicit title requested by user: ${portalBuilderContext.titleRules.explicitRequestedTitle || 'none'}.`,
+  `Explicit rename requested: ${portalBuilderContext.titleRules.renameIntent ? 'yes' : 'no'}.`,
   `Strict reference digest: ${JSON.stringify(PORTAL_BUILDER_REFERENCE_DIGEST)}.`,
+  'Title policy: in create mode, if the user explicitly provides a title, you must use it; otherwise you may infer one.',
+  'Title policy: in edit mode, if currentSnapshot.dashboardConfig.title is non-empty, preserve it by default.',
+  'Only rename the page when the user explicitly asks to rename or change the title.',
+  'summary.title, snapshot.dashboardConfig.title, headerBar.title, and headerBar.config.headerTitle must stay aligned.',
   'summary.widgetCount must equal snapshot.widgets.length.',
 ].join('\n');
 
@@ -663,6 +732,7 @@ const buildUserPrompt = ({ prompt, mode, currentSnapshot, messages, portalBuilde
     requestedWidgetTypes: portalBuilderContext.requestedWidgetTypes,
     existingWidgetTypes: portalBuilderContext.existingWidgetTypes,
     chartType: portalBuilderContext.chartType,
+    titleRules: portalBuilderContext.titleRules,
     referenceDigest: portalBuilderContext.referenceDigest,
     selectedReferences: serializeSelectedSectionsForPrompt(portalBuilderContext.selectedSections),
   },
@@ -674,6 +744,11 @@ const buildUserPrompt = ({ prompt, mode, currentSnapshot, messages, portalBuilde
     groupsDefaultEmpty: true,
     floatingModulesDefaultEmpty: true,
     followPortalBuilderReferencesStrictly: true,
+    titlePolicy: {
+      create: '如果用户明确指定标题，必须使用该标题；否则才允许推断标题。',
+      edit: '如果当前快照已有标题，默认必须保留原标题，除非用户明确要求重命名页面。',
+      alignment: 'summary.title、snapshot.dashboardConfig.title 和页面头部标题必须保持一致。',
+    },
   },
 });
 
@@ -687,6 +762,8 @@ const buildStreamPreviewSystemPrompt = (portalBuilderContext) => [
   `Requested widget types from the user: ${portalBuilderContext.requestedWidgetTypes.join(', ') || 'none explicitly requested'}.`,
   `Existing workspace widget types: ${portalBuilderContext.existingWidgetTypes.join(', ') || 'none'}.`,
   `Preferred chart type when relevant: ${portalBuilderContext.chartType}.`,
+  `Current workspace title: ${portalBuilderContext.titleRules.currentTitle || 'none'}.`,
+  'When editing, keep the existing title unless the user explicitly requests renaming.',
 ].join('\n');
 
 const buildStreamPreviewUserPrompt = ({ prompt, mode, currentSnapshot, messages, portalBuilderContext }) => JSON.stringify({
@@ -706,6 +783,7 @@ const buildStreamPreviewUserPrompt = ({ prompt, mode, currentSnapshot, messages,
     requestedWidgetTypes: portalBuilderContext.requestedWidgetTypes,
     existingWidgetTypes: portalBuilderContext.existingWidgetTypes,
     chartType: portalBuilderContext.chartType,
+    titleRules: portalBuilderContext.titleRules,
     referenceDigest: portalBuilderContext.referenceDigest,
     selectedReferences: serializeSelectedSectionsForPrompt(portalBuilderContext.selectedSections),
   },
@@ -715,6 +793,10 @@ const buildStreamPreviewUserPrompt = ({ prompt, mode, currentSnapshot, messages,
     mentionConcreteChanges: true,
     mentionLayoutAndVisualDirection: true,
     noJson: true,
+    titlePolicy: {
+      edit: '编辑态默认保留当前标题，仅在用户明确要求改名时说明会修改标题。',
+      alignment: '如果会改标题，必须同步说明 summary.title 和 snapshot.dashboardConfig.title 也会一致修改。',
+    },
   },
 });
 
@@ -1302,9 +1384,11 @@ const buildManagementSnapshot = (title, prompt) => {
 
 const hasWidgetType = (snapshot, type) => Array.isArray(snapshot?.widgets) && snapshot.widgets.some((item) => item?.type === type);
 
-const buildWidgetByType = (type, prompt, intent) => {
+const buildWidgetByType = (type, prompt, intent, options = {}) => {
+  const resolvedTitle = trimString(options.title) || inferTitle(prompt, intent);
+
   switch (type) {
-    case 'headerBar': return buildHeaderBar(inferTitle(prompt, intent), intent);
+    case 'headerBar': return buildHeaderBar(resolvedTitle, intent);
     case 'carousel': return buildCarousel();
     case 'navGroup': return buildNavGroup('快捷入口', portalPrimaryItems.slice(0, 8), { layout: { w: 18, h: 10, minW: 8, minH: 8 } });
     case 'iconNav': return buildIconNav();
@@ -1325,7 +1409,7 @@ const buildWidgetByType = (type, prompt, intent) => {
   }
 };
 
-const ensureIntentRecipe = (snapshot, intent, prompt) => {
+const ensureIntentRecipe = (snapshot, intent, prompt, options = {}) => {
   const recipe = intent === 'management'
     ? ['headerBar', 'queryFilter', 'dataTable', 'pageNavigator']
     : intent === 'dashboard'
@@ -1334,7 +1418,7 @@ const ensureIntentRecipe = (snapshot, intent, prompt) => {
 
   recipe.forEach((type) => {
     if (!hasWidgetType(snapshot, type)) {
-      const widget = buildWidgetByType(type, prompt, intent);
+      const widget = buildWidgetByType(type, prompt, intent, options);
       if (widget) snapshot.widgets.push(widget);
     }
   });
@@ -1362,7 +1446,12 @@ const buildEditSnapshot = (currentSnapshot, prompt) => {
   if (intent === 'clear') return createEmptySnapshot();
   const requestedTypes = deriveRequestedWidgetTypes(prompt);
   const snapshot = normalizeSnapshot(currentSnapshot);
-  const title = snapshot.dashboardConfig?.title || inferTitle(prompt, intent);
+  const title = resolveTitleForTask({
+    prompt,
+    intent,
+    mode: 'edit',
+    currentSnapshot: snapshot,
+  });
 
   snapshot.dashboardConfig.title = title;
   if (!Array.isArray(snapshot.widgets)) snapshot.widgets = [];
@@ -1371,12 +1460,12 @@ const buildEditSnapshot = (currentSnapshot, prompt) => {
   if (requestedTypes.length) {
     requestedTypes.forEach((type) => {
       if (!hasWidgetType(snapshot, type)) {
-        const widget = buildWidgetByType(type, prompt, intent);
+        const widget = buildWidgetByType(type, prompt, intent, { title });
         if (widget) snapshot.widgets.push(widget);
       }
     });
   } else {
-    ensureIntentRecipe(snapshot, intent, prompt);
+    ensureIntentRecipe(snapshot, intent, prompt, { title });
   }
 
   applyThemeByPrompt(snapshot, prompt, { defaultPreset: DEFAULT_THEME_BY_INTENT[intent] || null });
@@ -1427,7 +1516,10 @@ module.exports = {
   buildUserPrompt,
   createEmptySnapshot,
   detectClearIntent,
+  detectRenameIntent,
+  extractExplicitTitle,
   fallbackGenerateResult,
+  getSnapshotTitle,
   inferIntent,
   inferTitle,
   inferChartType,

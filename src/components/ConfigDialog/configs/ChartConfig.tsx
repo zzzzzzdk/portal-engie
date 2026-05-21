@@ -196,10 +196,50 @@ const ChartConfig: React.FC<WidgetConfigProps> = () => {
             {'若数据中提供了最小值、最大值，则优先使用数据；仅在数据未提供时，才会回退到下方配置值。'}
           </div>
           <div className="form-row-3">
-            <Form.Item name="gaugeMin" label={'最小值'}>
+            <Form.Item
+              name="gaugeMin"
+              label={'最小值'}
+              dependencies={['gaugeMax']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const maxValue = getFieldValue('gaugeMax')
+                    if (
+                      value == null
+                      || maxValue == null
+                      || Number(value) <= Number(maxValue)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('最小值不能大于最大值'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="gaugeMax" label={'最大值'}>
+            <Form.Item
+              name="gaugeMax"
+              label={'最大值'}
+              dependencies={['gaugeMin']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const minValue = getFieldValue('gaugeMin')
+                    if (
+                      value == null
+                      || minValue == null
+                      || Number(value) >= Number(minValue)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('最大值不能小于最小值'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="gaugeSplitNumber" label={'分段数'}>
@@ -293,12 +333,52 @@ const ChartConfig: React.FC<WidgetConfigProps> = () => {
             </Form.Item>
           ) : null}
           {showDonutStyle ? (
-            <Form.Item name="donutInnerRadius" label="环图内径">
+            <Form.Item
+              name="donutInnerRadius"
+              label="环图内径"
+              dependencies={['donutOuterRadius']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const outerRadius = getFieldValue('donutOuterRadius')
+                    if (
+                      value == null
+                      || outerRadius == null
+                      || Number(value) < Number(outerRadius)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('环圈内径必须小于环圈外径'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber min={0} max={90} addonAfter="%" style={{ width: '100%' }} />
             </Form.Item>
           ) : null}
           {showDonutStyle ? (
-            <Form.Item name="donutOuterRadius" label="环图外径">
+            <Form.Item
+              name="donutOuterRadius"
+              label="环图外径"
+              dependencies={['donutInnerRadius']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const innerRadius = getFieldValue('donutInnerRadius')
+                    if (
+                      value == null
+                      || innerRadius == null
+                      || Number(value) > Number(innerRadius)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('环圈外径必须大于环圈内径'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber min={10} max={100} addonAfter="%" style={{ width: '100%' }} />
             </Form.Item>
           ) : showFlowStyle ? (
@@ -360,10 +440,50 @@ const ChartConfig: React.FC<WidgetConfigProps> = () => {
             <Form.Item name="showVisualMap" label="显示色阶" valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Form.Item name="visualMapMin" label="色阶最小值">
+            <Form.Item
+              name="visualMapMin"
+              label="色阶最小值"
+              dependencies={['visualMapMax']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const maxValue = getFieldValue('visualMapMax')
+                    if (
+                      value == null
+                      || maxValue == null
+                      || Number(value) < Number(maxValue)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('色阶最小值必须小于色阶最大值'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="visualMapMax" label="色阶最大值">
+            <Form.Item
+              name="visualMapMax"
+              label="色阶最大值"
+              dependencies={['visualMapMin']}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const minValue = getFieldValue('visualMapMin')
+                    if (
+                      value == null
+                      || minValue == null
+                      || Number(value) > Number(minValue)
+                    ) {
+                      return Promise.resolve()
+                    }
+
+                    return Promise.reject(new Error('色阶最大值必须大于色阶最小值'))
+                  },
+                }),
+              ]}
+            >
               <InputNumber style={{ width: '100%' }} />
             </Form.Item>
           </div>

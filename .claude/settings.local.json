@@ -3,8 +3,7 @@
     "allow": [
       "Bash(npm run build:*)",
       "Bash(npx tsc:*)",
-      "Bash(mkdir:*)",
-      "Read(//c/Users/Lenovo/.claude/skills/portal-builder/references/**)"
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,7 +10,6 @@ import {
   Space,
   Spin,
   Tooltip,
-  Typography,
   message,
 } from 'antd'
 import {
@@ -25,11 +24,11 @@ import {
 } from '@ant-design/icons'
 import BackgroundSettings from '@/components/BackgroundSettings'
 import WidgetTitleSettings from '@/components/WidgetTitleSettings'
-import AIModelConfigPanel from './AIModelConfigPanel'
 import {
   createThemeScheme,
   deleteThemeScheme,
   getGlobalConfigDetail,
+  saveOpenCodeConfig,
   saveComponentDataSourceConfig,
   saveMessageCopyConfig,
   updateThemeScheme,
@@ -44,11 +43,15 @@ type GlobalModuleKey =
   | 'theme'
   | 'component-data-source'
   | 'message-copy'
-  | 'model-config'
+  | 'opencode-service'
 
 type MessageCopyFormValues = {
   formSuccess?: string
   formError?: string
+}
+
+type OpenCodeConfigFormValues = {
+  serviceUrl?: string
 }
 
 const MODULE_OPTIONS: Array<{
@@ -76,9 +79,9 @@ const MODULE_OPTIONS: Array<{
     icon: <MessageOutlined />,
   },
   {
-    key: 'model-config',
-    title: '模型配置',
-    description: '统一维护 AI 助手模型、默认模型与自定义模型接入。',
+    key: 'opencode-service',
+    title: 'OpenCode 服务',
+    description: '统一维护 AI 助手通过后端代理访问的 OpenCode 服务地址。',
     icon: <ApiOutlined />,
   },
 ]
@@ -141,15 +144,17 @@ const setBackgroundFormValues = (form: any, values?: GlobalBackgroundConfig) => 
   })
 }
 
-const getModuleTitle = (moduleKey: GlobalModuleKey | null) => {
-  return MODULE_OPTIONS.find(item => item.key === moduleKey)?.title || '全局配置'
-}
-
 const buildMessageCopyFormValues = (
   messageCopies?: GlobalConfigDetail['messageCopies']
 ): MessageCopyFormValues => ({
   formSuccess: messageCopies?.['form.success'],
   formError: messageCopies?.['form.error'],
+})
+
+const buildOpenCodeConfigFormValues = (
+  opencode?: GlobalConfigDetail['opencode']
+): OpenCodeConfigFormValues => ({
+  serviceUrl: opencode?.serviceUrl,
 })
 
 interface MessageCopyPanelProps {
@@ -233,7 +238,7 @@ const GlobalConfigPage: React.FC = () => {
   const [widgetBackgroundForm] = Form.useForm()
   const [widgetTitleForm] = Form.useForm()
   const [componentDataSourceForm] = Form.useForm()
-  const [messageCopyForm] = Form.useForm<MessageCopyFormValues>()
+  const [opencodeConfigForm] = Form.useForm<OpenCodeConfigFormValues>()
   const [createThemeForm] = Form.useForm()
 
   const [loading, setLoading] = useState(false)
@@ -243,6 +248,7 @@ const GlobalConfigPage: React.FC = () => {
   const [themeSaving, setThemeSaving] = useState(false)
   const [componentSaving, setComponentSaving] = useState(false)
   const [messageSaving, setMessageSaving] = useState(false)
+  const [openCodeSaving, setOpenCodeSaving] = useState(false)
   const [createThemeOpen, setCreateThemeOpen] = useState(false)
   const [createThemeSaving, setCreateThemeSaving] = useState(false)
 
@@ -259,7 +265,6 @@ const GlobalConfigPage: React.FC = () => {
     try {
       const res = await getGlobalConfigDetail()
       if (res.code !== 20000 || !res.data) {
-        message.error(res.message || '加载全局配置失败')
         return
       }
 
@@ -267,6 +272,7 @@ const GlobalConfigPage: React.FC = () => {
       setConfigDetail(detail)
       setGlobalConfigDetail(detail)
       componentDataSourceForm.setFieldsValue(detail.componentDataSource)
+      opencodeConfigForm.setFieldsValue(buildOpenCodeConfigFormValues(detail.opencode))
       setSelectedThemeId(prev => {
         if (prev && detail.themes.some(item => item.id === prev)) {
           return prev
@@ -275,11 +281,10 @@ const GlobalConfigPage: React.FC = () => {
       })
     } catch (error) {
       console.error('加载全局配置失败', error)
-      message.error('加载全局配置失败')
     } finally {
       setLoading(false)
     }
-  }, [componentDataSourceForm, setGlobalConfigDetail])
+  }, [componentDataSourceForm, opencodeConfigForm, setGlobalConfigDetail])
 
   useEffect(() => {
     fetchConfigDetail()
@@ -342,7 +347,6 @@ const GlobalConfigPage: React.FC = () => {
       })
 
       if (res.code !== 20000 || !res.data?.id) {
-        message.error(res.message || '新增主题方案失败')
         return
       }
 
@@ -356,7 +360,6 @@ const GlobalConfigPage: React.FC = () => {
         return
       }
       console.error('新增主题方案失败', error)
-      message.error(error?.message || '新增主题方案失败')
     } finally {
       setCreateThemeSaving(false)
     }
@@ -397,7 +400,6 @@ const GlobalConfigPage: React.FC = () => {
       })
 
       if (res.code !== 20000) {
-        message.error(res.message || '保存主题方案失败')
         return
       }
 
@@ -408,7 +410,6 @@ const GlobalConfigPage: React.FC = () => {
         return
       }
       console.error('保存主题方案失败', error)
-      message.error(error?.message || '保存主题方案失败')
     } finally {
       setThemeSaving(false)
     }
@@ -422,7 +423,6 @@ const GlobalConfigPage: React.FC = () => {
     try {
       const res = await deleteThemeScheme({ id: selectedTheme.id })
       if (res.code !== 20000) {
-        message.error(res.message || '删除主题方案失败')
         return
       }
 
@@ -430,7 +430,6 @@ const GlobalConfigPage: React.FC = () => {
       await fetchConfigDetail()
     } catch (error) {
       console.error('删除主题方案失败', error)
-      message.error('删除主题方案失败')
     }
   }
 
@@ -446,7 +445,6 @@ const GlobalConfigPage: React.FC = () => {
       })
 
       if (res.code !== 20000) {
-        message.error(res.message || '保存组件数据源配置失败')
         return
       }
 
@@ -457,7 +455,6 @@ const GlobalConfigPage: React.FC = () => {
         return
       }
       console.error('保存组件数据源配置失败', error)
-      message.error(error?.message || '保存组件数据源配置失败')
     } finally {
       setComponentSaving(false)
     }
@@ -465,7 +462,10 @@ const GlobalConfigPage: React.FC = () => {
 
   const handleSaveMessageCopy = async (values?: MessageCopyFormValues) => {
     try {
-      const nextValues = values || (await messageCopyForm.validateFields())
+      const nextValues = values
+      if (!nextValues) {
+        return
+      }
       setMessageSaving(true)
       const res = await saveMessageCopyConfig({
         'form.success': String(nextValues.formSuccess || '').trim(),
@@ -473,7 +473,6 @@ const GlobalConfigPage: React.FC = () => {
       })
 
       if (res.code !== 20000) {
-        message.error(res.message || '保存消息文案失败')
         return
       }
 
@@ -484,9 +483,32 @@ const GlobalConfigPage: React.FC = () => {
         return
       }
       console.error('保存消息文案失败', error)
-      message.error(error?.message || '保存消息文案失败')
     } finally {
       setMessageSaving(false)
+    }
+  }
+
+  const handleSaveOpenCodeConfig = async () => {
+    try {
+      const values = await opencodeConfigForm.validateFields()
+      setOpenCodeSaving(true)
+      const res = await saveOpenCodeConfig({
+        serviceUrl: String(values.serviceUrl || '').trim(),
+      })
+
+      if (res.code !== 20000) {
+        return
+      }
+
+      message.success('保存 OpenCode 服务配置成功')
+      await fetchConfigDetail()
+    } catch (error: any) {
+      if (error?.errorFields) {
+        return
+      }
+      console.error('保存 OpenCode 服务配置失败', error)
+    } finally {
+      setOpenCodeSaving(false)
     }
   }
 
@@ -553,7 +575,7 @@ const GlobalConfigPage: React.FC = () => {
                   <Space wrap>
                     <Popconfirm
                       title="确认删除当前主题方案吗？"
-                      description="若工作台已引用当前方案，将会自动切换到首个主题方案。是否确认删除？"
+                      description="若工作台已引用当前方案，将会恢复到默认配置。是否确认删除？"
                       onConfirm={() => void handleDeleteTheme()}
                       okText="确认"
                       cancelText="取消"
@@ -693,13 +715,13 @@ const GlobalConfigPage: React.FC = () => {
     </div>
   )
 
-  const renderMessageCopyPanelLegacy = () => (
+  const renderOpenCodeServicePanel = () => (
     <div className="global-config-page__module-panel global-config-page__simple-panel">
       <div className="global-config-page__panel-intro">
-        <div className="global-config-page__panel-title">消息文案配置</div>
+        <div className="global-config-page__panel-title">OpenCode 服务配置</div>
         <div className="global-config-page__panel-description">
-          <div>影响范围：自定义表单保存。</div>
-          <div>影响策略：平台默认兜底，业务可覆盖文案。</div>
+          <div>影响范围：AI 助手通过后端代理连接 OpenCode 服务。</div>
+          <div>影响策略：保存后 mock 与后续正式后端都复用该服务地址，不再维护自定义模型配置。</div>
         </div>
       </div>
 
@@ -707,39 +729,34 @@ const GlobalConfigPage: React.FC = () => {
         <Card className="global-config-page__content-card" bordered={false}>
           <div className="global-config-page__editor-header">
             <div>
-              <div className="global-config-page__card-title">默认文案</div>
-              <div className="global-config-page__card-tip">当前仅维护两个固定文案键</div>
+              <div className="global-config-page__card-title">服务地址</div>
+              <div className="global-config-page__card-tip">用于后端代理请求 OpenCode 服务的根地址</div>
             </div>
             <Button
               type="primary"
               icon={<SaveOutlined />}
-              loading={messageSaving}
-              onClick={() => void handleSaveMessageCopy()}
+              loading={openCodeSaving}
+              onClick={() => void handleSaveOpenCodeConfig()}
             >
-              保存文案
+              保存配置
             </Button>
           </div>
 
           <div className="global-config-page__content-scroll">
-            <Form
-              form={messageCopyForm}
-              layout="vertical"
-              initialValues={buildMessageCopyFormValues(configDetail?.messageCopies)}
-            >
+            <Form form={opencodeConfigForm} layout="vertical">
               <Form.Item
-                name="formSuccess"
-                label="form.success"
-                rules={[{ required: true, whitespace: true, message: '请输入成功文案' }]}
+                name="serviceUrl"
+                label={(
+                  <Space size={6}>
+                    <span>OpenCode 服务地址</span>
+                    <Tooltip title="例如：http://127.0.0.1:8096。后端代理会基于这个地址转发到 OpenCode 服务。">
+                      <InfoCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                )}
+                rules={[{ required: true, whitespace: true, message: '请输入 OpenCode 服务地址' }]}
               >
-                <Input placeholder="请输入成功提示文案" maxLength={60} />
-              </Form.Item>
-
-              <Form.Item
-                name="formError"
-                label="form.error"
-                rules={[{ required: true, whitespace: true, message: '请输入失败文案' }]}
-              >
-                <Input placeholder="请输入失败提示文案" maxLength={60} />
+                <Input placeholder="例如：http://127.0.0.1:8096" />
               </Form.Item>
             </Form>
           </div>
@@ -794,13 +811,8 @@ const GlobalConfigPage: React.FC = () => {
       return renderComponentDataSourcePanel()
     }
 
-    if (activeModule === 'model-config') {
-      return (
-        <AIModelConfigPanel
-          models={configDetail?.aiModels || []}
-          onReload={fetchConfigDetail}
-        />
-      )
+    if (activeModule === 'opencode-service') {
+      return renderOpenCodeServicePanel()
     }
 
     return renderMessageCopyPanel()
@@ -841,12 +853,6 @@ const GlobalConfigPage: React.FC = () => {
         </Card>
 
         <div className="global-config-page__main">
-          {/* <div className="global-config-page__main-header">
-            <Typography.Title level={4} className="global-config-page__page-title">
-              {getModuleTitle(activeModule)}
-            </Typography.Title>
-          </div> */}
-
           <div className="global-config-page__main-content">{renderRightContent()}</div>
         </div>
       </div>

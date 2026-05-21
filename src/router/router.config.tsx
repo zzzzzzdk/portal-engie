@@ -99,6 +99,14 @@ const routeConfig: RouteConfig[] = [
     },
   },
   {
+    path: '/portal-home',
+    element: () => import('@/pages/PortalHome'),
+    meta: {
+      requiresAuth: true,
+      title: '门户首页 - Portal Engine',
+    },
+  },
+  {
     path: '/404',
     element: () => import('@/pages/_404'),
     meta: {

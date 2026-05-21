@@ -41,39 +41,8 @@ export interface GlobalMessageCopyConfig {
   'form.error': string
 }
 
-export type GlobalAIModelProtocol = 'openai-responses' | 'openai-chat' | 'anthropic-messages'
-
-export type GlobalAIModelProviderType =
-  | 'openai'
-  | 'anthropic'
-  | 'qwen'
-  | 'doubao'
-  | 'custom'
-
-export interface GlobalAIModelConfig {
-  id: string
-  name: string
-  providerType: GlobalAIModelProviderType
-  providerLabel: string
-  protocol: GlobalAIModelProtocol
-  enabled: boolean
-  isDefault?: boolean
-  recommended?: boolean
-  readonly?: boolean
-  description?: string
-  baseUrl: string
-  model: string
-  apiKey?: string
-  authStyle?: 'bearer' | 'x-api-key' | 'none'
-  responsesPath?: string
-  chatPath?: string
-  messagesPath?: string
-  anthropicVersion?: string
-  temperature?: number
-  maxTokens?: number
-  responseFormat?: string
-  createdAt?: string
-  updatedAt?: string
+export interface GlobalOpenCodeConfig {
+  serviceUrl: string
 }
 
 export interface GlobalConfigDetail {
@@ -81,7 +50,7 @@ export interface GlobalConfigDetail {
   themes: GlobalThemeScheme[]
   componentDataSource: GlobalComponentDataSourceConfig
   messageCopies: GlobalMessageCopyConfig
-  aiModels: GlobalAIModelConfig[]
+  opencode: GlobalOpenCodeConfig
 }
 
 export interface ThemeSaveParams {
@@ -139,37 +108,10 @@ export const saveMessageCopyConfig = (data: GlobalMessageCopyConfig) => {
   })
 }
 
-export const createGlobalAIModelConfig = (
-  data: Pick<GlobalAIModelConfig, 'name' | 'providerLabel' | 'protocol'> &
-    Partial<GlobalAIModelConfig>,
-) => {
-  return ajax<{ id: string }>({
+export const saveOpenCodeConfig = (data: GlobalOpenCodeConfig) => {
+  return ajax<GlobalOpenCodeConfig>({
     method: 'post',
-    url: '/v1/global-config/ai-model/create',
-    data,
-  })
-}
-
-export const updateGlobalAIModelConfig = (data: GlobalAIModelConfig) => {
-  return ajax<{ id: string }>({
-    method: 'post',
-    url: '/v1/global-config/ai-model/update',
-    data,
-  })
-}
-
-export const deleteGlobalAIModelConfig = (data: { id: string }) => {
-  return ajax<{ success: boolean; defaultModelId?: string }>({
-    method: 'post',
-    url: '/v1/global-config/ai-model/delete',
-    data,
-  })
-}
-
-export const setDefaultGlobalAIModelConfig = (data: { id: string }) => {
-  return ajax<{ id: string }>({
-    method: 'post',
-    url: '/v1/global-config/ai-model/set-default',
+    url: '/v1/global-config/opencode/save',
     data,
   })
 }

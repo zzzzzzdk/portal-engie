@@ -73,6 +73,14 @@
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+
+  .ant-breadcrumb-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+    display: inline-block;
+  }
 }
 
 .content-body {
@@ -93,6 +101,11 @@
 .file-name {
   cursor: pointer;
   transition: color 0.2s;
+  max-width: 300px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-name:hover {

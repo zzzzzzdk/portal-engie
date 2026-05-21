@@ -8,21 +8,22 @@ import './index.scss'
 export type WorkspaceSidebarTabKey = 'widget' | 'ai'
 
 interface WorkspaceSidebarProps {
-  open: boolean;
-  activeTab: WorkspaceSidebarTabKey;
-  onTabChange: (tab: WorkspaceSidebarTabKey) => void;
-  onClose: () => void;
-  onWidgetSelect: (key: string) => void;
-  currentSnapshot: DashboardSnapshot;
-  hasWorkspaceContent: boolean;
-  onApplySnapshot: (snapshot: DashboardSnapshot) => void;
-  onClearWorkspace: () => void;
+  open: boolean
+  activeTab: WorkspaceSidebarTabKey
+  onTabChange: (tab: WorkspaceSidebarTabKey) => void
+  onCloseWidget: () => void
+  onCloseAi: () => void
+  onWidgetSelect: (key: string) => void
+  currentSnapshot: DashboardSnapshot
+  hasWorkspaceContent: boolean
+  onApplySnapshot: (snapshot: DashboardSnapshot) => void
+  onClearWorkspace: () => void
 }
 
 const tabItems: Array<{
-  key: WorkspaceSidebarTabKey;
-  label: string;
-  icon: React.ReactNode;
+  key: WorkspaceSidebarTabKey
+  label: string
+  icon: React.ReactNode
 }> = [
   {
     key: 'widget',
@@ -40,17 +41,14 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   open,
   activeTab,
   onTabChange,
-  onClose,
+  onCloseWidget,
+  onCloseAi,
   onWidgetSelect,
   currentSnapshot,
   hasWorkspaceContent,
   onApplySnapshot,
   onClearWorkspace,
 }) => {
-  if (!open) {
-    return null
-  }
-
   return (
     <div className="workspace-sidebar">
       <div className="workspace-sidebar__rail">
@@ -68,21 +66,27 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
       </div>
 
       <div className="workspace-sidebar__content">
-        {activeTab === 'widget' ? (
+        <div
+          className={`workspace-sidebar__panel ${activeTab === 'widget' ? 'is-active' : ''}`}
+        >
           <WidgetDrawer
-            open
-            onClose={onClose}
+            open={open && activeTab === 'widget'}
+            onClose={onCloseWidget}
             onSelect={onWidgetSelect}
           />
-        ) : (
+        </div>
+        <div
+          className={`workspace-sidebar__panel ${activeTab === 'ai' ? 'is-active' : ''}`}
+        >
           <AIAssistantPanel
             currentSnapshot={currentSnapshot}
             hasWorkspaceContent={hasWorkspaceContent}
+            visible={open && activeTab === 'ai'}
             onApplySnapshot={onApplySnapshot}
             onClearWorkspace={onClearWorkspace}
-            onClose={onClose}
+            onClose={onCloseAi}
           />
-        )}
+        </div>
       </div>
     </div>
   )

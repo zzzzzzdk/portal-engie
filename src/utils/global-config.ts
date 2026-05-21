@@ -4,6 +4,7 @@ import type {
   GlobalThemeScheme,
   GlobalWidgetTitleConfig,
 } from '@/services'
+import type { WidgetType } from '@/types'
 
 export const DEFAULT_GLOBAL_MESSAGE_COPIES = {
   'form.success': '表单提交成功',
@@ -42,6 +43,67 @@ export const getGlobalThemeOptions = (detail?: GlobalConfigDetail | null) => {
     label: item.name,
     value: item.id,
   }))
+}
+
+export const hasGlobalThemeScheme = (
+  detail?: GlobalConfigDetail | null,
+  themeId?: string,
+) => {
+  if (!detail?.themes?.length || !themeId) {
+    return false
+  }
+
+  return detail.themes.some(item => item.id === themeId)
+}
+
+const HIDE_TITLE_WIDGET_TYPES = new Set<WidgetType>([
+  'carousel',
+  'headerBar',
+  'iconNav',
+  'myDocuments',
+  'pageNavigator',
+  'queryFilter',
+  'richText',
+  'typography',
+])
+
+export const getDefaultWidgetShowTitle = (widgetType: WidgetType | 'group') => {
+  if (widgetType === 'group') {
+    return true
+  }
+
+  return !HIDE_TITLE_WIDGET_TYPES.has(widgetType)
+}
+
+export const getInvalidGlobalThemeFallbackWidgetTitle = (
+  widgetType: WidgetType | 'group',
+): GlobalWidgetTitleConfig => ({
+  showTitle: getDefaultWidgetShowTitle(widgetType),
+  titleColor: undefined,
+  titleFontSize: undefined,
+  titleFontWeight: undefined,
+})
+
+export const getInvalidGlobalThemeFallbackBackground = (
+  scope: 'page' | 'widget' | 'group',
+): GlobalBackgroundConfig => {
+  if (scope === 'page') {
+    return {
+      backgroundType: 'color',
+      backgroundColor: '',
+    }
+  }
+
+  if (scope === 'group') {
+    return {
+      backgroundType: 'color',
+      backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    }
+  }
+
+  return {
+    backgroundType: 'color',
+  }
 }
 
 export const getGlobalMessageCopy = (

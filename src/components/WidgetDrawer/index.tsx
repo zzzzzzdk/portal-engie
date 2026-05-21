@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Button } from 'antd'
 import {
   AppstoreOutlined,
-  BarChartOutlined,
   BlockOutlined,
   ClockCircleOutlined,
   CloseOutlined,
@@ -16,13 +15,12 @@ import {
   GroupOutlined,
   LinkOutlined,
   OrderedListOutlined,
-  PictureOutlined,
-  PieChartOutlined,
   RobotOutlined,
   SearchOutlined,
   SwapOutlined,
   TableOutlined,
 } from '@ant-design/icons'
+import Icon from '@/components/Icon'
 import { CHART_PRESET_LIST } from '@/components/widgets/chart/presets'
 import './index.scss'
 
@@ -49,29 +47,38 @@ interface WidgetDrawerProps {
   onSelect: (key: string) => void
 }
 
-const getChartPresetIcon = (category: string) => {
-  switch (category) {
-    case '趋势':
-    case '柱状':
-    case '仪表':
-      return <BarChartOutlined />
-    case '分布':
-      return <PieChartOutlined />
-    case '地图':
-      return <CompassOutlined />
-    case '关系':
-      return <SwapOutlined />
-    case '双轴':
-      return <OrderedListOutlined />
-    default:
-      return <PieChartOutlined />
-  }
+const CHART_PRESET_ICON_MAP: Record<string, string> = {
+  'basic-line': 'line_jichuzhexiantu',
+  'basic-bar': 'line_jichuzhuzhuangtu',
+  'stacked-bar': 'line_duidiezhuzhuangtu',
+  'percent-bar': 'line_baifenbizhuzhuangtu',
+  'grouped-bar': 'line_fenzuzhuzhuangtu',
+  'basic-horizontal-bar': 'line_jichutiaoxingtu',
+  'stacked-horizontal-bar': 'line_duidietiaoxingtu',
+  'progress-bar': 'line_jindutiao',
+  gauge: 'line_yibiaopan',
+  pie: 'line_bingtu',
+  donut: 'line_huanxingtu',
+  radar: 'line_leidatu',
+  'area-map': 'line_quyuditu',
+  'flow-map': 'line_liuxiangditu',
+  funnel: 'line_loudoutu',
+  scatter: 'line_sandiantu',
+  'dual-axis': 'line_zhuxianzuhetu',
+  'grouped-dual-axis': 'line_fenzuzhuxianzuhetu',
+}
+
+const renderPortalIcon = (type: string) => <Icon type={type} />
+
+const getChartPresetIcon = (presetKey: string) => {
+  const iconType = CHART_PRESET_ICON_MAP[presetKey] || 'line_jichuzhexiantu'
+  return renderPortalIcon(iconType)
 }
 
 const chartWidgetItems: WidgetItem[] = CHART_PRESET_LIST.map(preset => ({
   key: `chart:${preset.key}`,
   label: preset.title,
-  icon: getChartPresetIcon(preset.drawerCategory),
+  icon: getChartPresetIcon(preset.key),
   description: preset.description,
   gsW: preset.defaultLayout?.w || 8,
   gsH: preset.defaultLayout?.h || 9,
@@ -94,9 +101,9 @@ const widgetCategories: WidgetCategory[] = [
       { key: 'typography', label: '文本', icon: <FontSizeOutlined />, description: '文本或标题展示', gsW: 4, gsH: 3, gsMinW: 2, gsMinH: 1, draggable: true },
       { key: 'richText', label: '富文本', icon: <FileTextOutlined />, description: '富文本内容编辑与展示', gsW: 8, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'clock', label: '时钟', icon: <ClockCircleOutlined />, description: '实时日期时间', gsW: 4, gsH: 6, gsMinW: 2, gsMinH: 3, draggable: true },
-      { key: 'stats', label: '统计卡片', icon: <BarChartOutlined />, description: '多指标统计展示', gsW: 10, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
-      { key: 'indicatorCard', label: '指标卡', icon: <BarChartOutlined />, description: '单个指标值与描述展示', gsW: 8, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
-      { key: 'carousel', label: '轮播图', icon: <PictureOutlined />, description: '轮播展示内容', gsW: 40, gsH: 12, gsMinW: 4, gsMinH: 3, draggable: true },
+      { key: 'stats', label: '统计卡片', icon: renderPortalIcon('line_yibiaopan'), description: '多指标统计展示', gsW: 10, gsH: 6, gsMinW: 4, gsMinH: 3, draggable: true },
+      { key: 'indicatorCard', label: '指标卡', icon: renderPortalIcon('line_zhibiaoka'), description: '单个指标值与描述展示', gsW: 8, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
+      { key: 'carousel', label: '轮播图', icon: renderPortalIcon('line_tupianlunbo'), description: '轮播展示内容', gsW: 40, gsH: 12, gsMinW: 4, gsMinH: 3, draggable: true },
       { key: 'link', label: '快捷链接', icon: <LinkOutlined />, description: '快捷入口列表', gsW: 5, gsH: 5, gsMinW: 2, gsMinH: 2, draggable: true },
       { key: 'pageNavigator', label: '页面切换器', icon: <SwapOutlined />, description: '控制页面跳转', gsW: 12, gsH: 3, gsMinW: 6, gsMinH: 1, draggable: true },
       { key: 'news', label: '新闻动态', icon: <FileTextOutlined />, description: '新闻资讯列表', gsW: 6, gsH: 10, gsMinW: 4, gsMinH: 4, draggable: true },

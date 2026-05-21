@@ -157,6 +157,12 @@ queryFilter + dataTable + pageNavigator
 
 ### `iconNav`
 
+图标规则：
+
+- `config.icon` 优先使用 Ant Design Outlined 图标名
+- 只从 `references/icon-map.md` 的白名单里选
+- 不要给 `iconNav` 写 iconfont 名
+
 ```json
 {
   "showTitle": false,
@@ -173,6 +179,13 @@ queryFilter + dataTable + pageNavigator
 ```
 
 ### `navGroup`
+
+图标规则：
+
+- `staticItems[].icon` 只用 iconfont 名
+- 必须带 `icon-` 前缀
+- 只从 `references/icon-map.md` 的白名单里选
+- 拿不准时用 `icon-line_duixiang`
 
 ```json
 {
@@ -253,3 +266,5 @@ queryFilter + dataTable + pageNavigator
 - `carousel` 使用 `slides[].imageUrl`，不是 `image`
 - `carousel` 使用 `autoplay.enabled`，不是 `autoPlay`
 - `cardGrid` 当前更像占位组件，不要把它当成门户页面的默认核心内容
+- 涉及图标时先读 `references/icon-map.md`
+- 不要输出不存在的图标名或未加前缀的 iconfont 名

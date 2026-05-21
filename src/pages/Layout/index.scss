@@ -39,6 +39,14 @@
   // gap: 24px;
 }
 
+.app-header__right {
+  .anticon  {
+    font-size: 16px;
+    
+    cursor: pointer;
+  }
+}
+
 .app-header__logo {
   font-size: 24px;
   font-weight: bold;

@@ -134,8 +134,14 @@ const formatMapTooltip = (params: { name?: string; value?: unknown; data?: { val
   const name = params?.name || '-'
   const rawValue = params?.data?.value ?? params?.value
   const value = Array.isArray(rawValue) ? rawValue[rawValue.length - 1] : rawValue
+  const numericValue = Number(value)
 
-  if (value == null || value === '') {
+  if (
+    value == null
+    || value === ''
+    || (typeof value === 'number' && !Number.isFinite(value))
+    || (typeof value === 'string' && value.trim() !== '' && !Number.isFinite(numericValue))
+  ) {
     return name
   }
 
@@ -656,6 +662,9 @@ export const buildChartOption = ({
             data: targetValues,
             barWidth: config.barWidth || '40%',
             barGap: '-100%',
+            tooltip: {
+              show: false,
+            },
             itemStyle: {
               color: 'rgba(22, 119, 255, 0.12)',
               borderRadius: config.borderRadius ?? 99,

@@ -21,6 +21,69 @@ const configUpload = multer({
 // 临时存储导出内容，模拟下载链接
 const exportConfigDownloads = new Map();
 
+
+const microAppConfigData = {
+  version: '1.0.0',
+  apps: [
+    {
+      id: 'db_001',
+      systemId: 'system-fusion',
+      name: '????',
+      description: '???????????',
+      icon: 'UserOutlined',
+      category: '??',
+      modules: [
+        {
+          id: 'db_mod_001',
+          moduleId: 'input-only',
+          name: '??',
+          description: '???',
+          url: 'http://localhost:8083/#/input-only',
+          entry: 'http://localhost:8083/#/input-only',
+          icon: 'http://192.168.13.31:8083/static/images/gongan.png',
+          defaultSize: { w: 6, h: 4 },
+          emittableEvents: [
+            {
+              id: 'db_evt_001',
+              type: 'data:submit:input-only',
+              name: '????????????????????????????????????????????????????????????????????????????????????????????????????????',
+              description: '???????????'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'db_002',
+      systemId: 'system-finance',
+      name: '???',
+      description: '????????',
+      icon: 'AccountBookOutlined',
+      category: '??',
+      modules: [
+        {
+          id: 'db_mod_002',
+          moduleId: 'table-only',
+          name: '???',
+          description: '???',
+          url: 'http://192.168.13.31:8083/#/table-only',
+          entry: 'http://192.168.13.31:8083/',
+          icon: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=????',
+          defaultSize: { w: 6, h: 6 },
+          listenableEvents: [
+            {
+              id: 'db_evt_002',
+              type: 'data:submit:table-only',
+              name: '????',
+              description: '????????'
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
 /**
  * @api {get} /v1/micro_apps/list 获取微应用列表
  * @apiName getMicroAppList
@@ -29,75 +92,32 @@ const exportConfigDownloads = new Map();
  * @apiSuccess {Number} code 状态码
  * @apiSuccess {Object} data 微应用配置数据
  */
+
 router.get('/v1/micro_apps/list', async (req, res) => {
   await req.sleep(0.3);
 
+  const all = String(req.query.all || '').toLowerCase() === 'true';
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.max(1, Number.parseInt(req.query.page_size, 10) || 10);
+  const total = microAppConfigData.apps.length;
+  const startIndex = (page - 1) * pageSize;
+  const list = microAppConfigData.apps.slice(startIndex, startIndex + pageSize);
+
   req.json.code = 20000;
-  req.json.message = '获取成功';
-  req.json.data = {
-    version: '1.0.0',
-    apps: [
-      {
-        id: 'db_001',
-        systemId: 'system-fusion',
-        name: '表单组件',
-        description: '提交融合数据到其他系统',
-        icon: 'UserOutlined',
-        category: '融合',
-        modules: [
-          {
-            id: 'db_mod_001',
-            moduleId: 'input-only',
-            name: '表单',
-            description: '输入框',
-            url: 'http://localhost:8083/#/input-only',
-            entry: 'http://localhost:8083/#/input-only',
-            icon: 'http://192.168.13.31:8083/static/images/gongan.png',
-            defaultSize: { w: 6, h: 4 },
-            emittableEvents: [
-              {
-                id: 'db_evt_001',
-                type: 'data:submit:input-only',
-                name: '数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交数据提交',
-                description: '提交融合数据到其他系统'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'db_002',
-        systemId: 'system-finance',
-        name: '接收方',
-        description: '接受数据进行操作',
-        icon: 'AccountBookOutlined',
-        category: '结果',
-        modules: [
-          {
-            id: 'db_mod_002',
-            moduleId: 'table-only',
-            name: '结果页',
-            description: '结果页',
-            url: 'http://192.168.13.31:8083/#/table-only',
-            entry: 'http://192.168.13.31:8083/',
-            icon: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表',
-            defaultSize: { w: 6, h: 6 },
-            listenableEvents: [
-              {
-                id: 'db_evt_002',
-                type: 'data:submit:table-only',
-                name: '数据提交',
-                description: '接收数据提交事件'
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
+  req.json.message = '????';
+  req.json.data = all
+    ? microAppConfigData
+    : {
+      version: microAppConfigData.version,
+      apps: list,
+      page,
+      page_size: pageSize,
+      total: 100,
+    };
 
   res.json(req.json);
 });
+
 
 /**
  * @api {post} /v1/micro_apps/app-save 保存/编辑应用
@@ -409,68 +429,12 @@ router.post('/v1/micro_apps/import_config', configUpload.single('file'), async (
 router.get('/v1/micro_apps/export_config', async (req, res) => {
   await req.sleep(0.3);
 
-  const exportData = {
-    version: '1.0.0',
-    exportedAt: new Date().toISOString(),
-    apps: [
-      {
-        id: 'db_001',
-        systemId: 'system-fusion',
-        name: '表单组件',
-        description: '提交融合数据到其他系统',
-        icon: 'UserOutlined',
-        category: '融合',
-        modules: [
-          {
-            id: 'db_mod_001',
-            moduleId: 'input-only',
-            name: '表单',
-            description: '输入框',
-            url: 'http://localhost:8083/#/input-only',
-            entry: 'http://localhost:8083/#/input-only',
-            icon: 'http://192.168.13.31:8083/static/images/gongan.png',
-            defaultSize: { w: 6, h: 4 },
-            emittableEvents: [
-              {
-                id: 'db_evt_001',
-                type: 'data:submit:input-only',
-                name: '数据提交',
-                description: '提交融合数据到其他系统',
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'db_002',
-        systemId: 'system-finance',
-        name: '接收方',
-        description: '接收数据进行操作',
-        icon: 'AccountBookOutlined',
-        category: '结果',
-        modules: [
-          {
-            id: 'db_mod_002',
-            moduleId: 'table-only',
-            name: '结果页',
-            description: '结果页',
-            url: 'http://192.168.13.31:8083/#/table-only',
-            entry: 'http://192.168.13.31:8083/',
-            icon: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表',
-            defaultSize: { w: 6, h: 6 },
-            listenableEvents: [
-              {
-                id: 'db_evt_002',
-                type: 'data:submit:table-only',
-                name: '数据提交',
-                description: '接收数据提交事件',
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  };
+
+const exportData = {
+  ...microAppConfigData,
+  exportedAt: new Date().toISOString(),
+};
+
 
   const content = JSON.stringify(exportData, null, 2);
   const downloadId = `export_${Math.random().toString(36).slice(2, 10)}`;
