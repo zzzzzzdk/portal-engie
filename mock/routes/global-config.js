@@ -276,7 +276,7 @@ router.post('/v1/global-config/opencode/save', async (req, res) => {
 
   if (!serviceUrl) {
     req.json.code = 40000;
-    req.json.message = 'OpenCode 服务地址不能为空';
+    req.json.message = 'AI 服务地址不能为空';
     req.json.data = null;
     return res.json(req.json);
   }

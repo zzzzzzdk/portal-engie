@@ -5,6 +5,8 @@ import { useStore } from '@/store/useStore'
 import { useSystemStore } from '@/store/useSystemStore'
 import type { WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import type { Widget } from '@/types'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 import './index.scss'
 
 interface NavigationItem {
@@ -24,6 +26,7 @@ interface PageNavigatorWidgetConfig extends WidgetConfig {
 
 interface PageNavigatorWidgetProps {
   config: PageNavigatorWidgetConfig
+  widget?: Widget
 }
 
 const DEFAULT_ITEMS: NavigationItem[] = [
@@ -65,9 +68,10 @@ const normalizeColor = (
   return undefined
 }
 
-const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config }) => {
+const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config, widget }) => {
   const { isEditMode } = useStore()
   const sysConfig = useSystemStore(state => state.sysConfig)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
@@ -108,7 +112,9 @@ const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config }) => 
     }))
   }, [items, containerWidth, itemSize, displayMode])
 
-  const handleNavigate = (item: NavigationItem) => {
+  const handleNavigate = (item: NavigationItem, index: number) => {
+    emitWidgetEvent('page.change', { item, path: item.path, index }, 'click')
+
     if (isEditMode || !item.path || !isSystemDeployed(deployedSystemSet, item.systemId)) {
       return
     }
@@ -133,7 +139,7 @@ const PageNavigatorWidget: React.FC<PageNavigatorWidgetProps> = ({ config }) => 
               key={`${index}-${item.name}`}
               className={`nav-item${canJump ? ' is-clickable' : ''}${!isAvailable ? ' is-disabled' : ''}`}
               style={{ left: itemPositions[index]?.left ?? 0, color: itemColor }}
-              onClick={() => handleNavigate(item)}
+              onClick={() => handleNavigate(item, index)}
               title={displayMode === 'icon' ? item.name : undefined}
             >
               {displayMode === 'icon' ? (

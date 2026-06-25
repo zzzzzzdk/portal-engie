@@ -13,6 +13,7 @@ import { DEFAULT_NAV_GROUP_LIST_FIELD } from '@/utils/widgetApiDefaults';
 import {
   buildDataSourceSelectionFormValues,
   buildHeaderMap,
+  isDataSourceSelectionLocked,
   UNIFIED_DATA_SOURCE_OPTIONS,
 } from './dataSourceHelpers';
 
@@ -22,6 +23,8 @@ interface NavGroupDataConfigSectionProps {
 
 const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ form }) => {
   const dataSourceValue = Form.useWatch('dataSource', form) || 'customApi';
+  const dataSourceIdValue = Form.useWatch('dataSourceId', form);
+  const isSelectedDataSourceLocked = isDataSourceSelectionLocked(dataSourceValue, dataSourceIdValue);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue(
@@ -115,6 +118,7 @@ const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ f
                         >
                           <ColorPicker showText allowClear />
                         </Form.Item>
+                        {/* 暂时停用所属系统配置，保留实现以便后续恢复
                         <Form.Item
                           {...restField}
                           name={[name, 'systemId']}
@@ -123,6 +127,7 @@ const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ f
                         >
                           <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                         </Form.Item>
+                        */}
                       </div>
                       <Form.Item
                         {...restField}
@@ -168,6 +173,7 @@ const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ f
               <Form.Item name="apiMethod" noStyle initialValue="GET">
                 <Select
                   className="widget-api-endpoint-row__method"
+                  disabled={isSelectedDataSourceLocked}
                   options={[
                     { value: 'GET', label: 'GET' },
                     { value: 'POST', label: 'POST' },
@@ -179,7 +185,11 @@ const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ f
                 noStyle
                 rules={[{ required: true, message: '请输入接口地址' }]}
               >
-                <Input className="widget-api-endpoint-row__input" placeholder="/api/nav-group" />
+                <Input
+                  className="widget-api-endpoint-row__input"
+                  placeholder="/api/nav-group"
+                  disabled={isSelectedDataSourceLocked}
+                />
               </Form.Item>
             </div>
           </Form.Item>
@@ -188,7 +198,7 @@ const NavGroupDataConfigSection: React.FC<NavGroupDataConfigSectionProps> = ({ f
             label="列表字段"
             tooltip="默认使用 payload.groups.list，修改后将严格按填写的字段路径解析。"
           >
-            <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} />
+            <Input placeholder={DEFAULT_NAV_GROUP_LIST_FIELD} disabled={isSelectedDataSourceLocked} />
           </Form.Item>
           <Form.Item label="参数配置" className="widget-api-form-item">
             <WidgetApiConfigTabs

@@ -1,3 +1,4 @@
+import '@/polyfills/array-find-last'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { ConfigProvider, App as AntdApp } from 'antd'

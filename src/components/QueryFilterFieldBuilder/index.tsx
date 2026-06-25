@@ -30,16 +30,19 @@ import type {
   QueryFilterOptionItem,
 } from '@/types'
 import {
-  hydrateQueryFilterFields,
+  getUnifiedFormFields,
   QUERY_FILTER_FIELD_NAME_MAX_LENGTH,
   QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION,
 } from '@/utils/queryFilter'
 import { keyValueListToObject } from '@/utils/widgetApi'
 import './index.scss'
 
+type FieldBuilderMode = 'queryFilter' | 'customForm'
+
 interface QueryFilterFieldBuilderProps {
   form: FormInstance
   name: NamePath
+  mode?: FieldBuilderMode
 }
 
 interface QueryFilterFieldCardProps {
@@ -50,22 +53,37 @@ interface QueryFilterFieldCardProps {
   remove: (index: number) => void
   notifyChange: () => void
   duplicateFieldNames: Set<string>
+  mode: FieldBuilderMode
 }
 
-const FIELD_TYPE_OPTIONS: Array<{ label: string; value: QueryFilterFieldType }> = [
-  { label: '输入框', value: 'input' },
-  { label: '多选按钮组', value: 'checkboxGroup' },
-  { label: '级联选择器', value: 'cascader' },
-  { label: '日期选择器', value: 'datePicker' },
-  { label: '数字输入框', value: 'inputNumber' },
-  { label: '单选按钮组', value: 'radioGroup' },
-  { label: '下拉选择器', value: 'select' },
-]
+const FIELD_TYPE_OPTIONS_BY_MODE: Record<FieldBuilderMode, Array<{ label: string; value: QueryFilterFieldType }>> = {
+  queryFilter: [
+    { label: '输入框', value: 'input' },
+    { label: '复选按钮组', value: 'checkboxGroup' },
+    { label: '级联选择器', value: 'cascader' },
+    { label: '日期选择器', value: 'datePicker' },
+    { label: '数字输入框', value: 'inputNumber' },
+    { label: '单选按钮组', value: 'radioGroup' },
+    { label: '下拉选择器', value: 'select' },
+  ],
+  customForm: [
+    { label: '输入框', value: 'input' },
+    { label: '多行文本', value: 'textarea' },
+    { label: '复选按钮组', value: 'checkboxGroup' },
+    { label: '级联选择器', value: 'cascader' },
+    { label: '日期选择器', value: 'datePicker' },
+    { label: '数字输入框', value: 'inputNumber' },
+    { label: '单选按钮组', value: 'radioGroup' },
+    { label: '下拉选择器', value: 'select' },
+  ],
+}
 
-const FIELD_TYPE_LABELS = FIELD_TYPE_OPTIONS.reduce<Record<string, string>>((result, item) => {
-  result[item.value] = item.label
-  return result
-}, {})
+const FIELD_TYPE_LABELS = Object.values(FIELD_TYPE_OPTIONS_BY_MODE)
+  .flat()
+  .reduce<Record<string, string>>((result, item) => {
+    result[item.value] = item.label
+    return result
+  }, {})
 
 const REQUEST_METHOD_OPTIONS = [
   { value: 'GET', label: 'GET' },
@@ -74,17 +92,9 @@ const REQUEST_METHOD_OPTIONS = [
   { value: 'PATCH', label: 'PATCH' },
 ]
 
-const SELECT_MAX_TAG_COUNT_OPTIONS = [
-  { value: 'responsive', label: '自适应' },
-  { value: 1, label: '1 个标签' },
-  { value: 2, label: '2 个标签' },
-  { value: 3, label: '3 个标签' },
-  { value: 4, label: '4 个标签' },
-  { value: 5, label: '5 个标签' },
-]
-
 const PLACEHOLDER_FIELD_TYPES: QueryFilterFieldType[] = [
   'input',
+  'textarea',
   'select',
   'datePicker',
   'inputNumber',
@@ -96,8 +106,13 @@ const DEFAULT_FIELD_BY_TYPE: Record<QueryFilterFieldType, Partial<QueryFilterFie
     field: 'input_field',
     type: 'input',
   },
+  textarea: {
+    label: '多行文本',
+    field: 'textarea_field',
+    type: 'textarea',
+  },
   checkboxGroup: {
-    label: '多选按钮组',
+    label: '复选按钮组',
     field: 'checkbox_group',
     type: 'checkboxGroup',
     direction: 'horizontal',
@@ -133,7 +148,6 @@ const DEFAULT_FIELD_BY_TYPE: Record<QueryFilterFieldType, Partial<QueryFilterFie
     type: 'select',
     mode: 'single',
     showSearch: false,
-    maxTagCount: 'responsive',
     dataSourceType: 'manual',
   },
 }
@@ -200,6 +214,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
   remove,
   notifyChange,
   duplicateFieldNames,
+  mode,
 }) => {
   const fieldPath = useMemo(() => buildPath(baseName, fieldIndex), [baseName, fieldIndex])
   const watchedFieldValue = Form.useWatch(fieldPath, form)
@@ -211,22 +226,20 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
   const watchedDataSourceType = Form.useWatch(buildPath(fieldPath, 'dataSourceType'), form)
   const watchedDataMode = Form.useWatch(buildPath(fieldPath, 'dataMode'), form)
   const watchedManualOptions = Form.useWatch(buildPath(fieldPath, 'manualOptions'), form)
-
+  const currentType = ((watchedType || field?.type || 'input') as QueryFilterFieldType)
   const currentField = useMemo(() => {
-    const [nextField] = hydrateQueryFilterFields([
+    const [nextField] = getUnifiedFormFields([
       (watchedFieldValue || field) as QueryFilterFieldConfig,
     ])
-
     return nextField || field
   }, [field, watchedFieldValue])
 
-  const currentType = ((watchedType || currentField?.type || 'input') as QueryFilterFieldType)
-  const fieldNameError = !watchedFieldName?.trim()
+  const trimmedFieldName = watchedFieldName?.trim()
+  const fieldNameError = !trimmedFieldName
     ? 'field 名不能为空'
-    : duplicateFieldNames.has(watchedFieldName.trim())
+    : duplicateFieldNames.has(trimmedFieldName)
       ? 'field 名称重复'
       : undefined
-  const trimmedFieldName = watchedFieldName?.trim()
   const fieldNameValidationError = trimmedFieldName
     && trimmedFieldName.length > QUERY_FILTER_FIELD_NAME_MAX_LENGTH
     ? `field 名称不能超过 ${QUERY_FILTER_FIELD_NAME_MAX_LENGTH} 个字符`
@@ -248,6 +261,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
   const [isExpanded, setIsExpanded] = useState(fieldIndex === 0)
   const hasTypeConfig = (
     currentType === 'input'
+    || currentType === 'textarea'
     || currentType === 'inputNumber'
     || currentType === 'datePicker'
     || currentType === 'select'
@@ -442,7 +456,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
           forceRender: true,
           label: (
             <div className="query-filter-field-builder__header">
-              <span>{watchedLabel}</span>
+              <span>{watchedLabel || currentField?.label}</span>
               <span
                 className="query-filter-field-builder__meta"
                 title={`${watchedFieldName || ''} / ${FIELD_TYPE_LABELS[currentType] || currentType}`}
@@ -496,11 +510,21 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                   rules={[{ required: true, message: '请选择字段类型' }]}
                 >
                   <Select
-                    options={FIELD_TYPE_OPTIONS}
+                    options={FIELD_TYPE_OPTIONS_BY_MODE[mode]}
                     onChange={handleTypeChange}
                   />
                 </Form.Item>
-                <div />
+                {mode === 'customForm' ? (
+                  <Form.Item
+                    name={buildPath(fieldPath, 'required')}
+                    label="是否必填"
+                    valuePropName="checked"
+                  >
+                    <Checkbox>必填</Checkbox>
+                  </Form.Item>
+                ) : (
+                  <div />
+                )}
               </div>
 
               {showPlaceholder ? (
@@ -554,17 +578,25 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                 <Divider style={{ margin: '12px 0' }}>类型配置</Divider>
               )}
 
-              {currentType === 'input' && (
+              {['input', 'textarea'].includes(currentType) && (
                 <div className="form-row-3">
                   <Form.Item name={buildPath(fieldPath, 'maxLength')} label="最大长度">
                     <InputNumber min={1} precision={0} style={{ width: '100%' }} />
                   </Form.Item>
-                  <Form.Item name={buildPath(fieldPath, 'addonBefore')} label="前置内容">
-                    <Input placeholder="例如：ID" />
-                  </Form.Item>
-                  <Form.Item name={buildPath(fieldPath, 'addonAfter')} label="后置内容">
-                    <Input placeholder="例如：单位" />
-                  </Form.Item>
+                  {currentType === 'input' ? (
+                    <Form.Item name={buildPath(fieldPath, 'addonBefore')} label="前置内容">
+                      <Input placeholder="例如：ID" />
+                    </Form.Item>
+                  ) : (
+                    <div />
+                  )}
+                  {currentType === 'input' ? (
+                    <Form.Item name={buildPath(fieldPath, 'addonAfter')} label="后置内容">
+                      <Input placeholder="例如：单位" />
+                    </Form.Item>
+                  ) : (
+                    <div />
+                  )}
                 </div>
               )}
 
@@ -591,25 +623,21 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
               )}
 
               {currentType === 'datePicker' && (
-                <>
-                  <div className="form-row-2">
-                    <Form.Item name={buildPath(fieldPath, 'pickerType')} label="选择类型">
-                      <Radio.Group>
-                        <Radio.Button value="date">日期</Radio.Button>
-                        <Radio.Button value="range">日期区间</Radio.Button>
-                      </Radio.Group>
-                    </Form.Item>
-                    <Form.Item
-                      name={buildPath(fieldPath, 'disablePastDates')}
-                      label="禁用过去日期"
-                      valuePropName="checked"
-                    >
-                      <Checkbox>禁用过去日期</Checkbox>
-                    </Form.Item>
-                  </div>
-
-
-                </>
+                <div className="form-row-2">
+                  <Form.Item name={buildPath(fieldPath, 'pickerType')} label="选择类型">
+                    <Radio.Group>
+                      <Radio.Button value="date">日期</Radio.Button>
+                      <Radio.Button value="range">日期区间</Radio.Button>
+                    </Radio.Group>
+                  </Form.Item>
+                  <Form.Item
+                    name={buildPath(fieldPath, 'disablePastDates')}
+                    label="禁用过去日期"
+                    valuePropName="checked"
+                  >
+                    <Checkbox>禁用过去日期</Checkbox>
+                  </Form.Item>
+                </div>
               )}
 
               {currentType === 'select' && (
@@ -627,21 +655,7 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
                   >
                     <Checkbox>允许搜索</Checkbox>
                   </Form.Item>
-                  {/* {selectMode === 'multiple' ? (
-                    <Form.Item
-                      name={buildPath(fieldPath, 'maxTagCount')}
-                      label="标签展示数量"
-                      tooltip="多选时超出数量会折叠，避免画布中的选项标签超出组件区域"
-                    >
-                      <Select
-                        options={SELECT_MAX_TAG_COUNT_OPTIONS}
-                        placeholder="默认自适应"
-                        allowClear
-                      />
-                    </Form.Item>
-                  ) : (
-                    <div />
-                  )} */}
+                  <div />
                 </div>
               )}
 
@@ -729,7 +743,11 @@ const QueryFilterFieldCard: React.FC<QueryFilterFieldCardProps> = ({
   )
 }
 
-const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form, name }) => {
+const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({
+  form,
+  name,
+  mode = 'queryFilter',
+}) => {
   const baseName = useMemo(() => ensurePathArray(name), [name])
   const [listVersion, setListVersion] = useState(0)
   const formSnapshot = Form.useWatch([], form)
@@ -739,7 +757,7 @@ const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form,
   const formListValue = form.getFieldValue(baseName)
   const rawListValue = Array.isArray(formListValue) ? formListValue : []
   const listValue = useMemo(
-    () => hydrateQueryFilterFields(rawListValue),
+    () => getUnifiedFormFields(rawListValue),
     [rawListValue],
   )
 
@@ -774,11 +792,11 @@ const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form,
   }
 
   const quickAddMenuItems = useMemo<MenuProps['items']>(() => (
-    FIELD_TYPE_OPTIONS.map(option => ({
+    FIELD_TYPE_OPTIONS_BY_MODE[mode].map(option => ({
       key: option.value,
       label: `新增${option.label}`,
     }))
-  ), [])
+  ), [mode])
 
   return (
     <div className="query-filter-field-builder">
@@ -793,6 +811,7 @@ const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form,
             remove={handleRemove}
             notifyChange={notifyChange}
             duplicateFieldNames={duplicateFieldNames}
+            mode={mode}
           />
         ))}
       </div>
@@ -802,7 +821,7 @@ const QueryFilterFieldBuilder: React.FC<QueryFilterFieldBuilderProps> = ({ form,
           type="primary"
           icon={<PlusOutlined />}
           className="query-filter-field-builder__add-button"
-          onClick={() => handleAdd('input')}
+          onClick={() => handleAdd(mode === 'customForm' ? 'input' : 'input')}
         >
           添加字段
         </Button>

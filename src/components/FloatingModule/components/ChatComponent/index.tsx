@@ -15,12 +15,14 @@ interface ChatComponentProps {
   botName?: string;
   welcomeMessage?: string;
   onSendMessage?: (message: string) => Promise<string>;
+  emitWidgetEvent?: (eventName: string, payload: Record<string, any>, trigger?: 'click' | 'change' | 'submit' | 'reset' | 'system') => void;
 }
 
 const ChatComponent: React.FC<ChatComponentProps> = ({
   botName: _botName = '智能助手',
   welcomeMessage = '您好!我是您的智能助手,有什么可以帮您?',
-  onSendMessage
+  onSendMessage,
+  emitWidgetEvent
 }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -53,6 +55,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    emitWidgetEvent?.('chat.send', { message: inputValue, conversationId: 'default', data: userMessage }, 'submit');
     setInputValue('');
     setLoading(true);
 
@@ -70,6 +73,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       };
 
       setMessages(prev => [...prev, botMessage]);
+      emitWidgetEvent?.('chat.receive', { message: botReply, conversationId: 'default', data: botMessage }, 'system');
     } catch (error) {
       console.error('发送消息失败:', error);
       const errorMessage: Message = {

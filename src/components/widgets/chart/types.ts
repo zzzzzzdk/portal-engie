@@ -25,6 +25,10 @@ export interface ChartWidgetConfig extends WidgetConfig {
   chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter'
   chartTitle?: string
   chartSubTitle?: string
+  chartTitleLeft?: number | string
+  chartTitleTop?: number | string
+  chartTitleRight?: number | string
+  chartTitleBottom?: number | string
   gridTop?: number | string
   gridBottom?: number | string
   gridLeft?: number | string
@@ -80,6 +84,7 @@ export interface ChartWidgetConfig extends WidgetConfig {
   axisLabelRotate?: number
   showSplitLine?: boolean
   legendPosition?: 'top' | 'bottom' | 'left' | 'right'
+  legendTextColor?: string
   labelPosition?:
     | 'top'
     | 'left'

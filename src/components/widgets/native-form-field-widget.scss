@@ -1,0 +1,23 @@
+.native-form-field-widget {
+  height: 100%;
+
+  &__form {
+    height: 100%;
+  }
+
+  &__control-wrap {
+    width: 100%;
+  }
+
+  &__item {
+    &--no-asterisk {
+      .ant-form-item-required::before {
+        display: none !important;
+      }
+    }
+  }
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+}

@@ -64,7 +64,7 @@ router.get("/v1/common/get-sysconfig", function (req, res, next) {
     "sys_text": "沧澜门户-微前端",
     "api_host": "http://192.168.5.60:29081",
     "iamUrl": "http://192.168.11.12:80/main.html",
-    system_list: ['das','coe'],
+    system_list: ['das', 'coe'],
 
 
 
@@ -134,12 +134,13 @@ router.all("/v1/user/info", async function (req, res, next) {
     color: "light", // light    dark
     layout: "horizontal", // vertical     horizontal
     user_info: {
-      user_uuid: 1234,
-      user_name: "张三",
-      account: "admin",
-      phone_number: "12345678901",
-      organization_uuid: "1",
-      role: ["管理员"],
+      "id": "3",
+      "name": "管理员",
+      "account": "admin",
+      "unit": "以萨技术股份有限公司",
+      "role": [
+        "超管"
+      ]
     },
     menus: [
       {
@@ -225,7 +226,8 @@ router.all("/v1/user/info", async function (req, res, next) {
       "/",
       "/dashboard",
       '/micro-app-config',
-      '/dashboard-gridstack'
+      '/dashboard-gridstack',
+      "/portal-home"
     ],
   };
 
@@ -539,8 +541,8 @@ const DEMO_CAROUSEL_SOURCE = [
 ];
 
 const DEMO_NAV_GROUP_SOURCE = [
-  { id: 'nav-01', groupType: 'portal', url: '/dashboard-gridstack', icon: 'DashboardOutlined', name: '综合看板', description: '进入综合态势看板', openInNew: false },
-  { id: 'nav-02', groupType: 'portal', url: '/micro-app-config', icon: 'AppstoreOutlined', name: '应用配置', description: '微应用配置与发布入口', openInNew: false },
+  { id: 'nav-01', groupType: 'portal', url: '/dashboard-gridstack', icon: 'DashboardOutlined', name: '综合看板', description: '进入综合态势看板', openInNew: false, value: 22522.75, description: '总签约额', valueColor: '#1677ff', descriptionColor: '#52c41a'},
+  { id: 'nav-02', groupType: 'portal', url: '/micro-app-config', icon: 'AppstoreOutlined', name: '应用配置', description: '微应用配置与发布入口', openInNew: false, value: 22522.75, description: '总签约额', valueColor: '#1677ff', descriptionColor: '#ff0' },
   { id: 'nav-03', groupType: 'portal', url: '/home', icon: 'HomeOutlined', name: '首页门户', description: '回到门户首页', openInNew: false },
   { id: 'nav-04', groupType: 'portal', url: '/dashboard', icon: 'LineChartOutlined', name: '统计分析', description: '查看图表与统计分析', openInNew: false },
   { id: 'nav-05', groupType: 'service', url: '/monitor-tasks', icon: 'AlertOutlined', name: '监测任务', description: '监测任务与告警联动', openInNew: false },

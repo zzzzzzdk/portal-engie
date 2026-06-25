@@ -4,6 +4,9 @@ import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { requestWidgetApi } from '@/utils/widgetApi'
 import { getWidgetDefaultFieldValue } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 
 interface TopListItem {
   id?: string
@@ -46,6 +49,8 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const listConfig = config as TopListWidgetConfig
   const apiEndpoint = listConfig?.apiEndpoint
@@ -96,6 +101,7 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
           dataField: listConfig?.apiDataField,
           listField: listConfig?.apiListField || defaultListField,
           timeout: listConfig?.timeout,
+          runtimeParams: runtimeParamsRef.current,
         })
 
         const sourceList = result.list.length
@@ -104,7 +110,9 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
             ? result.data
             : []
 
-        setListData(transformData(sourceList).slice(0, maxItems))
+        const nextData = transformData(sourceList).slice(0, maxItems)
+        setListData(nextData)
+        emitWidgetEvent('data.loaded', { items: nextData, raw: sourceList }, 'system')
       } else if (isStaticDataSource && Array.isArray(staticData)) {
         setListData(transformData(staticData).slice(0, maxItems))
       } else {
@@ -112,8 +120,10 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
         setListData(DEFAULT_DATA.slice(0, maxItems))
       }
     } catch (err: any) {
-      console.error('加载排行榜数据失败:', err)
-      setError(err.message || '数据加载失败')
+      console.error('加载排行榜数据失败', err)
+      const message = err.message || '数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
@@ -126,11 +136,36 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
     listConfig?.apiListField,
     listConfig?.apiMethod,
     listConfig?.apiQuery,
+    emitWidgetEvent,
+    runtimeParamsRef,
     maxItems,
     isStaticDataSource,
     staticData,
     transformData,
   ])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      loadData()
+    },
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      loadData()
+    },
+  })
 
   useEffect(() => {
     loadData()
@@ -188,7 +223,10 @@ const TopListWidget: React.FC<TopListWidgetProps> = ({ config, widget }) => {
             const rank = index + 1
 
             return (
-              <List.Item>
+              <List.Item
+                onClick={() => emitWidgetEvent('ranking.itemClick', { item, rank, index }, 'click')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflow: 'hidden' }}>
                     <Badge

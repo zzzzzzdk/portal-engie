@@ -12,6 +12,7 @@ import type { WidgetApiFieldMeta } from '@/utils/widgetApiDefaults';
 import {
   buildDataSourceSelectionFormValues,
   buildHeaderMap,
+  isDataSourceSelectionLocked,
   UNIFIED_DATA_SOURCE_OPTIONS,
   validateJson,
 } from './dataSourceHelpers';
@@ -57,6 +58,7 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
   const dataSourceIdValue = Form.useWatch('dataSourceId', form);
   const paginationPageSizeValue = Form.useWatch(['paginationConfig', 'pageSize'], form);
   const paginationSizeOptions = getPaginationSizeOptions(paginationPageSizeValue);
+  const isSelectedDataSourceLocked = isDataSourceSelectionLocked(dataSourceValue, dataSourceIdValue);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue(
@@ -103,10 +105,12 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
               autoSize={{ minRows: 6, maxRows: 16 }}
             />
           </Form.Item>
-          <div className="static-data-preview">
-            <div className="static-data-preview__summary">{staticDataPreview.title}</div>
-            <pre className="static-data-preview__content">{staticDataPreview.content}</pre>
-          </div>
+          {widget.type !== 'recognitionCard' ? (
+            <div className="static-data-preview">
+              <div className="static-data-preview__summary">{staticDataPreview.title}</div>
+              <pre className="static-data-preview__content">{staticDataPreview.content}</pre>
+            </div>
+          ) : null}
         </>
       ) : (
         <>
@@ -139,6 +143,7 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
               <Form.Item name="apiMethod" noStyle initialValue="GET">
                 <Select
                   className="widget-api-endpoint-row__method"
+                  disabled={isSelectedDataSourceLocked}
                   options={[
                     { value: 'GET', label: 'GET' },
                     { value: 'POST', label: 'POST' },
@@ -150,14 +155,18 @@ const CommonWidgetDataConfigSection: React.FC<CommonWidgetDataConfigSectionProps
                 noStyle
                 rules={[{ required: true, message: '请输入接口地址' }]}
               >
-                <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
+                <Input
+                  className="widget-api-endpoint-row__input"
+                  placeholder={apiPlaceholder}
+                  disabled={isSelectedDataSourceLocked}
+                />
               </Form.Item>
             </div>
           </Form.Item>
 
           {apiFieldMeta ? (
             <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
-              <Input placeholder={apiFieldMeta.placeholder} />
+              <Input placeholder={apiFieldMeta.placeholder} disabled={isSelectedDataSourceLocked} />
             </Form.Item>
           ) : null}
 

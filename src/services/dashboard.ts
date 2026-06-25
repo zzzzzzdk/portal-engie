@@ -2,6 +2,7 @@
 import ajax from '../utils/axios.config';
 import { getToken } from '@/utils/cookie';
 import type { Widget, WidgetGroup, DashboardConfig } from '@/types';
+import { normalizeNativeFormConfig } from '@/native-form/shared/defaults';
 
 // 工作台快照：统一打包 widgets/groups/floatingModules/page config
 export interface DashboardSnapshot {
@@ -90,9 +91,24 @@ export interface SetHomepageResponse {
   setAt: string;
 }
 
+const sanitizeSnapshotWidgets = (widgets: Widget[]) =>
+  widgets.map((widget) => {
+    if (widget.type !== 'nativeForm') {
+      return widget;
+    }
+
+    return {
+      ...widget,
+      config: normalizeNativeFormConfig(widget.config as any),
+    };
+  });
+
 // 序列化工作台快照
 export const serializeDashboardSnapshot = (snapshot: DashboardSnapshot): string => {
-  return JSON.stringify(snapshot);
+  return JSON.stringify({
+    ...snapshot,
+    widgets: sanitizeSnapshotWidgets(snapshot.widgets),
+  });
 };
 
 // 反序列化工作台快照
@@ -105,7 +121,7 @@ export const parseDashboardSnapshot = (
   try {
     const parsed = JSON.parse(snapshotString);
     return {
-      widgets: Array.isArray(parsed.widgets) ? parsed.widgets : [],
+      widgets: Array.isArray(parsed.widgets) ? sanitizeSnapshotWidgets(parsed.widgets) : [],
       groups: Array.isArray(parsed.groups) ? parsed.groups : [],
       floatingModules: Array.isArray(parsed.floatingModules) ? parsed.floatingModules : [],
       dashboardConfig: parsed.dashboardConfig || {},

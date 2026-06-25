@@ -10,6 +10,7 @@ import type { WidgetApiFieldMeta } from '@/utils/widgetApiDefaults';
 import {
   buildDataSourceSelectionFormValues,
   buildHeaderMap,
+  isDataSourceSelectionLocked,
   UNIFIED_DATA_SOURCE_OPTIONS,
 } from './dataSourceHelpers';
 
@@ -25,6 +26,8 @@ const IndicatorCardDataConfigSection: React.FC<IndicatorCardDataConfigSectionPro
   apiFieldMeta,
 }) => {
   const dataSourceValue = Form.useWatch('dataSource', form) || 'static';
+  const dataSourceIdValue = Form.useWatch('dataSourceId', form);
+  const isSelectedDataSourceLocked = isDataSourceSelectionLocked(dataSourceValue, dataSourceIdValue);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue(
@@ -88,6 +91,7 @@ const IndicatorCardDataConfigSection: React.FC<IndicatorCardDataConfigSectionPro
               <Form.Item name="apiMethod" noStyle initialValue="GET">
                 <Select
                   className="widget-api-endpoint-row__method"
+                  disabled={isSelectedDataSourceLocked}
                   options={[
                     { value: 'GET', label: 'GET' },
                     { value: 'POST', label: 'POST' },
@@ -99,13 +103,17 @@ const IndicatorCardDataConfigSection: React.FC<IndicatorCardDataConfigSectionPro
                 noStyle
                 rules={[{ required: true, message: '请输入接口地址' }]}
               >
-                <Input className="widget-api-endpoint-row__input" placeholder={apiPlaceholder} />
+                <Input
+                  className="widget-api-endpoint-row__input"
+                  placeholder={apiPlaceholder}
+                  disabled={isSelectedDataSourceLocked}
+                />
               </Form.Item>
             </div>
           </Form.Item>
           {apiFieldMeta ? (
             <Form.Item name={apiFieldMeta.name} label={apiFieldMeta.label} tooltip={apiFieldMeta.tooltip}>
-              <Input placeholder={apiFieldMeta.placeholder} />
+              <Input placeholder={apiFieldMeta.placeholder} disabled={isSelectedDataSourceLocked} />
             </Form.Item>
           ) : null}
           <Form.Item label="参数配置" className="widget-api-form-item">

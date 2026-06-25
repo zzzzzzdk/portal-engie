@@ -1,74 +1,92 @@
-import React, { useCallback, useState } from 'react';
-import { Widget } from '@/types';
-import { useStore } from '@/store/useStore';
-import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard';
-import { isValidCssGradient } from '@/components/BackgroundSettings';
-import { Settings, Trash2, RefreshCw, Copy } from 'lucide-react';
-import { Button, Dropdown, Modal } from 'antd';
-import type { MenuProps } from 'antd';
-import clsx from 'clsx';
-import './index.scss';
+import React, { useCallback, useState } from 'react'
+import { SaveOutlined } from '@ant-design/icons'
+import { Button, Dropdown, Modal } from 'antd'
+import type { MenuProps } from 'antd'
+import clsx from 'clsx'
+import { Copy, RefreshCw, Settings, Trash2 } from 'lucide-react'
+import { Widget } from '@/types'
+import { isValidCssGradient } from '@/components/BackgroundSettings'
+import { REFRESHABLE_WIDGET_TYPES } from '@/constants/dashboard'
+import { useNativeFormDesignerStore } from '@/native-form/designer/store/use-native-form-designer-store'
+import { useStore } from '@/store/useStore'
+import { requestLocalTemplateSave } from '@/utils/local-component-library-events'
+import './index.scss'
 
-const { confirm } = Modal;
+const { confirm } = Modal
 
 interface WidgetWrapperProps {
-  widget: Widget;
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  className?: string;
-  onMouseDown?: React.MouseEventHandler;
-  onMouseUp?: React.MouseEventHandler;
-  onTouchEnd?: React.TouchEventHandler;
-  isPreviewMode?: boolean; // 预览模式，禁用所有编辑功能
+  widget: Widget
+  children: React.ReactNode
+  style?: React.CSSProperties
+  className?: string
+  onMouseDown?: React.MouseEventHandler
+  onMouseUp?: React.MouseEventHandler
+  onTouchEnd?: React.TouchEventHandler
+  isPreviewMode?: boolean
 }
 
 const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
   ({ widget, children, style, className, onMouseDown, onMouseUp, onTouchEnd, isPreviewMode = false, ...props }, ref) => {
-    const { removeWidget, refreshWidget, duplicateWidget, isEditMode: storeEditMode, openConfigPanel } = useStore();
-    // 预览模式下强制禁用编辑
-    const isEditMode = isPreviewMode ? false : storeEditMode;
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    // const [backgroundStyle, setBackgroundStyle] = useState<React.CSSProperties>({})
+    const {
+      removeWidget,
+      refreshWidget,
+      duplicateWidget,
+      isEditMode: storeEditMode,
+      openConfigPanel,
+    } = useStore()
+    const setSelectedNativeFormNodeId = useNativeFormDesignerStore(state => state.setSelectedNodeId)
+    const isEditMode = isPreviewMode ? false : storeEditMode
+    const [isRefreshing, setIsRefreshing] = useState(false)
 
     const handleDelete = () => {
       confirm({
-        title: '删除小部件',
-        content: '确定要删除这个小部件吗？',
+        title: '删除组件',
+        content: '确定要删除这个组件吗？',
         okText: '删除',
         cancelText: '取消',
         okButtonProps: { danger: true },
         onOk: () => removeWidget(widget.id),
-      });
-    };
+      })
+    }
 
     const handleConfig = () => {
-      openConfigPanel({ type: 'widget', id: widget.id });
-    };
+      if (widget.type === 'nativeForm') {
+        setSelectedNativeFormNodeId(null)
+      }
+      openConfigPanel({ type: 'widget', id: widget.id })
+    }
 
     const handleRefresh = () => {
-      setIsRefreshing(true);
-      refreshWidget(widget.id);
-      // 刷新动画持续 600ms
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 600);
-    };
+      setIsRefreshing(true)
+      refreshWidget(widget.id)
+      window.setTimeout(() => {
+        setIsRefreshing(false)
+      }, 600)
+    }
 
     const handleDuplicate = () => {
-      duplicateWidget(widget.id);
-    };
+      duplicateWidget(widget.id)
+    }
 
-    const isRefreshable = REFRESHABLE_WIDGET_TYPES.has(widget.type);
+    const handleSaveAsLocalTemplate = () => {
+      requestLocalTemplateSave({
+        targetType: 'widget',
+        targetId: widget.id,
+      })
+    }
 
-    // 右键菜单配置
+    const isRefreshable = REFRESHABLE_WIDGET_TYPES.has(widget.type)
+
     const contextMenuItems: MenuProps['items'] = [
-      ...(isRefreshable ? [{
-        key: 'refresh' as const,
-        label: '刷新',
-        icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
-        onClick: handleRefresh,
-        disabled: isRefreshing,
-      }] : []),
+      ...(isRefreshable
+        ? [{
+            key: 'refresh' as const,
+            label: '刷新',
+            icon: <RefreshCw size={14} className={isRefreshing ? 'rotating' : ''} />,
+            onClick: handleRefresh,
+            disabled: isRefreshing,
+          }]
+        : []),
       {
         key: 'duplicate',
         label: '复制',
@@ -82,6 +100,12 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         onClick: handleConfig,
       },
       {
+        key: 'save-local-template',
+        label: '保存为组件模板',
+        icon: <SaveOutlined />,
+        onClick: handleSaveAsLocalTemplate,
+      },
+      {
         type: 'divider',
       },
       {
@@ -91,105 +115,101 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
         danger: true,
         onClick: handleDelete,
       },
-    ];
+    ]
 
-    const handleContextMenu = (e: React.MouseEvent) => {
-      e.preventDefault();
-    };
+    const handleContextMenu = (event: React.MouseEvent) => {
+      event.preventDefault()
+    }
 
-    // 判断是否显示标题，默认为 true
-    const showTitle = widget.config.showTitle !== false;
+    const showTitle = widget.config.showTitle !== false
+    const { w, h } = widget.layout || { w: 2, h: 2 }
+    const isSmallSize = w < 2 || h < 2
+    const shouldShowHeader = !isSmallSize && (showTitle || isEditMode)
 
-    // 判断是否为小尺寸组件（1x1），小尺寸时不显示标题栏以避免影响拖拽
-    // 用户可通过右键菜单进行设置和删除操作
-    const { w, h } = widget.layout || { w: 2, h: 2 };
-    const isSmallSize = w < 2 || h < 2;
-
-    // 在编辑模式下，即使隐藏标题也要显示拖拽条（但小尺寸组件除外）
-    const shouldShowHeader = !isSmallSize && (showTitle || isEditMode);
-    const titleStyle: React.CSSProperties = {};
+    const titleStyle: React.CSSProperties = {}
     if (widget.config.titleColor) {
-      titleStyle.color = widget.config.titleColor;
+      titleStyle.color = widget.config.titleColor
     }
     if (widget.config.titleFontSize !== undefined && widget.config.titleFontSize !== null) {
-      titleStyle.fontSize = Number(widget.config.titleFontSize);
+      titleStyle.fontSize = Number(widget.config.titleFontSize)
     }
     if (widget.config.titleFontWeight !== undefined && widget.config.titleFontWeight !== null) {
-      titleStyle.fontWeight = widget.config.titleFontWeight;
+      titleStyle.fontWeight = widget.config.titleFontWeight
     }
 
     const backgroundStyle = useCallback(() => {
-      // 计算背景样式
-      const newBackgroundStyle: React.CSSProperties = {};
+      const nextBackgroundStyle: React.CSSProperties = {}
       const {
-        backgroundType, backgroundColor, backgroundImage, backgroundGradient,
-        backgroundSize, backgroundRepeat, backgroundPosition, backdropBlur, boxShadow,
-        borderRadius
-      } = widget.config;
-      // console.log(widget.config)
+        backgroundType,
+        backgroundColor,
+        backgroundImage,
+        backgroundGradient,
+        backgroundSize,
+        backgroundRepeat,
+        backgroundPosition,
+        backdropBlur,
+        boxShadow,
+        borderRadius,
+      } = widget.config
+
       if (backgroundType === 'image' && backgroundImage) {
-        newBackgroundStyle.backgroundImage = `url(${backgroundImage})`;
-        newBackgroundStyle.backgroundSize = backgroundSize || 'auto';
-        newBackgroundStyle.backgroundPosition = backgroundPosition || 'center';
-        newBackgroundStyle.backgroundRepeat = backgroundRepeat || 'no-repeat';
-      } else if (backgroundType === 'gradient' && backgroundGradient && isValidCssGradient(backgroundGradient)) {
-        newBackgroundStyle.background = backgroundGradient;
+        nextBackgroundStyle.backgroundImage = `url(${backgroundImage})`
+        nextBackgroundStyle.backgroundSize = backgroundSize || 'auto'
+        nextBackgroundStyle.backgroundPosition = backgroundPosition || 'center'
+        nextBackgroundStyle.backgroundRepeat = backgroundRepeat || 'no-repeat'
+      } else if (
+        backgroundType === 'gradient'
+        && backgroundGradient
+        && isValidCssGradient(backgroundGradient)
+      ) {
+        nextBackgroundStyle.background = backgroundGradient
       } else if (backgroundType === 'color' && backgroundColor) {
-        newBackgroundStyle.backgroundColor = backgroundColor;
+        nextBackgroundStyle.backgroundColor = backgroundColor
       }
-      // 应用背景模糊效果
-      // backdropBlur 为 undefined/null 时使用 CSS 变量默认值（极简模式有默认模糊效果）
-      // backdropBlur > 0 时设置自定义模糊值
-      // backdropBlur === 0 时显式设置 none 覆盖 CSS 变量默认值
+
       if (backdropBlur !== undefined && backdropBlur !== null) {
         if (backdropBlur > 0) {
-          newBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`;
-          newBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`; // Safari 兼容
+          nextBackgroundStyle.backdropFilter = `blur(${backdropBlur}px)`
+          nextBackgroundStyle.WebkitBackdropFilter = `blur(${backdropBlur}px)`
         } else {
-          // backdropBlur === 0 时显式清除模糊效果
-          newBackgroundStyle.backdropFilter = 'none';
-          newBackgroundStyle.WebkitBackdropFilter = 'none';
+          nextBackgroundStyle.backdropFilter = 'none'
+          nextBackgroundStyle.WebkitBackdropFilter = 'none'
         }
       }
-      // 应用阴影效果
+
       if (boxShadow) {
-        newBackgroundStyle.boxShadow = boxShadow;
+        nextBackgroundStyle.boxShadow = boxShadow
       }
-      // 应用圆角
+
       if (borderRadius !== undefined && borderRadius !== null) {
-        newBackgroundStyle.borderRadius = borderRadius;
+        nextBackgroundStyle.borderRadius = borderRadius
       }
-      return newBackgroundStyle
+
+      return nextBackgroundStyle
     }, [widget.config])
 
-    // 判断是否有自定义背景（包括模糊效果）
     const hasCustomBackground = widget.config.backgroundType && (
-      (widget.config.backgroundType === 'color' && widget.config.backgroundColor) ||
-      (widget.config.backgroundType === 'image' && widget.config.backgroundImage) ||
-      (widget.config.backgroundType === 'gradient' && widget.config.backgroundGradient)
-    );
+      (widget.config.backgroundType === 'color' && widget.config.backgroundColor)
+      || (widget.config.backgroundType === 'image' && widget.config.backgroundImage)
+      || (widget.config.backgroundType === 'gradient' && widget.config.backgroundGradient)
+    )
 
-    // 是否有背景模糊效果
-    const hasBackdropBlur = widget.config.backdropBlur && widget.config.backdropBlur > 0;
+    const hasBackdropBlur = widget.config.backdropBlur && widget.config.backdropBlur > 0
 
-    // 计算内容区域的 padding
-    // 优先使用用户配置的 contentPadding，否则使用默认值
-    // 默认值：有标题时 12px，无标题时 0px
     const getContentPadding = (): number | undefined => {
-      const configPadding = widget.config.contentPadding;
+      const configPadding = widget.config.contentPadding
       if (configPadding !== undefined && configPadding !== null) {
-        return configPadding;
+        return configPadding
       }
-      // 如果没有配置，返回 undefined 让 CSS 处理默认值
-      return undefined;
-    };
 
-    const contentPadding = getContentPadding();
+      return undefined
+    }
+
+    const contentPadding = getContentPadding()
     const contentStyle: React.CSSProperties = contentPadding !== undefined
       ? { padding: contentPadding }
-      : {};
+      : {}
 
-    // 渲染主体内容
     const renderContent = () => (
       <div
         ref={ref}
@@ -208,8 +228,9 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       >
         {shouldShowHeader && (
           <div className={clsx('widget-header grid-drag-handle', {
-            'widget-header--minimal': !showTitle && isEditMode
-          })}>
+            'widget-header--minimal': !showTitle && isEditMode,
+          })}
+          >
             {showTitle && (
               <h3
                 className="widget-title"
@@ -222,7 +243,7 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
               <div
                 className="widget-actions"
                 style={widget.config.titleColor ? { color: widget.config.titleColor } : undefined}
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
               >
                 {isRefreshable && (
                   <Button
@@ -238,12 +259,19 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
                   size="small"
                   icon={<Copy size={14} />}
                   onClick={handleDuplicate}
+                  title='复制'
                 />
                 <Button
                   type="text"
                   size="small"
                   icon={<Settings size={14} />}
                   onClick={handleConfig}
+                />
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<SaveOutlined />}
+                  onClick={handleSaveAsLocalTemplate}
                 />
                 <Button
                   type="text"
@@ -257,16 +285,13 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
           </div>
         )}
         <div className="widget-content" style={contentStyle}>{children}</div>
-
       </div>
-    );
+    )
 
-    // 预览模式或非编辑模式下不显示右键菜单
     if (isPreviewMode || !isEditMode) {
-      return renderContent();
+      return renderContent()
     }
 
-    // 编辑模式下使用右键菜单包裹
     return (
       <Dropdown
         menu={{ items: contextMenuItems }}
@@ -274,8 +299,8 @@ const WidgetWrapper = React.forwardRef<HTMLDivElement, WidgetWrapperProps>(
       >
         {renderContent()}
       </Dropdown>
-    );
-  }
-);
+    )
+  },
+)
 
-export default WidgetWrapper;
+export default WidgetWrapper

@@ -106,6 +106,20 @@ const ChartConfig: React.FC<WidgetConfigProps> = () => {
           <Input placeholder="可选" />
         </Form.Item>
       </div>
+      <div className="form-row-4">
+        <Form.Item name="chartTitleLeft" label="标题 left">
+          <Input placeholder="center/10%" />
+        </Form.Item>
+        <Form.Item name="chartTitleTop" label="标题 top">
+          <Input placeholder="0/10%" />
+        </Form.Item>
+        <Form.Item name="chartTitleRight" label="标题 right">
+          <Input placeholder="10/10%" />
+        </Form.Item>
+        <Form.Item name="chartTitleBottom" label="标题 bottom">
+          <Input placeholder="10/10%" />
+        </Form.Item>
+      </div>
 
       <div className="form-row-3">
         {showLegend ? (
@@ -123,21 +137,27 @@ const ChartConfig: React.FC<WidgetConfigProps> = () => {
         ) : null}
       </div>
 
-      {(showLegendPosition || showLabelPositionField) && (
+      {showLegendPosition && (
         <div className="form-row-2">
-          {showLegendPosition ? (
-            <Form.Item name="legendPosition" label="图例位置" initialValue="top">
-              <Select
-                allowClear
-                options={[
-                  { label: '顶部', value: 'top' },
-                  { label: '底部', value: 'bottom' },
-                  { label: '左侧', value: 'left' },
-                  { label: '右侧', value: 'right' },
-                ]}
-              />
-            </Form.Item>
-          ) : null}
+          <Form.Item name="legendPosition" label="图例位置" initialValue="top">
+            <Select
+              allowClear
+              options={[
+                { label: '顶部', value: 'top' },
+                { label: '底部', value: 'bottom' },
+                { label: '左侧', value: 'left' },
+                { label: '右侧', value: 'right' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="legendTextColor" label="图例文字颜色">
+            <ColorPicker showText allowClear />
+          </Form.Item>
+        </div>
+      )}
+
+      {showLabelPositionField && (
+        <div className="form-row-2">
           {showLabelPositionField ? (
             <Form.Item name="labelPosition" label="标签位置">
               <Select

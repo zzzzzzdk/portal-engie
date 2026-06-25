@@ -316,9 +316,9 @@ const IconPicker: React.FC<IconPickerProps> = ({
       overlayClassName="icon-picker-popover-overlay"
     >
       <div className={`icon-picker-trigger ${disabled ? 'disabled' : ''}`}>
-        <Space>
+        <Space size={4}>
           <div className="icon-picker-preview">{renderPreview()}</div>
-          <span className="icon-picker-text">{getDisplayText()}</span>
+          <span className="icon-picker-text" title={getDisplayText()}>{getDisplayText()}</span>
         </Space>
         {value && !disabled && (
           <CloseCircleOutlined className="icon-picker-clear" onClick={handleClear} />

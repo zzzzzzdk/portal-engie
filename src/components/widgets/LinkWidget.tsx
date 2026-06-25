@@ -5,6 +5,7 @@ import IconRenderer from '@/components/IconRenderer'
 import { useSystemStore } from '@/store/useSystemStore'
 import type { Widget, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 
 interface LinkItem {
   id?: string
@@ -56,9 +57,10 @@ const lockBadgeStyle: React.CSSProperties = {
   fontSize: 10,
 }
 
-const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEditMode }) => {
+const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget, isEditMode }) => {
   const sysConfig = useSystemStore(state => state.sysConfig)
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
 
   const linkConfig = config as LinkWidgetConfig
   const links = (linkConfig?.links || DEFAULT_LINKS).map(link => {
@@ -82,7 +84,9 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEdit
 
   const isLinkAvailable = (link: LinkItem) => isSystemDeployed(deployedSystemSet, link.systemId)
 
-  const handleLinkClick = (link: LinkItem) => {
+  const handleLinkClick = (link: LinkItem, index: number) => {
+    emitWidgetEvent('link.click', { item: link, url: link.url, index }, 'click')
+
     if (isEditMode || !link.url || !isLinkAvailable(link)) {
       return
     }
@@ -135,7 +139,7 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEdit
                         opacity: isAvailable ? 1 : 0.55,
                       }
                 }
-                onClick={() => handleLinkClick(link)}
+                onClick={() => handleLinkClick(link, index)}
               >
                 {link.title}
               </Button>
@@ -159,7 +163,7 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEdit
                         opacity: isAvailable ? 1 : 0.55,
                       }
                 }
-                onClick={() => handleLinkClick(link)}
+                onClick={() => handleLinkClick(link, index)}
               />
             )
 
@@ -199,7 +203,7 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEdit
                 opacity: isAvailable ? 1 : 0.75,
               }}
               className="link-list-item"
-              onClick={() => handleLinkClick(link)}
+              onClick={() => handleLinkClick(link, index)}
               onMouseEnter={event => {
                 if (canJump) {
                   event.currentTarget.style.backgroundColor = '#f5f5f5'
@@ -278,7 +282,7 @@ const LinkWidget: React.FC<LinkWidgetProps> = ({ config, widget: _widget, isEdit
               transition: 'all 0.2s',
               opacity: isAvailable ? 1 : 0.75,
             }}
-            onClick={() => handleLinkClick(link)}
+            onClick={() => handleLinkClick(link, index)}
             onMouseEnter={event => {
               if (canJump) {
                 event.currentTarget.style.backgroundColor = '#f5f5f5'

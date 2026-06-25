@@ -27,6 +27,7 @@ interface AjaxDataProps extends AxiosRequestConfig {
   data?: any;
   onUploadProgress?: AxiosRequestConfig["onUploadProgress"];
   onGlobalLoading?: (loading: boolean) => void;
+  silentErrorCodes?: number[];
 }
 
 // 泛型函数，接口，类
@@ -91,7 +92,7 @@ function ajax<T = any, U = object>(ajaxData: AjaxDataProps) {
           { data: ajaxData.data }
           :
           ajaxData.data
-    const axiosRequestConfig = omit(ajaxData, ['method', 'url', 'data'])
+    const axiosRequestConfig = omit(ajaxData, ['method', 'url', 'data', 'silentErrorCodes'])
 
     if (ajaxData.data?.pageSize) updatePageSize(ajaxData.data?.pageSize);
 
@@ -132,10 +133,11 @@ function ajax<T = any, U = object>(ajaxData: AjaxDataProps) {
           cancelAllRequests()
           ajaxData.onGlobalLoading(false)
         }
-
         const response = err.response || {}
         const msg = response.data ? response.data.message : "服务繁忙，请联系以萨运维人员处理。"
-        if (response.status) {
+        const responseCode = response.data?.code
+        const shouldSkipGlobalError = ajaxData.silentErrorCodes?.includes(responseCode)
+        if (response.status && !shouldSkipGlobalError) {
           switch (response.status) {
             case 401:
               message.error("用户权限已失效！")

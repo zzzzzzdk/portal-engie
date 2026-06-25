@@ -18,6 +18,9 @@ description: >
 - `references/widget-map.md`
 - `references/layout-rules.md`
 - `references/json-schema.md`
+- `references/visual-rules.md`
+- `references/page-recipes.md`
+- `references/design-tokens.md`
 - 涉及图标时再读 `references/icon-map.md`
 
 这些文件分别负责：
@@ -26,6 +29,7 @@ description: >
 - 生成时的布局规则
 - 运行时字段和示例结构
 - 图标语义到真实 icon 名称的映射
+- 视觉层级、页面配方和主题 token
 
 ## 输出目标
 

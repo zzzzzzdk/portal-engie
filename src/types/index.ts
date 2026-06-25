@@ -1,4 +1,5 @@
 import { Layout } from 'react-grid-layout';
+import type { WidgetEventInputConfig, WidgetEventOutputConfig, WidgetVariableBindingConfig } from './widget-event';
 
 export const GRID_DENSITY_PRESETS = {
   compact: { label: '紧凑', cellHeight: 30, margin: 0, columnCount: 36 },
@@ -12,6 +13,8 @@ export type WidgetType =
   | 'clock'
   | 'stats'
   | 'indicatorCard'
+  | 'indicatorCardList'
+  | 'recognitionCard'
   | 'chart'
   | 'carousel'
   | 'link'
@@ -22,6 +25,8 @@ export type WidgetType =
   | 'dataTable'
   | 'cardGrid'
   | 'customForm'
+  | 'nativeForm'
+  | 'nativeFormField'
   | 'headerBar'        // 导航栏组件
   | 'typography'       // 文本/标题组件
   | 'richText'         // 富文本组件
@@ -101,7 +106,60 @@ export interface WidgetConfig {
   };
   navTextColor?: string;       // 导航文字颜色
   showNavMenu?: boolean;       // 是否显示导航区域
+  eventOutputs?: WidgetEventOutputConfig[];
+  eventInputs?: WidgetEventInputConfig[];
+  variableBindings?: WidgetVariableBindingConfig[];
   [key: string]: any; // Allow custom properties for different widgets
+}
+
+export interface IndicatorCardListItem {
+  id?: string
+  value?: string | number
+  description?: string
+  valueColor?: string
+  descriptionColor?: string
+}
+
+export interface IndicatorCardListWidgetConfig extends WidgetConfig {
+  dataSource?: 'static' | 'customApi' | 'dataSource'
+  staticItems?: IndicatorCardListItem[]
+  valueField?: string
+  descriptionField?: string
+  columns?: 1 | 2 | 3 | 4
+  indicatorValueFontSize?: number
+  indicatorDescriptionFontSize?: number
+  indicatorValueColor?: string
+  indicatorDescriptionColor?: string
+}
+
+export interface RecognitionCardInfoItem {
+  id?: string;
+  field: string;
+  icon?: string;
+}
+
+export interface RecognitionCardQuickLink {
+  id?: string;
+  title: string;
+  url?: string;
+  systemId?: string;
+  openInNew?: boolean;
+}
+
+export interface RecognitionCardWidgetConfig extends WidgetConfig {
+  dataSource?: 'static' | 'customApi' | 'dataSource';
+  staticData?: Record<string, any>;
+  showSimilarity?: boolean;
+  similarityField?: string;
+  matchCountField?: string;
+  imageField?: string;
+  showPlateNo?: boolean;
+  plateNoField?: string;
+  showPersonName?: boolean;
+  personNameField?: string;
+  infoItems?: RecognitionCardInfoItem[];
+  showQuickLinks?: boolean;
+  quickLinks?: RecognitionCardQuickLink[];
 }
 
 export interface RichTextWidgetConfig extends WidgetConfig {
@@ -211,11 +269,12 @@ export interface AppState {
   floatingModules: Widget[];  // 悬浮模块列表
   globalMicroApps: Widget[];  // 全局无边框微应用列表
   currentCoverUrl: string;
+  dashboardGridStackResetKey: number; // 触发 GridStack 强制重建
   login: (userInfo?: UserInfo) => void;
   logout: () => void;
   addWidget: (
     type: WidgetType,
-    position?: { x: number; y: number; w?: number; h?: number; groupId?: string }
+    position?: { x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; groupId?: string }
   ) => Widget;
   addMicroAppWidget: (
     systemId: string,
@@ -262,6 +321,7 @@ export interface AppState {
   }) => void;
   updateDashboardConfig: (config: Partial<DashboardConfig>) => void;
   setCurrentCoverUrl: (coverUrl: string) => void;
+  resetDashboardGridStack: () => void;
   // 悬浮模块方法
   addFloatingModuleMicroApp: (
     systemId: string,
@@ -398,25 +458,9 @@ export interface CarouselWidgetConfig extends WidgetConfig {
 }
 
 // Form builder types
-export interface FormField {
-  id: string;
-  type: 'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'checkbox';
-  label: string;
-  name: string;
-  required?: boolean;
-  options?: { label: string; value: string | number }[]; // For select/radio
-  defaultValue?: any;
-}
-
-export interface FormConfig extends WidgetConfig {
-  fields: FormField[];
-  submitUrl?: string;
-  successAction?: 'none' | 'resetForm';
-  failureAction?: 'none' | 'resetForm';
-}
-
 export type QueryFilterFieldType =
   | 'input'
+  | 'textarea'
   | 'checkboxGroup'
   | 'cascader'
   | 'datePicker'
@@ -478,6 +522,319 @@ export interface QueryFilterFieldConfig {
   dataMode?: 'json' | 'request';
   jsonData?: string;
   requestConfig?: QueryFilterRequestConfig;
+}
+
+export interface FormField {
+  id: string;
+  type: 'text' | 'textarea' | 'number' | 'select' | 'radio' | 'date' | 'checkbox';
+  label: string;
+  name: string;
+  required?: boolean;
+  options?: { label: string; value: string | number }[];
+  defaultValue?: any;
+}
+
+export type CustomFormFieldConfig = QueryFilterFieldConfig;
+
+export interface FormConfig extends WidgetConfig {
+  fields: CustomFormFieldConfig[];
+  legacyFields?: FormField[];
+  submitUrl?: string;
+  successAction?: 'none' | 'resetForm';
+  failureAction?: 'none' | 'resetForm';
+}
+
+export type NativeFormLayoutMode = 'vertical' | 'horizontal' | 'inline';
+
+export type NativeFormFieldType =
+  | 'input'
+  | 'password'
+  | 'textarea'
+  | 'inputNumber'
+  | 'select'
+  | 'transfer'
+  | 'checkableTag'
+  | 'formPlate'
+  | 'formVehicleModel'
+  | 'radioGroup'
+  | 'checkboxGroup'
+  | 'datePicker'
+  | 'dateRangePicker'
+  | 'timePicker'
+  | 'timeRangePicker'
+  | 'cascader'
+  | 'upload'
+  | 'switch'
+  | 'treeSelect'
+  | 'colorPicker'
+  | 'slider'
+  | 'rate'
+  | 'flex'
+  | 'group'
+  | 'grid'
+  | 'subTable'
+  | 'button';
+
+export interface NativeFormOptionItem {
+  label: string;
+  value: string | number | boolean;
+  text?: string;
+  disabled?: boolean;
+  cancelOther?: boolean;
+  showStyle?: 'colorBlock' | 'icon' | string;
+  color?: string;
+  borderColor?: string;
+  icon?: string;
+  children?: NativeFormOptionItem[];
+}
+
+export interface NativeFormRequestConfig {
+  endpoint?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+  headers?: Record<string, string>;
+  query?: Record<string, any> | string;
+  body?: Record<string, any> | string;
+  listField?: string;
+  labelField?: string;
+  valueField?: string;
+  childrenField?: string;
+}
+
+export type NativeFormPlateTypeId = -1 | 1 | 2 | 5 | 6 | 9 | 15 | 16;
+
+export interface NativeFormPlateValue {
+  plateTypeId: NativeFormPlateTypeId;
+  plateNumber: string;
+  noplate: '' | 'noplate';
+}
+
+export interface NativeFormVehicleModelValue {
+  brandValue?: string | number | Array<string | number>;
+  modelValue: Array<string | number>;
+  yearValue: Array<string | number>;
+}
+
+export interface NativeFormFieldRule {
+  type?: 'required' | 'pattern' | 'min' | 'max' | 'len';
+  required?: boolean;
+  message?: string;
+  pattern?: string;
+  min?: number;
+  max?: number;
+  len?: number;
+}
+
+export interface NativeFormFieldCondition {
+  sourceField: string;
+  operator: 'equals' | 'notEquals' | 'includes' | 'notEmpty' | 'empty';
+  value?: string;
+}
+
+export type NativeFormConditionMatchMode = 'all' | 'any';
+
+export interface NativeFormLayoutConfig {
+  mode: NativeFormLayoutMode;
+  labelWidth?: number;
+  labelCol?: Record<string, any> | string; // string 仅用于兼容旧 JSON 配置
+  wrapperCol?: Record<string, any> | string; // string 仅用于兼容旧 JSON 配置
+  fieldSpacing?: number;
+  labelAlign?: 'left' | 'right';
+  colon?: boolean;
+  size?: 'small' | 'middle' | 'large';
+  variant?: 'outlined' | 'borderless' | 'filled';
+}
+
+export interface NativeFormFieldItemProps {
+  showLabel?: boolean;
+  tooltip?: string;
+  labelWidth?: number;
+  labelAlign?: 'left' | 'right';
+  colon?: boolean;
+  asterisk?: boolean;
+}
+
+export interface NativeFormFieldStyleProps {
+  width?: string;
+  height?: string;
+  marginTop?: string;
+  marginBottom?: string;
+}
+
+export interface NativeFormFieldManifest {
+  type: NativeFormFieldType;
+  groups: Array<
+    | 'basic'
+    | 'item'
+    | 'component'
+    | 'dataSource'
+    | 'validation'
+    | 'linkage'
+    | 'events'
+    | 'style'
+    | 'advanced'
+  >;
+  supports: {
+    fieldName?: boolean;
+    required?: boolean;
+    placeholder?: boolean;
+    defaultValue?: boolean;
+    options?: boolean;
+    treeOptions?: boolean;
+    upload?: boolean;
+    subTableColumns?: boolean;
+    children?: boolean;
+  };
+}
+
+export interface NativeFormNodePlacement {
+  parentNodeId: string | null;
+  beforeNodeId?: string | null;
+  targetCellId?: string | null;
+}
+
+export interface NativeFormGridCell {
+  id: string;
+  node?: NativeFormNode | null;
+}
+
+export interface NativeFormNode {
+  id: string;
+  type: NativeFormFieldType;
+  label?: string;
+  field?: string;
+  name?: string;
+  required?: boolean;
+  placeholder?: string;
+  defaultValue?: any;
+  disabled?: boolean;
+  hidden?: boolean;
+  itemProps?: NativeFormFieldItemProps;
+  componentProps?: Record<string, any>;
+  styleProps?: NativeFormFieldStyleProps;
+  rules?: NativeFormFieldRule[];
+  options?: NativeFormOptionItem[];
+  columns?: number;
+  gridCells?: NativeFormGridCell[];
+  dataSourceType?: 'manual' | 'request';
+  requestConfig?: NativeFormRequestConfig;
+  visibilityCondition?: NativeFormFieldCondition;
+  visibilityConditions?: NativeFormFieldCondition[];
+  visibilityMatchMode?: NativeFormConditionMatchMode;
+  disabledCondition?: NativeFormFieldCondition;
+  disabledConditions?: NativeFormFieldCondition[];
+  disabledMatchMode?: NativeFormConditionMatchMode;
+  uploadConfig?: {
+    action?: string;
+    accept?: string;
+    multiple?: boolean;
+    listType?: 'text' | 'picture';
+    buttonType?: 'button' | 'picture-card' | 'picture-circle';
+    valueMode?: 'url' | 'object';
+    responseUrlField?: string;
+    maxSizeMb?: number;
+    draggable?: boolean;
+  };
+  tableColumns?: Array<{
+    id: string;
+    label: string;
+    field: string;
+    type: Exclude<NativeFormFieldType, 'group' | 'grid' | 'flex' | 'subTable'>;
+    required?: boolean;
+    defaultValue?: any;
+    placeholder?: string;
+    readOnly?: boolean;
+    disabled?: boolean;
+    width?: number;
+    rules?: NativeFormFieldRule[];
+    options?: NativeFormOptionItem[];
+    dataSourceType?: 'manual' | 'request';
+    requestConfig?: NativeFormRequestConfig;
+    componentProps?: Record<string, any>;
+    uploadConfig?: {
+      action?: string;
+      accept?: string;
+      multiple?: boolean;
+      listType?: 'text' | 'picture';
+      buttonType?: 'button' | 'picture-card' | 'picture-circle';
+      valueMode?: 'url' | 'object';
+      responseUrlField?: string;
+      maxSizeMb?: number;
+      draggable?: boolean;
+    };
+  }>;
+  eventConfig?: NativeFormFieldEventConfig;
+  children?: NativeFormNode[];
+}
+
+export interface NativeFormSchema {
+  version: 1;
+  meta?: {
+    name?: string;
+    description?: string;
+  };
+  layout: NativeFormLayoutConfig;
+  children: NativeFormNode[];
+}
+
+export interface NativeFormSubmitResponseMapping {
+  source: string;   // 响应字段路径，例如 data.id
+  target: string;   // 回写到的表单字段 field 名
+}
+
+export interface NativeFormSubmitConfig {
+  key?: string;
+  name?: string;
+  mode?: 'none' | 'api' | 'eventRoute';
+  apiEndpoint?: string;
+  apiMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+  apiHeaders?: Record<string, string>;
+  apiQuery?: Record<string, any> | string;
+  apiBody?: Record<string, any> | string;
+  eventRoutes?: EventRouteConfig[];
+  submitButtonText?: string;
+  successMessage?: string;
+  failureMessage?: string;
+  responseMapping?: NativeFormSubmitResponseMapping[];
+}
+
+export interface NativeFormAppearanceConfig {
+  bordered?: boolean;
+  padding?: string;
+  borderRadius?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  boxShadow?: string;
+}
+
+export interface NativeFormLinkageRuntimeConfig {
+  emitChangeOnExternalSetValue?: boolean;
+  runInternalLinkageOnExternalSetValue?: boolean;
+  validateOnExternalSetValue?: boolean;
+  reloadOptionsOnParamsChange?: boolean;
+  defaultChangeDebounce?: number;
+}
+
+export interface NativeFormWidgetConfig extends WidgetConfig {
+  formSchema: NativeFormSchema;
+  submitConfig?: NativeFormSubmitConfig;
+  appearance?: NativeFormAppearanceConfig;
+  linkageRuntime?: NativeFormLinkageRuntimeConfig;
+}
+
+export interface NativeFormFieldRuntimeConfig {
+  mode?: 'standalone';
+  emitOnChange?: boolean;
+}
+
+export interface NativeFormFieldEventConfig {
+  changeRoutes?: EventRouteConfig[];
+  clickRoutes?: EventRouteConfig[];
+}
+
+export interface NativeFormFieldWidgetConfig extends WidgetConfig {
+  field: NativeFormNode;
+  runtime?: NativeFormFieldRuntimeConfig;
+  eventConfig?: NativeFormFieldEventConfig;
 }
 
 export interface QueryFilterWidgetConfig extends WidgetConfig {

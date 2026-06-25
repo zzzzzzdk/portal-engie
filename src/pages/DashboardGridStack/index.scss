@@ -139,6 +139,16 @@
   font-size: 16px;
 }
 
+.native-form-field-drop-preview {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border: 2px dashed var(--ant-color-primary, #1677ff);
+  border-radius: 8px;
+  background: rgba(22, 119, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.12);
+}
+
 
 
 // GridStack 默认样式已通过 import 'gridstack/dist/gridstack.min.css' 引入

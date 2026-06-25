@@ -13,9 +13,12 @@ import IconRenderer from '@/components/IconRenderer'
 import { useCanvasTheme } from '@/hooks/useCanvasTheme'
 import { useStore } from '@/store/useStore'
 import { useSystemStore } from '@/store/useSystemStore'
-import type { NavItem, WidgetConfig } from '@/types'
+import type { NavItem, Widget, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
 import { requestWidgetApi } from '@/utils/widgetApi'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 import './index.scss'
 
 const { Text } = Typography
@@ -53,6 +56,7 @@ interface HeaderBarWidgetConfig extends WidgetConfig {
 
 interface HeaderBarWidgetProps {
   config?: WidgetConfig
+  widget?: Widget
 }
 
 const mapHeaderNavItem = (
@@ -72,15 +76,18 @@ const mapHeaderNavItem = (
   }
 }
 
-const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
+const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config, widget }) => {
   const { userInfo, sysConfig, logout } = useSystemStore()
   const { isEditMode } = useStore()
   const { token } = theme.useToken()
   const { themeMode, setCanvasThemeMode } = useCanvasTheme()
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const headerConfig = config as HeaderBarWidgetConfig | undefined
   const [navItems, setNavItems] = useState<HeaderNavItem[]>(headerConfig?.navItems || [])
   const [navLoading, setNavLoading] = useState(false)
+  const [navReloadVersion, setNavReloadVersion] = useState(0)
 
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
 
@@ -165,7 +172,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
         key: 'user-info',
         label: (
           <div style={{ padding: '4px 0' }}>
-            <Text strong>{userInfo?.user_info?.user_name || '用户'}</Text>
+            <Text strong>{userInfo?.user_info?.name || '-'}</Text>
             <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
               {userInfo?.user_info?.account || ''}
             </div>
@@ -266,6 +273,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
           body: headerConfig?.navApiBody,
           listField: headerConfig?.navApiListField,
           timeout: headerConfig?.navTimeout,
+          runtimeParams: runtimeParamsRef.current,
         })
 
         const sourceList = result.list.length
@@ -282,11 +290,13 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
 
         if (isMounted) {
           setNavItems(payload)
+          emitWidgetEvent('data.loaded', { items: payload, raw: sourceList }, 'system')
         }
       } catch (error) {
         console.error('HeaderBarWidget: 导航数据加载失败', error)
         if (isMounted) {
           setNavItems([])
+          emitWidgetEvent('data.error', { message: '导航数据加载失败', error }, 'system')
         }
       } finally {
         if (isMounted) {
@@ -311,8 +321,36 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
     headerConfig?.navFieldMapping,
     headerConfig?.navItems,
     headerConfig?.navTimeout,
+    emitWidgetEvent,
+    navReloadVersion,
+    runtimeParamsRef,
     showNavMenu,
   ])
+
+  const reloadNavItems = useCallback(() => {
+    setNavReloadVersion(version => version + 1)
+  }, [])
+
+  useWidgetEventInputs(widget, {
+    reload: reloadNavItems,
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      reloadNavItems()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      reloadNavItems()
+    },
+  })
 
   const handleNavClick: MenuProps['onClick'] = ({ key }) => {
     if (isEditMode) {
@@ -321,6 +359,11 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
 
     const target = navKeyMap[key]
     const targetUrl = target?.url || target?.path
+
+    if (target) {
+      const index = navItems.findIndex(item => item === target)
+      emitWidgetEvent('nav.click', { item: target, index, url: targetUrl }, 'click')
+    }
 
     if (!target || !targetUrl || !isSystemDeployed(deployedSystemSet, target.systemId)) {
       return
@@ -413,7 +456,7 @@ const HeaderBarWidget: React.FC<HeaderBarWidgetProps> = ({ config }) => {
                   />
                   <Space size={4}>
                     <Text style={{ color: config?.textColor || 'inherit' }}>
-                      {userInfo?.user_info?.user_name || '个人中心'}
+                      {userInfo?.user_info?.name || '-'}
                     </Text>
                     <DownOutlined
                       style={{ fontSize: 10, color: config?.textColor || 'inherit' }}

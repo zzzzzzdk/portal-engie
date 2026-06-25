@@ -2,7 +2,7 @@ import type { WidgetType } from '@/types';
 
 /** 有数据交互、支持刷新的组件类型 */
 export const REFRESHABLE_WIDGET_TYPES: ReadonlySet<WidgetType> = new Set([
-  'stats', 'indicatorCard', 'chart', 'news', 'topList', 'dataTable', 'carousel', 'navGroup', 'microApp',
+  'stats', 'indicatorCard', 'indicatorCardList', 'chart', 'news', 'topList', 'dataTable', 'carousel', 'navGroup', 'microApp',
 ]);
 
 /**

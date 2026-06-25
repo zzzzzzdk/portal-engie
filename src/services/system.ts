@@ -54,7 +54,8 @@ export interface SysConfigResponse {
 // 用户基本信息
 export interface UserBasicInfo {
   user_uuid: number | string;
-  user_name: string;
+  unit: string;
+  name: string;
   account: string;
   phone_number: string;
   organization_uuid: string;

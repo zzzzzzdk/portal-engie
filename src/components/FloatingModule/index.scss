@@ -317,12 +317,27 @@
             color: #ff4d4f;
           }
         }
+
       }
     }
 
     // 悬停时显示按钮
     &:hover .action-btn-transparent {
       opacity: 1;
+    }
+
+    &.is-preview-mode {
+      left: auto;
+      padding: 8px;
+      cursor: default;
+
+      &:hover {
+        background: transparent;
+      }
+
+      .action-btn-transparent {
+        opacity: 0.72;
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import dayjs, { Dayjs } from 'dayjs';
 import {
+  FormField,
   QueryFilterFieldConfig,
   QueryFilterFieldType,
   QueryFilterOptionItem,
@@ -35,6 +36,11 @@ const QUERY_FILTER_FIELD_DEFAULTS: Record<QueryFilterFieldType, Partial<QueryFil
     label: '输入框',
     field: 'input_field',
     type: 'input',
+  },
+  textarea: {
+    label: '多行文本',
+    field: 'textarea_field',
+    type: 'textarea',
   },
   checkboxGroup: {
     label: '复选按钮组',
@@ -126,6 +132,98 @@ export const hydrateQueryFilterFields = (fields?: QueryFilterFieldConfig[]) => {
         : field?.precision,
     } as QueryFilterFieldConfig;
   });
+};
+
+export const transformLegacyFormFields = (fields?: FormField[]): QueryFilterFieldConfig[] => {
+  if (!Array.isArray(fields)) {
+    return [];
+  }
+
+  return fields.map((field, index) => {
+    const normalizedLabel = field.label?.trim() || `字段${index + 1}`;
+    const normalizedField = field.name?.trim() || `field_${index + 1}`;
+    const baseConfig = {
+      id: field.id || `custom-form-field-${index + 1}`,
+      label: normalizedLabel,
+      field: normalizedField,
+      required: field.required,
+      defaultValue: field.defaultValue,
+    };
+
+    switch (field.type) {
+      case 'textarea':
+        return {
+          ...baseConfig,
+          type: 'textarea',
+          placeholder: `请输入${normalizedLabel}`,
+        } as QueryFilterFieldConfig;
+      case 'number':
+        return {
+          ...baseConfig,
+          type: 'inputNumber',
+          placeholder: `请输入${normalizedLabel}`,
+        } as QueryFilterFieldConfig;
+      case 'select':
+        return {
+          ...baseConfig,
+          type: 'select',
+          placeholder: `请选择${normalizedLabel}`,
+          mode: 'single',
+          showSearch: false,
+          dataSourceType: 'manual',
+          manualOptions: field.options?.map(option => ({ ...option })) || [],
+        } as QueryFilterFieldConfig;
+      case 'radio':
+        return {
+          ...baseConfig,
+          type: 'radioGroup',
+          direction: 'horizontal',
+          dataSourceType: 'manual',
+          manualOptions: field.options?.map(option => ({ ...option })) || [],
+        } as QueryFilterFieldConfig;
+      case 'date':
+        return {
+          ...baseConfig,
+          type: 'datePicker',
+          placeholder: `请选择${normalizedLabel}`,
+          pickerType: 'date',
+        } as QueryFilterFieldConfig;
+      case 'checkbox':
+        return {
+          ...baseConfig,
+          type: 'checkboxGroup',
+          direction: 'horizontal',
+          dataSourceType: 'manual',
+          manualOptions: field.options?.map(option => ({ ...option })) || [],
+          defaultValue: Array.isArray(field.defaultValue)
+            ? field.defaultValue
+            : field.defaultValue == null || field.defaultValue === ''
+              ? undefined
+              : [field.defaultValue],
+        } as QueryFilterFieldConfig;
+      case 'text':
+      default:
+        return {
+          ...baseConfig,
+          type: 'input',
+          placeholder: `请输入${normalizedLabel}`,
+        } as QueryFilterFieldConfig;
+    }
+  });
+};
+
+export const getUnifiedFormFields = (
+  fields?: QueryFilterFieldConfig[] | FormField[],
+  legacyFields?: FormField[],
+) => {
+  if (Array.isArray(fields) && fields.length > 0) {
+    const hasLegacyShape = fields.some(field => 'name' in field && !('field' in field));
+    return hasLegacyShape
+      ? hydrateQueryFilterFields(transformLegacyFormFields(fields as FormField[]))
+      : hydrateQueryFilterFields(fields as QueryFilterFieldConfig[]);
+  }
+
+  return hydrateQueryFilterFields(transformLegacyFormFields(legacyFields));
 };
 
 const normalizeRequestConfig = (requestConfig?: QueryFilterRequestConfig) => {
@@ -222,7 +320,7 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
     return [];
   }
 
-  const placeholderFieldTypes = ['input', 'select', 'datePicker', 'inputNumber'];
+  const placeholderFieldTypes = ['input', 'textarea', 'select', 'datePicker', 'inputNumber'];
 
   return hydratedFields.map(field => {
     const normalizedField: QueryFilterFieldConfig = {
@@ -283,7 +381,7 @@ export const normalizeQueryFilterFields = (fields?: QueryFilterFieldConfig[]) =>
       normalizedField.dataSourceType = undefined;
     }
 
-    if (field.type !== 'input') {
+    if (!['input', 'textarea'].includes(field.type)) {
       normalizedField.maxLength = undefined;
       normalizedField.addonBefore = undefined;
       normalizedField.addonAfter = undefined;

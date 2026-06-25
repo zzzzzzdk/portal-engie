@@ -156,6 +156,7 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
                           <Input placeholder="/dashboard" />
                        </Form.Item>
 
+                       {/* 暂时停用所属系统配置，保留实现以便后续恢复
                        <Form.Item
                           {...restField}
                           name={[name, 'systemId']}
@@ -164,6 +165,7 @@ const LinkConfig: React.FC<WidgetConfigProps> = () => {
                        >
                           <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                        </Form.Item>
+                       */}
 
                        <Form.Item
                           {...restField}

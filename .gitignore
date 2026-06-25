@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules
 **/node_modules
 /.pnp
@@ -114,3 +114,16 @@ $RECYCLE.BIN/
 *~
 .directory
 .Trash-*
+
+
+playwright-report
+images/
+.vscode
+# native-form test sandbox
+tests/*
+!tests/e2e/
+!tests/e2e/**
+
+# Playwright artifacts
+playwright-report/
+test-results/

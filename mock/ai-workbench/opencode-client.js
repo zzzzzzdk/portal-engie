@@ -294,7 +294,7 @@ const requestJson = async (path, options = {}) => {
       const error = new Error(
         payload?.message
         || payload?.error?.message
-        || `OpenCode request failed: ${response.status}`,
+        || `AI service request failed: ${response.status}`,
       );
       error.statusCode = response.status;
       error.payload = payload;
@@ -330,7 +330,7 @@ const requestEmpty = async (path, options = {}) => {
       const error = new Error(
         payload?.message
         || payload?.error?.message
-        || `OpenCode request failed: ${response.status}`,
+        || `AI service request failed: ${response.status}`,
       );
       error.statusCode = response.status;
       error.payload = payload;
@@ -405,7 +405,7 @@ const consumeEventStream = async ({
       const error = new Error(
         payload?.message
         || payload?.error?.message
-        || `OpenCode event stream failed: ${response.status}`,
+        || `AI service event stream failed: ${response.status}`,
       );
       error.statusCode = response.status;
       error.payload = payload;
@@ -413,7 +413,7 @@ const consumeEventStream = async ({
     }
 
     if (!response.body) {
-      throw new Error('OpenCode event stream body is empty.');
+      throw new Error('AI service event stream body is empty.');
     }
 
     const reader = response.body.getReader();
@@ -496,7 +496,7 @@ const resolveSupportedModel = async (signal, authorization) => {
         payload?.default && typeof payload.default === 'object' ? payload.default : {};
 
       if (!providers.length) {
-        throw new Error('OpenCode did not return any configured providers.');
+        throw new Error('AI service did not return any configured providers.');
       }
 
       const provider =
@@ -682,7 +682,7 @@ const abortSession = async (sessionId, authorization) => {
     });
   } catch (error) {
     if (!isAbortError(error)) {
-      console.warn('Failed to abort OpenCode session:', error);
+      console.warn('Failed to abort AI service session:', error);
     }
   }
 };

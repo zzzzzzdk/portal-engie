@@ -15,6 +15,7 @@ var microAppRouter = require("./routes/micro-app");
 var agentChatRouter = require("./routes/agent-chat");
 var dataSourceRouter = require("./routes/data-source");
 var globalConfigRouter = require("./routes/global-config");
+var localComponentLibraryRouter = require("./routes/local-component-library");
 
 var baseApi = "/";
 var app = express();
@@ -86,6 +87,7 @@ app.use(baseApi, microAppRouter);
 app.use(baseApi, agentChatRouter);
 app.use(baseApi, dataSourceRouter);
 app.use(baseApi, globalConfigRouter);
+app.use(baseApi, localComponentLibraryRouter);
 
 app.use(function (req, res, next) {
   next(createError(404));

@@ -9,6 +9,9 @@ import type { NavItem, Widget, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
 import { requestWidgetApi } from '@/utils/widgetApi'
 import { DEFAULT_NAV_GROUP_LIST_FIELD } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 import './index.scss'
 
 interface NavGroupWidgetConfig extends WidgetConfig {
@@ -68,7 +71,7 @@ const ICON_BG_GRADIENT_PRESETS = [
 ]
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: '工作台' },
+  { id: '1', url: '/dashboard', icon: 'DashboardOutlined', name: 'Dashboard' },
   { id: '2', url: '/settings', icon: 'SettingOutlined', name: '设置' },
   { id: '3', url: '/users', icon: 'UserOutlined', name: '用户' },
   { id: '4', url: '/files', icon: 'FolderOutlined', name: '文件' },
@@ -82,6 +85,8 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
 
@@ -138,6 +143,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
         dataField: widgetConfig?.apiDataField,
         listField: widgetConfig?.apiListField || DEFAULT_NAV_GROUP_LIST_FIELD,
         timeout: widgetConfig?.timeout,
+        runtimeParams: runtimeParamsRef.current,
       })
       const sourceList = result.list.length
         ? result.list
@@ -145,9 +151,12 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
           ? result.data
           : []
       setNavItems(sourceList)
+      emitWidgetEvent('data.loaded', { items: sourceList, raw: result.raw }, 'system')
     } catch (err: any) {
       console.error('NavGroupWidget: 加载数据失败', err)
-      setError(err.message || '数据加载失败')
+      const message = err.message || '数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
       setNavItems(DEFAULT_NAV_ITEMS)
     } finally {
       setLoading(false)
@@ -161,7 +170,32 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
     widgetConfig?.apiListField,
     widgetConfig?.apiMethod,
     widgetConfig?.apiQuery,
+    emitWidgetEvent,
+    runtimeParamsRef,
   ])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      loadData()
+    },
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      loadData()
+    },
+  })
 
   useEffect(() => {
     loadData()
@@ -188,7 +222,9 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
     }
   }, [widget?.refreshCount, loadData])
 
-  const handleItemClick = (item: NavItem) => {
+  const handleItemClick = (item: NavItem, index: number) => {
+    emitWidgetEvent('nav.itemClick', { item, index, systemId: item.systemId, url: item.url }, 'click')
+
     if (!canItemJump(item)) {
       return
     }
@@ -283,7 +319,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
                   'nav-group-widget__flex-item--clickable': canItemJump(item),
                   'nav-group-widget__flex-item--disabled': !isAvailable && item.url,
                 })}
-                onClick={() => handleItemClick(item)}
+                onClick={() => handleItemClick(item, index)}
               >
                 {renderIconBadge(item, index, { marginBottom: showLabel ? 8 : 0 })}
                 {showLabel && (
@@ -322,7 +358,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
                   'nav-group-widget__grid-item--clickable': canItemJump(item),
                   'nav-group-widget__grid-item--disabled': !isAvailable && item.url,
                 })}
-                onClick={() => handleItemClick(item)}
+                onClick={() => handleItemClick(item, index)}
               >
                 {renderIconBadge(item, index, { marginBottom: showLabel ? 8 : 0 })}
                 {showLabel && (
@@ -374,7 +410,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
                 WebkitBackdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
               }}
               title={item.name}
-              onClick={() => handleItemClick(item)}
+              onClick={() => handleItemClick(item, index)}
             >
               <span className="nav-group-widget__text-icon">
                 <IconRenderer
@@ -421,7 +457,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
                 WebkitBackdropFilter: itemBlur > 0 ? `blur(${itemBlur}px)` : undefined,
               }}
               title={item.name}
-              onClick={() => handleItemClick(item)}
+              onClick={() => handleItemClick(item, index)}
             >
               <span className="nav-group-widget__tag-text">{item.name}</span>
             </Tag>
@@ -443,7 +479,7 @@ const NavGroupWidget: React.FC<NavGroupWidgetProps> = ({ config, widget, isEditM
               'nav-group-widget__list-item--clickable': canItemJump(item),
               'nav-group-widget__list-item--disabled': !isAvailable && item.url,
             })}
-            onClick={() => handleItemClick(item)}
+            onClick={() => handleItemClick(item, index)}
           >
             {renderIconBadge(item, index, { marginRight: 12 })}
             <div className="nav-group-widget__list-content">

@@ -4,6 +4,9 @@ import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { requestWidgetApi } from '@/utils/widgetApi'
 import { getWidgetDefaultFieldValue } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 
 interface NewsItem {
   id?: string
@@ -55,6 +58,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const newsConfig = config as NewsWidgetConfig
   const apiEndpoint = newsConfig?.apiEndpoint
@@ -97,6 +102,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
           dataField: newsConfig?.apiDataField,
           listField: newsConfig?.apiListField || defaultListField,
           timeout: newsConfig?.timeout,
+          runtimeParams: runtimeParamsRef.current,
         })
 
         const sourceList = result.list.length
@@ -105,7 +111,9 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
             ? result.data
             : []
 
-        setNewsData(transformData(sourceList).slice(0, maxItems))
+        const nextData = transformData(sourceList).slice(0, maxItems)
+        setNewsData(nextData)
+        emitWidgetEvent('data.loaded', { items: nextData, raw: sourceList }, 'system')
       } else if (isStaticDataSource && Array.isArray(staticData)) {
         setNewsData(transformData(staticData).slice(0, maxItems))
       } else {
@@ -114,7 +122,9 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
       }
     } catch (err: any) {
       console.error('加载新闻数据失败:', err)
-      setError(err.message || '数据加载失败')
+      const message = err.message || '数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
@@ -128,6 +138,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
     newsConfig?.apiListField,
     newsConfig?.apiMethod,
     newsConfig?.apiQuery,
+    emitWidgetEvent,
+    runtimeParamsRef,
     isStaticDataSource,
     staticData,
     transformData,
@@ -159,10 +171,35 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ config, widget, isEditMode }) =
   }, [widget?.refreshCount, loadData])
 
   const handleNewsClick = (item: NewsItem) => {
+    emitWidgetEvent('news.itemClick', { item }, 'click')
+
     if (item.url && !isEditMode) {
       window.open(item.url, '_blank', 'noopener,noreferrer')
     }
   }
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      loadData()
+    },
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      loadData()
+    },
+  })
 
   if (error) {
     return (

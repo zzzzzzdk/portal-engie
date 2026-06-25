@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import { Button, Switch, Tooltip } from 'antd';
 import {
@@ -14,6 +14,15 @@ import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import clsx from 'clsx';
 import './index.scss';
+
+const LEGACY_DEFAULT_POSITION = { x: 100, y: 100 };
+const PANEL_EDGE_OFFSET = 16;
+
+const isLegacyDefaultPosition = (position: { x: number; y: number }) =>
+  position.x === LEGACY_DEFAULT_POSITION.x && position.y === LEGACY_DEFAULT_POSITION.y;
+
+const shouldUseTopRightDefault = (position: { x: number; y: number }) =>
+  position.x < 0 || position.y < 0 || isLegacyDefaultPosition(position);
 
 interface FloatingControlPanelProps {
   onAddWidget: () => void;
@@ -44,16 +53,38 @@ const FloatingControlPanel: React.FC<FloatingControlPanelProps> = ({
   } = useStore();
   const { isDark } = useCanvasTheme();
 
-  const nodeRef = useRef(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const [panelPosition, setPanelPosition] = useState(floatingPanelPosition);
+
+  useEffect(() => {
+    setPanelPosition(floatingPanelPosition);
+  }, [floatingPanelPosition]);
+
+  useLayoutEffect(() => {
+    if (!shouldUseTopRightDefault(floatingPanelPosition)) {
+      return;
+    }
+
+    const panelWidth = nodeRef.current?.offsetWidth || 0;
+    const nextPosition = {
+      x: Math.max(window.innerWidth - panelWidth - PANEL_EDGE_OFFSET, PANEL_EDGE_OFFSET),
+      y: PANEL_EDGE_OFFSET,
+    };
+
+    setPanelPosition(nextPosition);
+    setFloatingPanelPosition(nextPosition);
+  }, [floatingPanelPosition, setFloatingPanelPosition]);
 
   const handleDragStop = (_e: any, data: { x: number; y: number }) => {
-    setFloatingPanelPosition({ x: data.x, y: data.y });
+    const nextPosition = { x: data.x, y: data.y };
+    setPanelPosition(nextPosition);
+    setFloatingPanelPosition(nextPosition);
   };
 
   return (
     <Draggable
       handle=".drag-handle"
-      defaultPosition={floatingPanelPosition}
+      position={panelPosition}
       onStop={handleDragStop}
       nodeRef={nodeRef}
       bounds="parent"

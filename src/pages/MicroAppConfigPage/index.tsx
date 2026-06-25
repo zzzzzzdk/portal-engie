@@ -37,6 +37,7 @@ import {
   saveModule,
   saveEvent,
   deleteMicroAppItem,
+  type MicroAppReference,
   importMicroAppConfig,
   exportMicroAppConfig,
   downloadMicroAppConfig,
@@ -50,6 +51,88 @@ import './index.scss';
 
 // 使用 MicroAppMetadata 作为 MicroAppConfig 的别名
 type MicroAppConfig = MicroAppMetadata;
+
+const MICRO_APP_IN_USE_CODE = 43709;
+
+interface MicroAppDeleteErrorPayload {
+  code?: number;
+  message?: string;
+  data?: {
+    references?: MicroAppReference[];
+  };
+  references?: MicroAppReference[];
+}
+
+const versionLabelMap: Record<string, string> = {
+  draft: '草稿',
+  published: '发布版本',
+};
+
+const refTypeLabelMap: Record<string, string> = {
+  widget: '页面组件',
+  floatingModule: '悬浮微应用',
+};
+
+const getDeleteErrorPayload = (error: any): MicroAppDeleteErrorPayload | undefined => {
+  return error?.response?.data || error?.data || error;
+};
+
+const getDeleteReferences = (payload?: MicroAppDeleteErrorPayload) => {
+  return payload?.data?.references || payload?.references || [];
+};
+
+const showMicroAppInUseModal = (payload?: MicroAppDeleteErrorPayload) => {
+  const references = getDeleteReferences(payload);
+  Modal.warning({
+    title: payload?.message || '该微应用已被应用引用，不能删除',
+    width: 720,
+    content: (
+      <div>
+        <Typography.Paragraph type="secondary">
+          请先在引用应用中移除该微应用后，再返回微应用配置页面删除。
+        </Typography.Paragraph>
+        {references.length > 0 ? (
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {references.map((ref, index) => (
+              <div
+                key={`${ref.dashboardId}-${ref.version}-${ref.type}-${ref.refId || index}`}
+                style={{
+                  padding: '10px 0',
+                  borderBottom: index === references.length - 1 ? 'none' : '1px solid #f0f0f0',
+                }}
+              >
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Typography.Text strong>
+                    {index + 1}. {ref.dashboardTitle || ref.dashboardId || '未命名应用'}
+                  </Typography.Text>
+                  <Space wrap size={[8, 4]}>
+                    <Tag color="blue">{versionLabelMap[ref.version] || ref.version || '未知版本'}</Tag>
+                    <Tag color="cyan">{refTypeLabelMap[ref.type] || ref.type || '未知引用类型'}</Tag>
+                    {ref.refTitle && <Tag>{ref.refTitle}</Tag>}
+                  </Space>
+                  <Typography.Text type="secondary">
+                    应用ID：{ref.dashboardId || '-'}；组件ID：{ref.refId || '-'}
+                  </Typography.Text>
+                </Space>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Typography.Text type="secondary">后端未返回引用详情，请检查相关应用配置。</Typography.Text>
+        )}
+      </div>
+    ),
+  });
+};
+
+const handleDeleteFailure = (error: any) => {
+  const payload = getDeleteErrorPayload(error);
+  if (payload?.code === MICRO_APP_IN_USE_CODE) {
+    showMicroAppInUseModal(payload);
+    return true;
+  }
+  return false;
+};
 
 const MicroAppConfigPage: React.FC = () => {
   const [config, setConfig] = useState<MicroAppConfig>({ version: '1.0.0', apps: [] });
@@ -305,9 +388,14 @@ const MicroAppConfigPage: React.FC = () => {
         const targetPage = shouldGoPrev ? current - 1 : current;
         await fetchList(targetPage, pageSize, currentKeyword);
       } else {
-        message.error(res.message || '删除失败');
+        if (!handleDeleteFailure(res)) {
+          message.error(res.message || '删除失败');
+        }
       }
     } catch (error: any) {
+      if (handleDeleteFailure(error)) {
+        return;
+      }
       message.error('删除失败: ' + (error.message || '未知错误'));
       console.error('Delete system error:', error);
     }
@@ -367,9 +455,14 @@ const MicroAppConfigPage: React.FC = () => {
         message.success('微应用已删除');
         await fetchList(pagination.current, pagination.pageSize, currentKeyword);
       } else {
-        message.error(res.message || '删除失败');
+        if (!handleDeleteFailure(res)) {
+          message.error(res.message || '删除失败');
+        }
       }
     } catch (error: any) {
+      if (handleDeleteFailure(error)) {
+        return;
+      }
       message.error('删除失败: ' + (error.message || '未知错误'));
       console.error('Delete module error:', error);
     }

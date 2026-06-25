@@ -1,0 +1,86 @@
+name: Release Build Multi-Arch
+
+on:
+  release:
+    types: [published, edited]
+
+env:
+  HARBOR_REGISTRY: harbor.yisa.com.cn
+  HARBOR_PROJECT: ${{ gitea.repository_owner }}
+  RAW_IMAGE_NAME: portal-engine-frontend #${{ gitea.repository }}
+  VERSION: ${{ gitea.ref_name }}
+
+jobs:
+  build-amd64:
+    runs-on: [amd64]
+    steps:
+      - name: Checkout
+        uses: http://git.yisa.com.cn/newRDP/checkout@v3
+
+      - name: Normalize image name
+        run: |
+          IMAGE_NAME=$(echo "$RAW_IMAGE_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITEA_ENV
+          HARBOR_PROJECT=$(echo "$HARBOR_PROJECT" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "HARBOR_PROJECT=$HARBOR_PROJECT" >> $GITEA_ENV
+
+      - name: Login Harbor
+        run: echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $HARBOR_REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
+
+      - name: Build amd64
+        run: |
+          IMAGE=$HARBOR_REGISTRY/$HARBOR_PROJECT/$IMAGE_NAME:$VERSION-amd64
+          docker build --platform linux/amd64 -t $IMAGE -f ./manifest/Dockerfile .
+          docker push $IMAGE
+
+
+  build-arm64:
+    runs-on: [arm64]
+
+    steps:
+      - name: Checkout
+        uses: http://git.yisa.com.cn/newRDP/checkout@v3
+
+      - name: Normalize image name
+        run: |
+          IMAGE_NAME=$(echo "$RAW_IMAGE_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITEA_ENV
+          HARBOR_PROJECT=$(echo "$HARBOR_PROJECT" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "HARBOR_PROJECT=$HARBOR_PROJECT" >> $GITEA_ENV
+
+      - name: Login Harbor
+        run: echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $HARBOR_REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
+
+      - name: Build arm64
+        run: |
+          IMAGE=$HARBOR_REGISTRY/$HARBOR_PROJECT/$IMAGE_NAME:$VERSION-arm64
+          docker build --platform linux/arm64 -t $IMAGE -f ./manifest/Dockerfile .
+          docker push $IMAGE
+
+  manifest:
+    runs-on: [amd64]
+    needs: [build-amd64, build-arm64]
+
+    steps:
+      - name: Login Harbor
+        run: echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $HARBOR_REGISTRY -u "${{ secrets.HARBOR_USER }}" --password-stdin
+
+      - name: Normalize image name
+        run: |
+          IMAGE_NAME=$(echo "$RAW_IMAGE_NAME" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITEA_ENV
+          HARBOR_PROJECT=$(echo "$HARBOR_PROJECT" | tr '[:upper:]' '[:lower:]' | tr '/' '_')
+          echo "HARBOR_PROJECT=$HARBOR_PROJECT" >> $GITEA_ENV
+
+      - name: Merge manifest
+        run: |
+          export DOCKER_CLI_EXPERIMENTAL=enabled
+          export DOCKER_OPTS="--insecure-registry harbor.yisa.com.cn"
+
+          IMAGE_BASE=$HARBOR_REGISTRY/$HARBOR_PROJECT/$IMAGE_NAME
+
+          docker manifest create $IMAGE_BASE:$VERSION \
+            $IMAGE_BASE:$VERSION-amd64 \
+            $IMAGE_BASE:$VERSION-arm64
+
+          docker manifest push --insecure --purge $IMAGE_BASE:$VERSION

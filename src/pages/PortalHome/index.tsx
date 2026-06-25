@@ -6,6 +6,9 @@ import { getCurrentHomepageDashboard, parseDashboardSnapshot, PublishedDashboard
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
 import { useConfigStore } from '@/store/useConfigStore'
 import { useStore } from '@/store/useStore'
+import 'gridstack/dist/gridstack.min.css'
+import '@/pages/DashboardGridStack/index.scss'
+import '@/pages/DashboardPreview/index.scss'
 import DashboardCanvasRenderer, { countDashboardMicroApps } from '@/pages/DashboardPreview/dashboard-preview-renderer'
 
 const PortalHome: React.FC = () => {

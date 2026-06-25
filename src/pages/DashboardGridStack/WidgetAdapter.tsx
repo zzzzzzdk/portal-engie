@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Widget 适配层 - 桥接 GridStack 和现有 Widget 组件
  *
  * GridStack content 格式: JSON.stringify({ widgetId, type, config })
@@ -14,6 +14,8 @@ import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
 import IndicatorCardWidget from '@/components/widgets/IndicatorCardWidget';
+import IndicatorCardListWidget from '@/components/widgets/IndicatorCardListWidget';
+import RecognitionCardWidget from '@/components/widgets/RecognitionCardWidget';
 import ChartWidget from '@/components/widgets/ChartWidget/index.';
 import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
@@ -23,6 +25,8 @@ import QueryFilterWidget from '@/components/widgets/QueryFilterWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
+import NativeFormWidget from '@/components/widgets/NativeFormWidget';
+import NativeFormFieldWidget from '@/components/widgets/NativeFormFieldWidget';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
 import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
@@ -87,7 +91,7 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
   // - typography: 文本组件，缩小时仍需显示内容
   // - navGroup: 导航组组件，缩小时仍需显示导航项
   // - headerBar: 导航栏组件，通常不会缩小到 icon 尺寸
-  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'richText', 'navGroup', 'headerBar', 'carousel'];
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'richText', 'navGroup', 'headerBar', 'carousel', 'nativeForm', 'nativeFormField'];
   const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
@@ -112,6 +116,10 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <StatsWidget {...commonProps} />;
       case 'indicatorCard':
         return <IndicatorCardWidget {...commonProps} />;
+      case 'indicatorCardList':
+        return <IndicatorCardListWidget {...commonProps} />;
+      case 'recognitionCard':
+        return <RecognitionCardWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
       case 'carousel':
@@ -132,6 +140,10 @@ const WidgetAdapter: React.FC<WidgetAdapterProps> = ({ widgetId, type }) => {
         return <CardGridWidget {...commonProps} />;
       case 'customForm':
         return <CustomFormWidget {...commonProps} />;
+      case 'nativeForm':
+        return <NativeFormWidget {...commonProps} />;
+      case 'nativeFormField':
+        return <NativeFormFieldWidget {...commonProps} />;
       case 'headerBar':
         return <HeaderBarWidget {...commonProps} />;
       case 'typography':

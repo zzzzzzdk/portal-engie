@@ -27,6 +27,7 @@ import { uploadImage } from '@/services';
 import {
   buildHeaderMap,
   cloneKeyValueItems,
+  isDataSourceSelectionLocked,
   UNIFIED_DATA_SOURCE_OPTIONS,
 } from './dataSourceHelpers';
 import '../index.scss';
@@ -34,6 +35,8 @@ import '../index.scss';
 const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
   const [uploadingIndex, setUploadingIndex] = useState<string | null>(null);
   const dataSourceType = Form.useWatch('dataSourceType', form) || 'static';
+  const dataSourceIdValue = Form.useWatch(['apiConfig', 'dataSourceId'], form);
+  const isSelectedDataSourceLocked = isDataSourceSelectionLocked(dataSourceType, dataSourceIdValue);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue({
@@ -177,6 +180,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                           <ColorPicker showText allowClear />
                         </Form.Item>
                       </div>
+                      {/* 暂时停用所属系统配置，保留实现以便后续恢复
                       <Form.Item
                         {...restField}
                         name={[name, 'systemId']}
@@ -208,6 +212,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                           allowClear
                         />
                       </Form.Item>
+                      */}
                       <Form.Item {...restField} name={[name, 'overlayColor']} label="遮罩颜色">
                         <ColorPicker showText allowClear />
                       </Form.Item>
@@ -253,6 +258,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
               <Form.Item name={['apiConfig', 'method']} noStyle initialValue="GET">
                 <Select
                   className="widget-api-endpoint-row__method"
+                  disabled={isSelectedDataSourceLocked}
                   options={[
                     { value: 'GET', label: 'GET' },
                     { value: 'POST', label: 'POST' },
@@ -267,6 +273,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
                 <Input
                   className="widget-api-endpoint-row__input"
                   placeholder={getWidgetApiEndpointPlaceholder('carousel')}
+                  disabled={isSelectedDataSourceLocked}
                 />
               </Form.Item>
             </div>
@@ -277,7 +284,7 @@ const CarouselDataConfig: React.FC<WidgetConfigProps> = ({ form }) => {
             label="列表字段路径"
             tooltip="默认按 data.carousel.items 取值，修改后会严格按填写路径取值。"
           >
-            <Input placeholder={DEFAULT_CAROUSEL_LIST_FIELD} />
+            <Input placeholder={DEFAULT_CAROUSEL_LIST_FIELD} disabled={isSelectedDataSourceLocked} />
           </Form.Item>
 
           <Form.Item label="参数配置" className="widget-api-form-item">

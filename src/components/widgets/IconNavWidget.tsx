@@ -4,6 +4,7 @@ import IconRenderer from '@/components/IconRenderer'
 import { useSystemStore } from '@/store/useSystemStore'
 import type { Widget, WidgetConfig } from '@/types'
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 
 interface IconNavWidgetConfig extends WidgetConfig {
   icon?: string
@@ -30,9 +31,10 @@ const normalizeColor = (color: any, defaultColor: string): string => {
   return defaultColor
 }
 
-const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, isEditMode }) => {
+const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget, isEditMode }) => {
   const sysConfig = useSystemStore(state => state.sysConfig)
   const widgetConfig = config as IconNavWidgetConfig
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
 
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
 
@@ -45,6 +47,8 @@ const IconNavWidget: React.FC<IconNavWidgetProps> = ({ config, widget: _widget, 
   const canJump = Boolean(url) && !isEditMode && isAvailable
 
   const handleClick = () => {
+    emitWidgetEvent('nav.click', { url, icon, title: widgetConfig?.title, systemId: widgetConfig?.systemId }, 'click')
+
     if (!canJump) {
       return
     }

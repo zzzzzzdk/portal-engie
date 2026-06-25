@@ -76,6 +76,9 @@
 
   .icon-picker-text {
     flex: 1;
+    display: block;
+    min-width: 0;
+    max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

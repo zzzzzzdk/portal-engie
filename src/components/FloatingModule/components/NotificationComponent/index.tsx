@@ -16,12 +16,14 @@ interface NotificationComponentProps {
   notifications?: Notification[];
   onNotificationClick?: (notification: Notification) => void;
   onMarkAllRead?: () => void;
+  emitWidgetEvent?: (eventName: string, payload: Record<string, any>, trigger?: 'click' | 'change' | 'submit' | 'reset' | 'system') => void;
 }
 
 const NotificationComponent: React.FC<NotificationComponentProps> = ({
   notifications = [],
   onNotificationClick,
-  onMarkAllRead
+  onMarkAllRead,
+  emitWidgetEvent
 }) => {
   const [activeTab, setActiveTab] = useState('all');
 
@@ -74,7 +76,10 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
         <div className="header-actions">
           {unreadCount > 0 && <Badge count={unreadCount} />}
           {unreadCount > 0 && (
-            <a onClick={onMarkAllRead}>全部已读</a>
+            <a onClick={() => {
+              emitWidgetEvent?.('notification.read', { all: true }, 'click');
+              onMarkAllRead?.();
+            }}>全部已读</a>
           )}
         </div>
       </div>
@@ -97,7 +102,13 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
             renderItem={item => (
               <List.Item
                 className={item.read ? 'read' : 'unread'}
-                onClick={() => onNotificationClick?.(item)}
+                onClick={() => {
+                  emitWidgetEvent?.('notification.click', { notification: item }, 'click');
+                  if (!item.read) {
+                    emitWidgetEvent?.('notification.read', { id: item.id, notification: item }, 'click');
+                  }
+                  onNotificationClick?.(item);
+                }}
               >
                 <div className="notification-item">
                   <div className="icon">{getIcon(item.type)}</div>

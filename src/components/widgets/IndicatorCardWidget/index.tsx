@@ -4,6 +4,9 @@ import type { Widget, WidgetConfig } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { requestWidgetApi } from '@/utils/widgetApi'
 import { getWidgetDefaultFieldValue } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 import './index.scss'
 
 interface IndicatorCardWidgetConfig extends WidgetConfig {
@@ -53,6 +56,8 @@ const formatIndicatorValue = (value: unknown) => {
 const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widget }) => {
   const widgetConfig = config as IndicatorCardWidgetConfig
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardData, setCardData] = useState<IndicatorCardData>({
@@ -85,6 +90,7 @@ const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widge
         body: widgetConfig.apiBody,
         dataField: widgetConfig.apiDataField || defaultDataField,
         timeout: widgetConfig?.timeout,
+        runtimeParams: runtimeParamsRef.current,
       })
 
       const payload = resolveApiPayload(result.data ?? result.raw)
@@ -92,19 +98,25 @@ const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widge
       const descriptionField = widgetConfig?.descriptionField || 'description'
 
       if (payload && typeof payload === 'object') {
-        setCardData({
+        const nextData = {
           value: (payload as Record<string, unknown>)[valueField],
           description: (payload as Record<string, unknown>)[descriptionField],
-        })
+        }
+        setCardData(nextData)
+        emitWidgetEvent('data.loaded', { data: nextData, raw: payload }, 'system')
       } else {
-        setCardData({
+        const nextData = {
           value: payload,
           description: '',
-        })
+        }
+        setCardData(nextData)
+        emitWidgetEvent('data.loaded', { data: nextData, raw: payload }, 'system')
       }
     } catch (err: any) {
-      console.error('加载指标卡数据失败:', err)
-      setError(err?.message || '指标卡数据加载失败')
+      console.error('加载指标卡数据失败', err)
+      const message = err?.message || '指标卡数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
@@ -118,10 +130,29 @@ const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widge
     widgetConfig?.apiMethod,
     widgetConfig?.apiQuery,
     widgetConfig?.descriptionField,
+    emitWidgetEvent,
+    runtimeParamsRef,
     widgetConfig?.staticDescription,
     widgetConfig?.staticValue,
     widgetConfig?.valueField,
   ])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      void loadData()
+    },
+    setParams: (params, _message, input) => {
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, _message, input) => {
+      setRuntimeParams(params, 'replace')
+      void loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      void loadData()
+    },
+  })
 
   useEffect(() => {
     void loadData()
@@ -185,7 +216,15 @@ const IndicatorCardWidget: React.FC<IndicatorCardWidgetProps> = ({ config, widge
 
   return (
     <Spin spinning={loading} wrapperClassName="indicator-card-widget__state">
-      <div className="indicator-card-widget" style={styles}>
+      <div
+        className="indicator-card-widget"
+        style={styles}
+        onClick={() => emitWidgetEvent('card.click', {
+          value: cardData.value,
+          description: cardData.description,
+          data: cardData,
+        }, 'click')}
+      >
         <div className="indicator-card-widget__content">
           <div className="indicator-card-widget__value">{formatIndicatorValue(cardData.value)}</div>
           {cardData.description ? (

@@ -34,6 +34,7 @@ interface SwiperCarouselProps {
   swiperOptions?: SwiperOptions;
   className?: string;
   onSwiperReady?: (swiper: SwiperClass) => void;
+  onSlideChange?: (swiper: SwiperClass) => void;
 }
 
 const SwiperCarousel: React.FC<SwiperCarouselProps> = ({
@@ -42,6 +43,7 @@ const SwiperCarousel: React.FC<SwiperCarouselProps> = ({
   swiperOptions,
   className,
   onSwiperReady,
+  onSlideChange,
 }) => {
   const swiperRef = useRef<SwiperClass | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -99,6 +101,9 @@ const SwiperCarousel: React.FC<SwiperCarouselProps> = ({
           onSwiper={(instance) => {
             swiperRef.current = instance;
             onSwiperReady?.(instance);
+          }}
+          onSlideChange={(instance) => {
+            onSlideChange?.(instance);
           }}
         >
           {slides.map((slide, index) => (

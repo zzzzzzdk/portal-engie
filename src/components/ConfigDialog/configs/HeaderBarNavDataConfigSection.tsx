@@ -11,6 +11,7 @@ import { JUMP_SYSTEM_OPTIONS } from '@/constants/jumpSystem';
 import { keyValueListToObject } from '@/utils/widgetApi';
 import {
   buildHeaderMap,
+  isDataSourceSelectionLocked,
   UNIFIED_DATA_SOURCE_OPTIONS,
 } from './dataSourceHelpers';
 
@@ -41,6 +42,8 @@ const buildHeaderDataSourceFormValues = (dataSource: DataSourceItem) => ({
 const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps> = ({ form }) => {
   const showNavMenu = Form.useWatch('showNavMenu', form) ?? false;
   const navDataSource = Form.useWatch('navDataSource', form) || 'customApi';
+  const navDataSourceId = Form.useWatch('navDataSourceId', form);
+  const isSelectedDataSourceLocked = isDataSourceSelectionLocked(navDataSource, navDataSourceId);
 
   const handleDataSourceSelect = (_id: string, dataSource: DataSourceItem) => {
     form.setFieldsValue(buildHeaderDataSourceFormValues(dataSource));
@@ -105,9 +108,11 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
                         >
                           <Input placeholder="/dashboard 或 https://example.com" />
                         </Form.Item>
+                        {/* 暂时停用所属系统配置，保留实现以便后续恢复
                         <Form.Item {...restField} name={[name, 'systemId']} label="所属系统">
                           <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} allowClear />
                         </Form.Item>
+                        */}
                       </div>
                       <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false}>
                         <Select
@@ -132,7 +137,7 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
           {navDataSource === 'dataSource' ? (
             <Form.Item
               label="选择数据源接口"
-              extra="支持按名称模糊检索，选择后会自动带入接口配置。"
+              extra="支持按名称模糊搜索，选择后会自动带入接口配置。"
             >
               <DataSourceSelect
                 value={form.getFieldValue('navDataSourceId')}
@@ -147,6 +152,7 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
               <Form.Item name="navApiMethod" noStyle initialValue="GET">
                 <Select
                   className="widget-api-endpoint-row__method"
+                  disabled={isSelectedDataSourceLocked}
                   options={[
                     { value: 'GET', label: 'GET' },
                     { value: 'POST', label: 'POST' },
@@ -158,7 +164,11 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
                 noStyle
                 rules={[{ required: true, message: '请输入接口地址' }]}
               >
-                <Input className="widget-api-endpoint-row__input" placeholder="/api/header-nav" />
+                <Input
+                  className="widget-api-endpoint-row__input"
+                  placeholder="/api/header-nav"
+                  disabled={isSelectedDataSourceLocked}
+                />
               </Form.Item>
             </div>
           </Form.Item>
@@ -168,7 +178,7 @@ const HeaderBarNavDataConfigSection: React.FC<HeaderBarNavDataConfigSectionProps
             label="列表字段"
             tooltip="可填写接口返回中的导航列表字段路径，例如 data.list。留空时会自动尝试常见结构。"
           >
-            <Input placeholder="例如：data.list" />
+            <Input placeholder="例如：data.list" disabled={isSelectedDataSourceLocked} />
           </Form.Item>
 
           <Form.Item label="参数配置" className="widget-api-form-item">

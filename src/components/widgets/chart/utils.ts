@@ -35,16 +35,21 @@ const getLegendConfig = (config: ChartWidgetConfig) => {
     return { show: false }
   }
 
+  const baseLegendConfig = {
+    show: true,
+    textStyle: config.legendTextColor ? { color: config.legendTextColor } : undefined,
+  }
+
   switch (config.legendPosition) {
     case 'bottom':
-      return { show: true, bottom: 0, left: 'center' }
+      return { ...baseLegendConfig, bottom: 0, left: 'center' }
     case 'left':
-      return { show: true, left: 0, top: 'middle', orient: 'vertical' as const }
+      return { ...baseLegendConfig, left: 0, top: 'middle', orient: 'vertical' as const }
     case 'right':
-      return { show: true, right: 0, top: 'middle', orient: 'vertical' as const }
+      return { ...baseLegendConfig, right: 0, top: 'middle', orient: 'vertical' as const }
     case 'top':
     default:
-      return { show: true, top: 0, left: 'center' }
+      return { ...baseLegendConfig, top: 0, left: 'center' }
   }
 }
 
@@ -62,6 +67,23 @@ const withLegendData = (config: ChartWidgetConfig, data?: string[]) => {
 
 const getSingleSeriesLegendName = (config: ChartWidgetConfig, fallback: string) =>
   config.chartTitle?.trim() || fallback
+
+const normalizePositionValue = (value?: number | string) =>
+  typeof value === 'string' ? value.trim() || undefined : value
+
+const getTitlePositionConfig = (config: ChartWidgetConfig) => {
+  const left = normalizePositionValue(config.chartTitleLeft)
+  const top = normalizePositionValue(config.chartTitleTop)
+  const right = normalizePositionValue(config.chartTitleRight)
+  const bottom = normalizePositionValue(config.chartTitleBottom)
+
+  return {
+    ...(left != null ? { left } : {}),
+    ...(top != null ? { top } : {}),
+    ...(right != null ? { right } : {}),
+    ...(bottom != null ? { bottom } : {}),
+  }
+}
 
 const getLabelConfig = (config: ChartWidgetConfig) => ({
   show: config.showLabel === true,
@@ -146,6 +168,29 @@ const formatMapTooltip = (params: { name?: string; value?: unknown; data?: { val
   }
 
   return `${name}<br/>数值：${value}`
+}
+
+
+const formatFlowMapTooltip = (
+  params: {
+    name?: string
+    componentSubType?: string
+    value?: unknown
+    data?: { value?: unknown; rawData?: Record<string, unknown> }
+  },
+  valueField: string,
+) => {
+  const rawValue = params.componentSubType === 'effectScatter'
+    ? params.data?.rawData?.[valueField] ?? params.data?.value ?? params.value
+    : params.data?.value ?? params.value
+  const value = Array.isArray(rawValue) ? rawValue[rawValue.length - 1] : rawValue
+  const name = params?.name || '-'
+
+  if (value == null || value === '') {
+    return name
+  }
+
+  return `${name}<br/>\u6570\u503c\uff1a${value}`
 }
 
 const zipObjectArrays = (rawData: Record<string, any>, fields: string[]) => {
@@ -435,8 +480,7 @@ const getBaseOption = (config: ChartWidgetConfig) => ({
     ? {
         text: config.chartTitle || '',
         subtext: config.chartSubTitle || '',
-        left: 'center',
-        top: 0,
+        ...getTitlePositionConfig(config),
       }
     : undefined,
   tooltip: getTooltipConfig(config),
@@ -649,7 +693,7 @@ export const buildChartOption = ({
         grid: {
           ...baseOption.grid,
           left: 8,
-          right: 8,
+          right: 28,
         },
         xAxis: getValueAxisConfig(config, {
           name: config.xAxisName,
@@ -863,7 +907,11 @@ export const buildChartOption = ({
 
       return {
         ...baseOption,
-        tooltip: getTooltipConfig(config, { trigger: 'item' }),
+        tooltip: getTooltipConfig(config, {
+          trigger: 'item',
+          formatter: (params: Parameters<typeof formatFlowMapTooltip>[0]) =>
+            formatFlowMapTooltip(params, config.valueField || 'value'),
+        }),
         geo: {
           map: mapName,
           roam: config.mapRoam !== false,

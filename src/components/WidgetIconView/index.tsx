@@ -7,6 +7,7 @@ import type { Widget } from '@/types'
 import { getWidgetIcon } from '@/utils/widgetHelpers'
 import type { WidgetIconConfig } from '@/types/widget-size'
 import { microAppConfigLoader } from '@/utils/microAppConfig'
+import { useNativeFormDesignerStore } from '@/native-form/designer/store/use-native-form-designer-store'
 import { useStore } from '@/store/useStore'
 import IconRenderer, { getIconValueType } from '@/components/IconRenderer'
 import './index.scss'
@@ -25,6 +26,7 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const { removeWidget, refreshWidget, duplicateWidget, openConfigPanel } = useStore()
+  const setSelectedNativeFormNodeId = useNativeFormDesignerStore(state => state.setSelectedNodeId)
   const { w = 2, h = 2 } = widget.layout || {}
   const isSmallSize = w < 2 || h < 2
 
@@ -41,6 +43,9 @@ const WidgetIconView: React.FC<WidgetIconViewProps> = ({ widget, isEditMode, onC
 
   const handleConfig = (e?: React.MouseEvent) => {
     e?.stopPropagation()
+    if (widget.type === 'nativeForm') {
+      setSelectedNativeFormNodeId(null)
+    }
     openConfigPanel({ type: 'widget', id: widget.id })
   }
 

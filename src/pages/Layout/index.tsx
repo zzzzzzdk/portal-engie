@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Layout as AntdLayout, Button, Switch, Space, App as AntdApp, Modal, Form, Input, Menu, Spin, Dropdown, Avatar } from 'antd';
+﻿import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Layout as AntdLayout, Button, Switch, Space, App as AntdApp, Modal, Form, Input, Menu, Spin, Dropdown, Tooltip } from 'antd';
 import type { MenuProps, InputRef } from 'antd';
 import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { PlusOutlined, CloudUploadOutlined, FullscreenOutlined, SettingOutlined, DeleteOutlined, UnorderedListOutlined, ApiOutlined, SaveOutlined, CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined, LeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, ImportOutlined, FileTextOutlined, RobotOutlined, DatabaseOutlined, GlobalOutlined } from '@ant-design/icons';
-import { useStore } from '@/store/useStore';
+import { getNativeFormFieldDefaultLayout, useStore } from '@/store/useStore';
 import { useSystemStore } from '@/store/useSystemStore'
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { WidgetType, MicroAppModule, Widget } from '@/types';
@@ -17,22 +17,57 @@ import ConfigDialog from '@/components/ConfigDialog';
 import FloatingControlPanel from '@/components/FloatingControlPanel';
 import WorkspaceSidebar, { WorkspaceSidebarTabKey } from '@/components/WorkspaceSidebar';
 import WorkspaceAiFloatingCard from '@/components/WorkspaceAiFloatingCard';
+import LocalTemplateSaveDialog from '@/components/LocalTemplateSaveDialog';
+import NativeFormConfigPanel from '@/native-form/designer/components/native-form-config-panel';
+import NativeFormFieldConfigPanel from '@/native-form/designer/components/native-form-field-config-panel';
+import Icon from '@/components/Icon';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme'
 import { getStylePreset } from '@/theme/tokens/styles'
 import { useConfigStore } from '@/store/useConfigStore'
 import { useWorkspaceAiAssistantStore } from '@/store/useWorkspaceAiAssistantStore'
 import { lightPreset } from '@/theme/tokens/presets/light'
 import { useAutoSave } from '@/hooks/useAutoSave'
-import { publishDashboard, serializeDashboardSnapshot } from '@/services'
+import {
+  createLocalTemplate,
+  createLocalTemplateCategory,
+  deleteLocalTemplate,
+  deleteLocalTemplateCategory,
+  getLocalTemplateCategories,
+  getLocalTemplates,
+  publishDashboard,
+  serializeDashboardSnapshot,
+} from '@/services'
 import { abortAgentChatConversation } from '@/services/agent-chat'
-import captureDashboardCover from '@/utils/captureDashboardCover'
+import { captureAndUploadDashboardCover } from '@/utils/uploadDashboardCover'
 import { createChartWidgetByPreset, isChartPresetWidgetKey } from '@/utils/chartWidgetPreset'
 import sanitizeDashboardConfig from '@/utils/dashboardConfig'
+import { createNativeFormFieldNode } from '@/native-form/shared/field-factory'
+import { createDefaultNativeFormFieldConfig } from '@/native-form/shared/defaults'
 import {
   getInvalidGlobalThemeFallbackBackground,
   getInvalidGlobalThemeFallbackWidgetTitle,
   hasGlobalThemeScheme,
 } from '@/utils/global-config'
+import type {
+  LocalTemplateCategory,
+  LocalTemplateRecord,
+  LocalTemplateSnapshot,
+} from '@/types/local-component-library'
+import {
+  applyLocalTemplateRecordToStore,
+  buildGroupTemplateSnapshot,
+  buildLocalTemplateSignature,
+  buildWidgetTemplateSnapshot,
+  getGroupTemplateSourceMeta,
+  getWidgetTemplateSourceMeta,
+  isLocalTemplateKey,
+  parseLocalTemplateIdFromKey,
+} from '@/utils/local-component-library'
+import { setLocalTemplateRegistry, removeLocalTemplateRegistryItem } from '@/utils/local-template-registry'
+import { subscribeLocalTemplateSave } from '@/utils/local-component-library-events'
+import { resolveLocalTemplateRecord } from '@/utils/local-component-library-runtime'
+import { useNativeFormDesignerStore } from '@/native-form/designer/store/use-native-form-designer-store'
+import useSanitizeFormLabels from '@/native-form/designer/hooks/use-sanitize-form-labels'
 import Logo from '@/assets/images/logo.svg'
 import './index.scss';
 
@@ -68,6 +103,7 @@ const Layout: React.FC = () => {
     updateFloatingModuleConfig,
     clearDashboardCanvas,
     loadDashboardFromData,
+    openConfigPanel,
     closeConfigPanel,
     updateDashboardConfig,
     currentCoverUrl,
@@ -75,6 +111,7 @@ const Layout: React.FC = () => {
     isDirty,
     clearDirty,
     markDirty,
+    resetDashboardGridStack,
     pendingMicroAppDrop,
     setPendingMicroAppDrop,
   } = useStore();
@@ -111,13 +148,23 @@ const Layout: React.FC = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editingTitle, setEditingTitle] = useState('')
   const [titleSaving, setTitleSaving] = useState(false)
+  const [localTemplateCategories, setLocalTemplateCategories] = useState<LocalTemplateCategory[]>([])
+  const [localTemplates, setLocalTemplates] = useState<LocalTemplateRecord[]>([])
+  const [localTemplateDialogOpen, setLocalTemplateDialogOpen] = useState(false)
+  const [localTemplateSaving, setLocalTemplateSaving] = useState(false)
+  const [localTemplateTarget, setLocalTemplateTarget] = useState<{
+    targetType: 'widget' | 'group'
+    targetId: string
+  } | null>(null)
   const configDialogSaveRef = useRef<(() => Promise<boolean>) | null>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
   const currentCoverUrlRef = useRef('')
   const titleInputRef = useRef<InputRef>(null)
+  const layoutRootRef = useRef<HTMLDivElement>(null)
   const stableHashRef = useRef(window.location.hash || '#/')
   const skipNextHashGuardRef = useRef(false)
   const aiFloatingHideTimerRef = useRef<number | null>(null)
+  const prevWorkspaceAiKeyRef = useRef('')
   const currentAppName = dashboardConfig?.title?.trim() ? dashboardConfig.title : '未命名'
   const hasActiveAiRequest = isDashboardRoute && (aiSending || Boolean(aiAbortController))
   const draftLoading = publishLoading && publishAction === 'draft'
@@ -127,6 +174,24 @@ const Layout: React.FC = () => {
     ? '正在生成封面并发布...'
     : '正在生成封面并保存...'
   const publishingMaskText = globalMaskText || _publishingMaskText
+  const currentLocalTemplateTarget = useMemo(() => {
+    if (!localTemplateTarget) {
+      return null
+    }
+
+    if (localTemplateTarget.targetType === 'widget') {
+      return widgets.find((item) => item.id === localTemplateTarget.targetId) || null
+    }
+
+    return groups.find((item) => item.id === localTemplateTarget.targetId) || null
+  }, [groups, localTemplateTarget, widgets])
+  const nativeFormDesignerActiveWidgetId = useNativeFormDesignerStore(state => state.activeWidgetId)
+  const activateNativeFormDesigner = useNativeFormDesignerStore(state => state.activate)
+  const deactivateNativeFormDesigner = useNativeFormDesignerStore(state => state.deactivate)
+  const setSelectedNativeFormNodeId = useNativeFormDesignerStore(state => state.setSelectedNodeId)
+  const syncNativeFormDraft = useNativeFormDesignerStore(state => state.syncFromWidget)
+  const isNativeFormConfigPanelActive = configPanelTarget?.type === 'widget'
+    && widgets.some(widget => widget.id === configPanelTarget.id && widget.type === 'nativeForm')
   const configPanelWidget = useMemo(() => {
     if (!configPanelTarget) {
       return null;
@@ -153,6 +218,7 @@ const Layout: React.FC = () => {
     }
     return null;
   }, [configPanelTarget, widgets, floatingModules, groups])
+  useSanitizeFormLabels(layoutRootRef)
 
   useEffect(() => {
     if (configPanelTarget && !configPanelWidget) {
@@ -161,12 +227,55 @@ const Layout: React.FC = () => {
   }, [configPanelTarget, configPanelWidget, closeConfigPanel])
 
   useEffect(() => {
+    if (!configPanelWidget || configPanelWidget.type !== 'nativeForm') {
+      if (nativeFormDesignerActiveWidgetId) {
+        deactivateNativeFormDesigner()
+      }
+      return
+    }
+
+    activateNativeFormDesigner(
+      configPanelWidget.id,
+      configPanelWidget.config?.formSchema,
+    )
+  }, [
+    activateNativeFormDesigner,
+    configPanelWidget,
+    deactivateNativeFormDesigner,
+    nativeFormDesignerActiveWidgetId,
+  ])
+
+  useEffect(() => {
+    if (!nativeFormDesignerActiveWidgetId) {
+      return
+    }
+
+    const activeWidget = widgets.find(item => item.id === nativeFormDesignerActiveWidgetId)
+    if (!activeWidget || activeWidget.type !== 'nativeForm') {
+      return
+    }
+
+    syncNativeFormDraft(activeWidget.config?.formSchema)
+  }, [nativeFormDesignerActiveWidgetId, syncNativeFormDraft, widgets])
+
+  useEffect(() => {
+    const activeWidgetExists = nativeFormDesignerActiveWidgetId
+      ? widgets.some(widget => widget.id === nativeFormDesignerActiveWidgetId)
+      : false
+
+    if (!activeWidgetExists && nativeFormDesignerActiveWidgetId) {
+      deactivateNativeFormDesigner()
+    }
+  }, [deactivateNativeFormDesigner, nativeFormDesignerActiveWidgetId, widgets])
+
+  useEffect(() => {
     if (!isEditMode) {
       setWidgetDrawerOpen(false);
       closeConfigPanel();
       setIsEditingTitle(false);
+      deactivateNativeFormDesigner();
     }
-  }, [isEditMode, closeConfigPanel])
+  }, [isEditMode, closeConfigPanel, deactivateNativeFormDesigner])
 
   useEffect(() => {
     void ensureGlobalConfigLoaded()
@@ -316,6 +425,36 @@ const Layout: React.FC = () => {
     }
   }, [currentAppName, isEditingTitle])
 
+  const syncLocalTemplateRegistry = useCallback((templates: LocalTemplateRecord[]) => {
+    setLocalTemplateRegistry(templates)
+    setLocalTemplates(templates)
+  }, [])
+
+  const loadLocalTemplateData = useCallback(async () => {
+    const [categoryRes, templateRes] = await Promise.all([
+      getLocalTemplateCategories(),
+      getLocalTemplates(),
+    ])
+
+    setLocalTemplateCategories((categoryRes.data || []) as LocalTemplateCategory[])
+    syncLocalTemplateRegistry((templateRes.data || []) as LocalTemplateRecord[])
+  }, [syncLocalTemplateRegistry])
+
+  useEffect(() => {
+    void loadLocalTemplateData()
+  }, [loadLocalTemplateData])
+
+  useEffect(() => {
+    const subscription = subscribeLocalTemplateSave((payload) => {
+      setLocalTemplateTarget(payload)
+      setLocalTemplateDialogOpen(true)
+    })
+
+    return () => {
+      subscription?.off()
+    }
+  }, [])
+
   useEffect(() => {
     if (!isDashboardRoute && isFullScreen) {
       setFullScreen(false)
@@ -377,6 +516,11 @@ const Layout: React.FC = () => {
     dashboardConfig,
   }), [dashboardConfig, floatingModules, groups, widgets])
 
+  const workspaceAiKey = useMemo(
+    () => (editId ? `dashboard:${editId}` : 'dashboard:draft'),
+    [editId],
+  )
+
   const hasWorkspaceContent = useMemo(
     () => widgets.length > 0 || groups.length > 0 || floatingModules.length > 0,
     [floatingModules.length, groups.length, widgets.length],
@@ -412,9 +556,10 @@ const Layout: React.FC = () => {
     dashboardConfig?: typeof dashboardConfig;
   }) => {
     loadDashboardFromData(snapshot)
+    resetDashboardGridStack()
     markDirty()
     message.success('AI 已更新当前工作台')
-  }, [loadDashboardFromData, markDirty, message])
+  }, [loadDashboardFromData, markDirty, message, resetDashboardGridStack])
 
   const resetGlobalThemeConfig = useCallback(() => {
     const configStore = useConfigStore.getState()
@@ -460,6 +605,39 @@ const Layout: React.FC = () => {
     setWidgetDrawerOpen(false)
     setWorkspaceSidebarTab('widget')
   }, [])
+
+  useEffect(() => {
+    if (!isDashboardRoute) {
+      prevWorkspaceAiKeyRef.current = ''
+      return
+    }
+
+    if (!prevWorkspaceAiKeyRef.current) {
+      prevWorkspaceAiKeyRef.current = workspaceAiKey
+      return
+    }
+
+    if (prevWorkspaceAiKeyRef.current === workspaceAiKey) {
+      return
+    }
+
+    prevWorkspaceAiKeyRef.current = workspaceAiKey
+
+    const resetOnWorkspaceChange = async () => {
+      const { abortController, sending } = useWorkspaceAiAssistantStore.getState()
+      if (abortController || sending) {
+        await abortActiveAiRequest()
+      }
+      resetAiAssistantSession()
+    }
+
+    void resetOnWorkspaceChange()
+  }, [
+    abortActiveAiRequest,
+    isDashboardRoute,
+    resetAiAssistantSession,
+    workspaceAiKey,
+  ])
 
   const handleCloseWidgetSidebar = useCallback(() => {
     setWidgetDrawerOpen(false)
@@ -631,7 +809,58 @@ const Layout: React.FC = () => {
     }
   }, [pendingMicroAppDrop])
 
+  const handleCreateLocalCategory = useCallback(async (name: string) => {
+    const response = await createLocalTemplateCategory({ name })
+    if (response.code !== 20000 || !response.data) {
+      throw new Error(response.message || '创建分类失败')
+    }
+
+    setLocalTemplateCategories((prev) => [...prev, response.data as LocalTemplateCategory])
+    message.success('分类创建成功')
+  }, [message])
+
+  const handleDeleteLocalCategory = useCallback(async (categoryId: string) => {
+    const response = await deleteLocalTemplateCategory({ id: categoryId })
+    if (response.code !== 20000) {
+       message.error(response.message || '删除分类失败')
+      throw new Error(response.message || '删除分类失败')
+    }
+
+    setLocalTemplateCategories((prev) => prev.filter((item) => item.id !== categoryId))
+    message.success('分类删除成功')
+  }, [message])
+
+  const handleDeleteLocalTemplate = useCallback(async (templateId: string) => {
+    const response = await deleteLocalTemplate({ id: templateId })
+    if (response.code !== 20000) {
+      throw new Error(response.message || '删除模板失败')
+    }
+
+    setLocalTemplates((prev) => {
+      const nextTemplates = prev.filter((item) => item.id !== templateId)
+      setLocalTemplateRegistry(nextTemplates)
+      return nextTemplates
+    })
+    removeLocalTemplateRegistryItem(templateId)
+    message.success('组件模板删除成功')
+  }, [message])
+
   const handleAddWidget = (key: string) => {
+    if (isLocalTemplateKey(key)) {
+      const templateId = parseLocalTemplateIdFromKey(key)
+      void (async () => {
+        const template = await resolveLocalTemplateRecord(templateId)
+        if (!template) {
+          message.error('组件模板不存在或已删除')
+          return
+        }
+
+        applyLocalTemplateRecordToStore(template, useStore.getState())
+        message.success(`已添加组件模板：${template.name}`)
+      })()
+      return
+    }
+
     // 处理新建分组
     if (key === 'create-group') {
       handleCreateGroupContainer();
@@ -761,6 +990,8 @@ const Layout: React.FC = () => {
       dataTable: '数据表格',
       cardGrid: '卡片网格',
       customForm: '自定义表单',
+      nativeForm: '原生表单',
+      nativeFormField: '表单字段',
       headerBar: '导航栏',
       pageNavigator: '页面切换工具',
       iconNav: '图标导航',
@@ -771,6 +1002,70 @@ const Layout: React.FC = () => {
     };
     message.success(`已添加${widgetNames[key] || key}小部件`);
   };
+
+  const handleAddNativeFormField = useCallback((fieldType: string) => {
+    const nextField = createNativeFormFieldNode(fieldType as any)
+
+    if (
+      !isNativeFormConfigPanelActive &&
+      (nextField.type === 'group' || nextField.type === 'grid' || nextField.type === 'flex' || nextField.type === 'subTable')
+    ) {
+      message.warning('分组、弹性布局、栅格、子表格仅支持在原生表单内部使用，请先拖入原生表单容器')
+      return
+    }
+
+    if (isNativeFormConfigPanelActive && nativeFormDesignerActiveWidgetId) {
+      const targetWidget = widgets.find(item => item.id === nativeFormDesignerActiveWidgetId)
+      if (!targetWidget || targetWidget.type !== 'nativeForm') {
+        message.warning('当前激活的表单容器不存在')
+        return
+      }
+
+      const nextChildren = [
+        ...(targetWidget.config?.formSchema?.children || []),
+        nextField,
+      ]
+
+      updateWidget(targetWidget.id, {
+        config: {
+          ...targetWidget.config,
+          formSchema: {
+            ...targetWidget.config.formSchema,
+            children: nextChildren,
+          },
+        },
+      })
+      setSelectedNativeFormNodeId(nextField.id)
+      message.success('字段已添加到当前表单')
+      return
+    }
+
+    const fieldLayout = getNativeFormFieldDefaultLayout(nextField.type)
+    const newWidget = addWidget('nativeFormField', {
+      y: Infinity,
+      w: fieldLayout.w,
+      h: fieldLayout.h,
+      minW: fieldLayout.minW,
+      minH: fieldLayout.minH,
+    })
+    updateWidget(newWidget.id, {
+      title: nextField.label || newWidget.title,
+      config: {
+        ...createDefaultNativeFormFieldConfig(nextField),
+      },
+    })
+    openConfigPanel({ type: 'widget', id: newWidget.id })
+    message.success('独立字段已添加到画布')
+  }, [
+    addWidget,
+    isNativeFormConfigPanelActive,
+    message,
+    nativeFormDesignerActiveWidgetId,
+    openConfigPanel,
+    setSelectedNativeFormNodeId,
+    updateWidget,
+    widgets,
+  ])
 
   const handleCreateGroupContainer = () => {
     if (!isEditMode) {
@@ -844,9 +1139,132 @@ const Layout: React.FC = () => {
     message.warning('当前组件配置存在未完成的必填项，请先处理配置面板中的报错后再保存或返回');
   }, [message]);
 
+  const validateCurrentConfigPanelIfNeeded = useCallback(async (
+    target: { targetType: 'widget' | 'group'; targetId: string },
+  ) => {
+    if (!configPanelTarget || !configDialogSaveRef.current) {
+      return true
+    }
+
+    if (configPanelTarget.type !== target.targetType || configPanelTarget.id !== target.targetId) {
+      return true
+    }
+
+    const configSaved = await configDialogSaveRef.current()
+    if (!configSaved) {
+      showConfigValidationBlockedMessage()
+      return false
+    }
+
+    return true
+  }, [configPanelTarget, showConfigValidationBlockedMessage])
+
   const handleRegisterConfigSave = useCallback((handler: (() => Promise<boolean>) | null) => {
     configDialogSaveRef.current = handler;
   }, []);
+
+  const handleEditModeChange = useCallback(async (checked: boolean) => {
+    if (!checked && configDialogSaveRef.current) {
+      const configSaved = await configDialogSaveRef.current()
+      if (!configSaved) {
+        showConfigValidationBlockedMessage()
+        return
+      }
+    }
+
+    setEditMode(checked)
+  }, [setEditMode, showConfigValidationBlockedMessage]);
+
+  const handleSaveLocalTemplate = useCallback(async (
+    values: { name: string; categoryId: string },
+  ) => {
+    if (!localTemplateTarget) {
+      return
+    }
+
+    const canSaveConfig = await validateCurrentConfigPanelIfNeeded(localTemplateTarget)
+    if (!canSaveConfig) {
+      return
+    }
+
+    const latestStore = useStore.getState()
+    const targetWidget = localTemplateTarget.targetType === 'widget'
+      ? latestStore.widgets.find((item) => item.id === localTemplateTarget.targetId) || null
+      : null
+    const targetGroup = localTemplateTarget.targetType === 'group'
+      ? latestStore.groups.find((item) => item.id === localTemplateTarget.targetId) || null
+      : null
+
+    if (localTemplateTarget.targetType === 'widget' && !targetWidget) {
+      message.warning('目标组件不存在')
+      return
+    }
+
+    if (localTemplateTarget.targetType === 'group' && !targetGroup) {
+      message.warning('目标分组不存在')
+      return
+    }
+
+    let snapshot: LocalTemplateSnapshot | null = null
+    let sourceSignature = ''
+    let nextName = values.name.trim()
+
+    if (targetWidget) {
+      snapshot = buildWidgetTemplateSnapshot(targetWidget)
+      sourceSignature = buildLocalTemplateSignature(snapshot)
+      const sourceMeta = getWidgetTemplateSourceMeta(targetWidget)
+      if (sourceMeta?.sourceSignature === sourceSignature) {
+        message.warning('当前组件与来源模板无差异，无需保存')
+        return
+      }
+      nextName = nextName || targetWidget.title
+    } else if (targetGroup) {
+      const groupWidgets = latestStore.widgets.filter((item) => item.groupId === targetGroup.id)
+      if (groupWidgets.length === 0) {
+        message.warning('空分组不允许保存为分组模板')
+        return
+      }
+      snapshot = buildGroupTemplateSnapshot(targetGroup, groupWidgets)
+      sourceSignature = buildLocalTemplateSignature(snapshot)
+      const sourceMeta = getGroupTemplateSourceMeta(targetGroup)
+      if (sourceMeta?.sourceSignature === sourceSignature) {
+        message.warning('当前分组与来源模板无差异，无需保存')
+        return
+      }
+      nextName = nextName || targetGroup.title
+    }
+
+    if (!snapshot || !sourceSignature) {
+      return
+    }
+
+    try {
+      setLocalTemplateSaving(true)
+      const response = await createLocalTemplate({
+        name: nextName,
+        categoryId: values.categoryId,
+        sourceSignature,
+        snapshot,
+      })
+
+      if (response.code !== 20000 || !response.data) {
+        throw new Error(response.message || '组件模板保存失败')
+      }
+
+      setLocalTemplates((prev) => {
+        const nextTemplates = [response.data as LocalTemplateRecord, ...prev]
+        setLocalTemplateRegistry(nextTemplates)
+        return nextTemplates
+      })
+      setLocalTemplateDialogOpen(false)
+      setLocalTemplateTarget(null)
+      message.success('组件模板保存成功')
+    } catch (error: any) {
+      message.error(error?.message || '组件模板保存失败')
+    } finally {
+      setLocalTemplateSaving(false)
+    }
+  }, [localTemplateTarget, message, validateCurrentConfigPanelIfNeeded])
 
   const syncDashboardEditorParams = useCallback((responseId: string) => {
     if (!responseId) {
@@ -1007,24 +1425,34 @@ const Layout: React.FC = () => {
         dashboardConfig: publishConfig,
       };
       setIsCapturingCover(true);
-      const coverImageBase64 = await captureDashboardCover({ waitMs: 80 });
-      if (!coverImageBase64) {
-        message.warning('封面生成失败，将继续提交');
+      let uploadedCoverUrl = '';
+      try {
+        uploadedCoverUrl = await captureAndUploadDashboardCover({
+          dashboardId: editId || undefined,
+          waitMs: 80,
+        });
+        if (!uploadedCoverUrl) {
+          message.warning('封面生成失败，将继续提交');
+        }
+      } catch (coverError) {
+        console.error('封面上传失败:', coverError);
+        message.warning('封面上传失败，将继续提交');
       }
+      const finalCoverUrl = uploadedCoverUrl || currentCoverUrl || currentCoverUrlRef.current || '';
       currentAction = publishAction;
       const res = await publishDashboard({
         id: editId || undefined,
         title: values.title,
         dashboardConfig: serializeDashboardSnapshot(snapshot),
-        cover_url: coverImageBase64 || undefined,
+        cover_url: finalCoverUrl || undefined,
         action: currentAction === 'publish' ? 'publish' : 'save_draft',
       });
       if (res.code !== 20000 || !res.data) {
         throw new Error(res.message || '请求失败');
       }
       const responseId = res.data.id || editId || '';
-      if (coverImageBase64) {
-        setCurrentCoverUrl(coverImageBase64);
+      if (finalCoverUrl) {
+        setCurrentCoverUrl(finalCoverUrl);
       }
       if (responseId) {
         syncDashboardEditorParams(responseId);
@@ -1035,6 +1463,12 @@ const Layout: React.FC = () => {
       clearDirty();
       message.success(currentAction === 'publish' ? '工作台发布成功' : '暂存成功');
       publishForm.resetFields();
+      // 发布成功后跳转到应用列表页
+      if (currentAction === 'publish') {
+        setTimeout(() => {
+          navigate('/publish-list');
+        }, 500);
+      }
     } catch (error: any) {
       console.error(error);
       const errorMsg = error?.message || (currentAction === 'publish' ? "发布失败" : '暂存失败')
@@ -1186,6 +1620,9 @@ const Layout: React.FC = () => {
         }
       }
 
+      resetAiAssistantSession()
+      skipNextHashGuardRef.current = true
+      stableHashRef.current = window.location.hash || '#/'
       navigate('/publish-list')
     } finally {
       setGlobalMaskText(null);
@@ -1283,35 +1720,58 @@ const Layout: React.FC = () => {
               <div className="app-header__right">
                 <Space size="middle">
                   <Dropdown
+                    classNames={{
+                      itemContent: 'user-info'
+                    }}
                     menu={{
                       items: [
                         {
-                          key: 'user-info',
+                          key: 'user-name',
                           label: (
-                            <div>
-                              <div style={{ textAlign: "center" }}>{userInfo?.user_info?.user_name || '用户'}</div>
+                            <div className='username'>
+                              <span className='name'>{userInfo?.user_info?.name || '-'}（{userInfo?.user_info?.account || '-'}）</span>
                             </div>
+
                           ),
                           // disabled: true,
                         },
-                        { type: 'divider' },
                         {
-                          key: 'logout',
-                          icon: <LogoutOutlined />,
-                          label: '退出登录',
-                          danger: true,
-                          onClick: handleLogout,
+                          key: ' user-unit',
+                          label: (
+                            <div className="department">{userInfo?.user_info?.unit}</div>
+                          )
                         },
+                        {
+                          key: ' user-role',
+                          label: (
+                            <div className='role'>
+                              <Space className='role-list' size={6} wrap>
+                                {
+                                  userInfo?.user_info?.role && userInfo?.user_info?.role.length && userInfo?.user_info?.role.map((item, index) => {
+                                    return <span key={index} className='role-name'>{item}</span>
+                                  })
+                                }
+                              </Space>
+                            </div>
+                          )
+                        },
+                        // { type: 'divider' },
+                        // {
+                        //   key: 'logout',
+                        //   icon: <LogoutOutlined />,
+                        //   label: '退出登录',
+                        //   danger: true,
+                        //   onClick: handleLogout,
+                        // },
                       ],
                     }}
                     placement="bottomRight"
                   >
-                    {/* <Avatar
-                    style={{ cursor: 'pointer', }}
-                    icon={<UserOutlined />}
-                  /> */}
                     <UserOutlined />
                   </Dropdown>
+                  <Tooltip title="退出登录">
+                    <Button type="text" icon={<Icon type="line_tuichu" />} onClick={handleLogout} />
+                  </Tooltip>
                 </Space>
               </div>
             </Header>
@@ -1382,7 +1842,7 @@ const Layout: React.FC = () => {
               <div className="app-sub-header__actions">
                 <div className="app-sub-header__mode">
                   <span className="app-sub-header__mode-label">编辑模式</span>
-                  <Switch checked={isEditMode} onChange={setEditMode} />
+                  <Switch checked={isEditMode} onChange={checked => void handleEditModeChange(checked)} />
                 </div>
 
                 <Space size={12} wrap>
@@ -1478,7 +1938,7 @@ const Layout: React.FC = () => {
       )}
 
       <Content className="app-content">
-        <div className="app-content__workspace">
+        <div ref={layoutRootRef} className="app-content__workspace">
           {isDashboardRoute && (
             <div className={`app-content__sidebar ${widgetDrawerOpen ? 'is-open' : ''}`}>
               <WorkspaceSidebar
@@ -1488,10 +1948,19 @@ const Layout: React.FC = () => {
                 onCloseWidget={handleCloseWidgetSidebar}
                 onCloseAi={handleCloseAiSidebar}
                 onWidgetSelect={handleAddWidget}
+                onNativeFormFieldSelect={handleAddNativeFormField}
+                activeNativeFormWidgetId={nativeFormDesignerActiveWidgetId}
                 currentSnapshot={currentSnapshot}
                 hasWorkspaceContent={hasWorkspaceContent}
+                workspaceKey={workspaceAiKey}
+                workspaceTitle={currentAppName}
                 onApplySnapshot={handleApplyAiSnapshot}
                 onClearWorkspace={handleClearWorkspaceForAi}
+                localCategories={localTemplateCategories}
+                localTemplates={localTemplates}
+                onCreateLocalCategory={handleCreateLocalCategory}
+                onDeleteLocalCategory={handleDeleteLocalCategory}
+                onDeleteLocalTemplate={handleDeleteLocalTemplate}
               />
             </div>
           )}
@@ -1509,12 +1978,26 @@ const Layout: React.FC = () => {
           {isDashboardRoute && (
             <div className={`app-content__inspector ${configPanelWidget ? 'is-open' : ''}`}>
               {configPanelWidget && (
-                <ConfigDialog
-                  isOpen={!!configPanelWidget}
-                  onClose={closeConfigPanel}
-                  widget={configPanelWidget}
-                  onRegisterSaveHandler={handleRegisterConfigSave}
-                />
+                configPanelWidget.type === 'nativeForm' ? (
+                  <NativeFormConfigPanel
+                    widget={configPanelWidget}
+                    onClose={closeConfigPanel}
+                    onRegisterSaveHandler={handleRegisterConfigSave}
+                  />
+                ) : configPanelWidget.type === 'nativeFormField' ? (
+                  <NativeFormFieldConfigPanel
+                    widget={configPanelWidget}
+                    onClose={closeConfigPanel}
+                    onRegisterSaveHandler={handleRegisterConfigSave}
+                  />
+                ) : (
+                  <ConfigDialog
+                    isOpen={!!configPanelWidget}
+                    onClose={closeConfigPanel}
+                    widget={configPanelWidget}
+                    onRegisterSaveHandler={handleRegisterConfigSave}
+                  />
+                )
               )}
             </div>
           )}
@@ -1557,6 +2040,19 @@ const Layout: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <LocalTemplateSaveDialog
+        open={localTemplateDialogOpen}
+        loading={localTemplateSaving}
+        targetType={localTemplateTarget?.targetType || null}
+        initialName={(currentLocalTemplateTarget as any)?.title || ''}
+        categories={localTemplateCategories}
+        onCancel={() => {
+          setLocalTemplateDialogOpen(false)
+          setLocalTemplateTarget(null)
+        }}
+        onSubmit={handleSaveLocalTemplate}
+      />
 
       {showPublishingMask && (
         <div className="app-layout__publishing-mask">

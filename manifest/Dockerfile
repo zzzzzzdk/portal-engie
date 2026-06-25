@@ -1,4 +1,4 @@
-FROM 192.168.7.52:8083/cbb/node:20-alpine AS builder
+FROM 192.168.7.52:8083/public/node:24-alpine AS builder
 
 WORKDIR /app
 

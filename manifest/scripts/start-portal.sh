@@ -17,7 +17,8 @@ if [ -z "$APISIX_HOST" ]; then
 fi
 
 APISIX_SITE_PORT="${APISIX_SITE_PORT:-29081}"
-API_PATH="${API_PATH:-/canglan-trial/api/}"
+APISIX_BASE_PATH="${APISIX_BASE_PATH:-/portal-engine/api}"
+# API_PATH="${API_PATH:-/api/}"
 MINIO_API_URL="${MINIO_API_URL:-}"
 MINIO_API_PATH="${MINIO_API_PATH:-/nanobot/api}"
 APP_NAME="${APP_NAME:-}"
@@ -56,12 +57,20 @@ else
   APISIX_BASE_URL="${APISIX_SCHEME}://${APISIX_CLEAN_HOST}:${APISIX_FINAL_PORT}"
 fi
 
-case "$API_PATH" in
-  /*) ;;
-  *)  API_PATH="/${API_PATH}" ;;
+case "$APISIX_BASE_PATH" in
+  "") ;;
+  /*) APISIX_BASE_PATH="${APISIX_BASE_PATH%/}" ;;
+  *)  APISIX_BASE_PATH="/${APISIX_BASE_PATH%/}" ;;
 esac
 
-API_BASE_URL="${APISIX_BASE_URL}${API_PATH}"
+API_BASE_URL="${APISIX_BASE_URL}${APISIX_BASE_PATH}"
+
+# case "$API_PATH" in
+#   /*) ;;
+#   *)  API_PATH="/${API_PATH}" ;;
+# esac
+
+# API_BASE_URL="${APISIX_BASE_URL}${API_PATH}"
 
 if [ -z "$MINIO_API_URL" ]; then
   case "$MINIO_API_PATH" in
@@ -75,7 +84,8 @@ fi
 BUILD_TIME="$(date +%s)"
 
 echo "Generating index.html from template..."
-echo "  API_BASE_URL  = ${API_BASE_URL}"
+echo "  APISIX_BASE_URL = ${APISIX_BASE_URL}"
+echo "  API_BASE_URL    = ${API_BASE_URL}"
 echo "  MINIO_API_URL = ${MINIO_API_URL}"
 echo "  APP_NAME      = ${APP_NAME:-<not set, using frontend default>}"
 echo "  VERSION       = ${VERSION:-<not set, using frontend default>}"

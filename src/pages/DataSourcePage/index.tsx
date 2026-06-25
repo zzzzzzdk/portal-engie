@@ -361,8 +361,9 @@ const DataSourcePage: React.FC = () => {
       align: "center",
       ellipsis: true,
       render: (value: string) => (
+
         <Typography.Text copyable={{ text: value }} className="data-source-page__url-text">
-          {value}
+          <div className='text' title={value}>{value}</div>
         </Typography.Text>
       ),
     },

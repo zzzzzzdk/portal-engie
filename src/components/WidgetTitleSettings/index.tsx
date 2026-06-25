@@ -8,6 +8,7 @@ interface WidgetTitleSettingsProps {
   titleColorName?: NamePath
   titleFontSizeName?: NamePath
   titleFontWeightName?: NamePath
+  defaultTitleColor?: string
   hideShowTitle?: boolean
   disabled?: boolean
   disableShowTitle?: boolean
@@ -18,6 +19,7 @@ const WidgetTitleSettings: React.FC<WidgetTitleSettingsProps> = ({
   titleColorName = 'titleColor',
   titleFontSizeName = 'titleFontSize',
   titleFontWeightName = 'titleFontWeight',
+  defaultTitleColor,
   hideShowTitle = false,
   disabled = false,
   disableShowTitle = false,
@@ -30,8 +32,16 @@ const WidgetTitleSettings: React.FC<WidgetTitleSettingsProps> = ({
             <Switch disabled={disableShowTitle || disabled} />
           </Form.Item>
         )}
-        <Form.Item name={titleColorName} label="标题颜色">
-          <ColorPicker showText allowClear disabled={disabled} />
+        <Form.Item
+          name={titleColorName}
+          label="标题颜色"
+          getValueProps={value => ({ value: value === undefined ? defaultTitleColor : value })}
+        >
+          <ColorPicker
+            showText={color => color.toRgbString()}
+            allowClear
+            disabled={disabled}
+          />
         </Form.Item>
       </div>
 

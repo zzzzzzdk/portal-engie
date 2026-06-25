@@ -1,6 +1,11 @@
 import type { Widget, WidgetConfig, WidgetType } from '@/types'
 import { createChartPresetConfig, getChartPresetDefinition } from '@/components/widgets/chart/presets'
 import type { ChartPreset } from '@/components/widgets/chart/types'
+import {
+  buildLocalTemplateSignature,
+  buildWidgetTemplateSnapshot,
+  createSystemTemplateSourceMeta,
+} from './local-component-library'
 
 export const isChartPresetWidgetKey = (key: string) => key.startsWith('chart:')
 
@@ -51,6 +56,19 @@ export const createChartWidgetByPreset = ({
     config: {
       ...(widget.config as WidgetConfig),
       ...createChartPresetConfig(preset),
+      localTemplateMeta: createSystemTemplateSourceMeta(
+        widgetKey,
+        buildLocalTemplateSignature(
+          buildWidgetTemplateSnapshot({
+            ...widget,
+            title: definition.title,
+            config: {
+              ...(widget.config as WidgetConfig),
+              ...createChartPresetConfig(preset),
+            },
+          }),
+        ),
+      ),
     },
   })
 

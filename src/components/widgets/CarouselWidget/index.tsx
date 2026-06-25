@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LockOutlined } from '@ant-design/icons'
 import { Button, Empty, Spin, Tag } from 'antd'
 import clsx from 'clsx'
@@ -9,6 +9,10 @@ import type { CarouselApiMapping, CarouselSlide, CarouselWidgetConfig, Widget } 
 import { buildDeployedSystemSet, isSystemDeployed } from '@/utils/systemDeployment'
 import { getValueByPath, requestWidgetApi } from '@/utils/widgetApi'
 import { DEFAULT_CAROUSEL_LIST_FIELD } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
+import type { Swiper as SwiperClass } from 'swiper/types'
 import './index.scss'
 
 interface CarouselWidgetProps {
@@ -58,6 +62,9 @@ const normalizeColor = (value?: any, fallback?: string) => {
 const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditMode }) => {
   const sysConfig = useSystemStore(state => state.sysConfig)
   const deployedSystemSet = useMemo(() => buildDeployedSystemSet(sysConfig), [sysConfig])
+  const swiperRef = useRef<SwiperClass | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const carouselConfig = config as CarouselWidgetConfig
   const dataSourceType = carouselConfig.dataSourceType === 'api'
@@ -87,6 +94,7 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         body: carouselConfig.apiConfig.body ?? carouselConfig.apiConfig.bodyParams,
         timeout: carouselConfig.apiConfig.timeout,
         listField: carouselConfig.apiConfig.listField || DEFAULT_CAROUSEL_LIST_FIELD,
+        runtimeParams: runtimeParamsRef.current,
       })
 
       const sourceList = result.list.length
@@ -94,18 +102,57 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
         : Array.isArray(result.data)
           ? result.data
           : []
-      setRemoteSlides(
-        sourceList.map((item, index) =>
-          normalizeSlide(item, index, carouselConfig.apiConfig?.mapping),
-        ),
+      const nextSlides = sourceList.map((item, index) =>
+        normalizeSlide(item, index, carouselConfig.apiConfig?.mapping),
       )
+      setRemoteSlides(nextSlides)
+      emitWidgetEvent('data.loaded', { slides: nextSlides, raw: sourceList }, 'system')
     } catch (err: any) {
       setRemoteSlides([])
-      setError(err?.message || '数据加载失败')
+      const message = err?.message || '数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
-  }, [carouselConfig.apiConfig, isRemoteSource])
+  }, [carouselConfig.apiConfig, emitWidgetEvent, isRemoteSource, runtimeParamsRef])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      if (isRemoteSource) fetchSlides()
+    },
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      if (isRemoteSource) fetchSlides()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      if (isRemoteSource) fetchSlides()
+    },
+    select: (params) => {
+      const index = Number(params.index ?? params.slideIndex ?? params.value)
+      if (Number.isFinite(index)) swiperRef.current?.slideToLoop?.(index)
+    },
+    goTo: (params) => {
+      const index = Number(params.index ?? params.slideIndex ?? params.value)
+      if (Number.isFinite(index)) swiperRef.current?.slideToLoop?.(index)
+    },
+    next: () => {
+      swiperRef.current?.slideNext()
+    },
+    prev: () => {
+      swiperRef.current?.slidePrev()
+    },
+  })
 
   useEffect(() => {
     if (isRemoteSource && carouselConfig.apiConfig?.endpoint) {
@@ -208,13 +255,22 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
 
   const handleSlideClick = useCallback(
     (slide: CarouselSlide) => {
+      const index = slides.findIndex(item => item === slide || item.id === slide.id)
+      emitWidgetEvent('carousel.click', { slide, index }, 'click')
+
       if (!slide.link || !isSystemDeployed(deployedSystemSet, slide.systemId)) {
         return
       }
       openLink(slide.link, slide.systemId)
     },
-    [deployedSystemSet, openLink],
+    [deployedSystemSet, emitWidgetEvent, openLink, slides],
   )
+
+  const handleSlideChange = useCallback((swiper: SwiperClass) => {
+    const index = swiper.realIndex ?? swiper.activeIndex ?? 0
+    const slide = slides[index]
+    emitWidgetEvent('carousel.change', { slide, index }, 'change')
+  }, [emitWidgetEvent, slides])
 
   const accentColor = normalizeColor(carouselConfig.overlayColor, '#ffffff')
   const emptyHint = carouselConfig.emptyMessage || '暂无轮播内容'
@@ -327,6 +383,10 @@ const CarouselWidget: React.FC<CarouselWidgetProps> = ({ config, widget, isEditM
             renderSlide={renderSlide}
             swiperOptions={swiperOptions}
             className="carousel-widget__swiper"
+            onSwiperReady={(swiper) => {
+              swiperRef.current = swiper
+            }}
+            onSlideChange={handleSlideChange}
           />
         )}
 

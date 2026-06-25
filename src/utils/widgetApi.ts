@@ -25,6 +25,7 @@ export interface WidgetApiConfig {
   listField?: string
   timeout?: number
   pagination?: WidgetPaginationConfig
+  runtimeParams?: Record<string, any>
 }
 
 export interface WidgetApiRequestResult {
@@ -166,6 +167,54 @@ const mergeObjectPayload = (
   return extraValue
 }
 
+const resolveRuntimeTemplateValue = (value: any, runtimeParams?: Record<string, any>): any => {
+  if (!runtimeParams || value == null) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const exactMatch = value.match(/^\$\{runtime\.([^}]+)}$/)
+    if (exactMatch) {
+      return getValueByPath(runtimeParams, exactMatch[1])
+    }
+
+    return value.replace(/\$\{runtime\.([^}]+)}/g, (_match, path) => {
+      const nextValue = getValueByPath(runtimeParams, path)
+      return nextValue == null ? '' : String(nextValue)
+    })
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => resolveRuntimeTemplateValue(item, runtimeParams))
+  }
+
+  if (isPlainObject(value)) {
+    return Object.entries(value).reduce<Record<string, any>>((result, [key, item]) => {
+      result[key] = resolveRuntimeTemplateValue(item, runtimeParams)
+      return result
+    }, {})
+  }
+
+  return value
+}
+
+const applyRuntimeParams = (
+  value: Record<string, any> | string | undefined,
+  runtimeParams?: Record<string, any>,
+) => {
+  const parsed = parseJsonConfig(value)
+  const resolved = resolveRuntimeTemplateValue(parsed, runtimeParams)
+
+  if (isPlainObject(resolved)) {
+    return {
+      ...resolved,
+      ...(runtimeParams || {}),
+    }
+  }
+
+  return runtimeParams && Object.keys(runtimeParams).length ? runtimeParams : resolved
+}
+
 export const resolveDataRoot = (rawData: any, dataField?: string) => {
   if (dataField) {
     return getValueByPath(rawData, dataField)
@@ -206,15 +255,15 @@ export const buildWidgetApiRequest = (
   return {
     url: config.endpoint?.trim() || '',
     method,
-    headers: config.headers,
+    headers: resolveRuntimeTemplateValue(config.headers, config.runtimeParams),
     timeout: config.timeout,
     params: {
-      ...(parseJsonConfig(config.query) || {}),
+      ...(applyRuntimeParams(config.query, method === 'GET' ? config.runtimeParams : undefined) || {}),
       ...(method === 'GET' ? paginationPayload : {}),
     },
     data:
       method !== 'GET'
-        ? mergeObjectPayload(config.body, paginationPayload)
+        ? mergeObjectPayload(applyRuntimeParams(config.body, config.runtimeParams), paginationPayload)
         : undefined,
   }
 }

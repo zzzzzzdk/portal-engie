@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PreviewWidgetAdapter - 预览模式下的 Widget 适配层
  *
  * 与 WidgetAdapter 类似，但从 PreviewDataContext 读取数据而非 store
@@ -13,6 +13,8 @@ import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
 import IndicatorCardWidget from '@/components/widgets/IndicatorCardWidget';
+import IndicatorCardListWidget from '@/components/widgets/IndicatorCardListWidget';
+import RecognitionCardWidget from '@/components/widgets/RecognitionCardWidget';
 import ChartWidget from '@/components/widgets/ChartWidget/index.';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
 import LinkWidget from '@/components/widgets/LinkWidget';
@@ -23,6 +25,8 @@ import QueryFilterWidget from '@/components/widgets/QueryFilterWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
+import NativeFormWidget from '@/components/widgets/NativeFormWidget';
+import NativeFormFieldWidget from '@/components/widgets/NativeFormFieldWidget';
 import HeaderBarWidget from '@/components/widgets/HeaderBarWidget';
 import TypographyWidget from '@/components/widgets/TypographyWidget';
 import RichTextWidget from '@/components/widgets/RichTextWidget';
@@ -54,7 +58,7 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
   const { w, h } = resolvedWidget.layout;
   const forceIconOnly = resolvedWidget.config.forceIconOnly;
 
-  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'richText', 'navGroup', 'headerBar', 'carousel'];
+  const skipIconOnlyTypes: WidgetType[] = ['iconNav', 'typography', 'richText', 'navGroup', 'headerBar', 'carousel', 'nativeForm', 'nativeFormField'];
   const skipIconOnlyMode = skipIconOnlyTypes.includes(type);
 
   // 判断是否为 icon-only 模式
@@ -79,6 +83,10 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <StatsWidget {...commonProps} />;
       case 'indicatorCard':
         return <IndicatorCardWidget {...commonProps} />;
+      case 'indicatorCardList':
+        return <IndicatorCardListWidget {...commonProps} />;
+      case 'recognitionCard':
+        return <RecognitionCardWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
       case 'carousel':
@@ -99,6 +107,10 @@ const PreviewWidgetAdapter: React.FC<PreviewWidgetAdapterProps> = ({ widgetId, t
         return <CardGridWidget {...commonProps} />;
       case 'customForm':
         return <CustomFormWidget {...commonProps} />;
+      case 'nativeForm':
+        return <NativeFormWidget {...commonProps} />;
+      case 'nativeFormField':
+        return <NativeFormFieldWidget {...commonProps} />;
       case 'headerBar':
         return <HeaderBarWidget {...commonProps} />;
       case 'typography':

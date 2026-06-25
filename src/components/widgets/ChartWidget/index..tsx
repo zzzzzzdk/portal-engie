@@ -16,6 +16,9 @@ import {
   normalizeGeoJson,
 } from '../chart/utils'
 import type { ChartPreset, ChartWidgetConfig } from '../chart/types'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 import './index.scss'
 
 interface ChartWidgetProps {
@@ -52,6 +55,8 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const resizeFrameRef = useRef<number | null>(null)
   const resizeTimerRef = useRef<number | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const chartConfig = useMemo(() => {
     const baseConfig = createChartPresetConfig(resolveChartLegacyPreset(config)) as ChartWidgetConfig
@@ -128,23 +133,47 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
         method: chartConfig.apiMethod,
         headers: chartConfig.apiHeaders,
         query: mergeRequestConfig(chartConfig.apiQuery),
-        body: mergeRequestConfig(chartConfig.apiBody),
-        dataField: chartConfig.apiDataField || defaultDataField,
-        timeout: chartConfig?.timeout,
-      })
+          body: mergeRequestConfig(chartConfig.apiBody),
+          dataField: chartConfig.apiDataField || defaultDataField,
+          timeout: chartConfig?.timeout,
+          runtimeParams: runtimeParamsRef.current,
+        })
 
-      setChartData(result.data ?? result.raw ?? presetDefinition.staticDataExample)
+      const nextData = result.data ?? result.raw ?? presetDefinition.staticDataExample
+      setChartData(nextData)
+      emitWidgetEvent('chart.dataLoaded', { data: nextData, raw: result.raw, total: result.pagination.total }, 'system')
     } catch (err: any) {
       console.error('加载图表数据失败:', err)
-      setError(err?.message || '图表数据加载失败')
+      const message = err?.message || '图表数据加载失败'
+      setError(message)
+      emitWidgetEvent('chart.dataError', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
   }, [
     chartConfig,
     defaultDataField,
+    emitWidgetEvent,
     presetDefinition.staticDataExample,
+    runtimeParamsRef,
   ])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      void loadData()
+    },
+    setParams: (params, _message, input) => {
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, _message, input) => {
+      setRuntimeParams(params, 'replace')
+      void loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      void loadData()
+    },
+  })
 
   useEffect(() => {
     void loadData()
@@ -190,7 +219,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
 
         if (source === 'url') {
           if (!chartConfig.geoJsonUrl?.trim()) {
-            throw new Error('请配置 GeoJSON 地址')
+            throw new Error('请配�?GeoJSON 地址')
           }
 
           const response = await axios.get(chartConfig.geoJsonUrl.trim())
@@ -198,7 +227,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
           geoJson = response.data
         } else {
           if (!chartConfig.geoJsonText?.trim()) {
-            throw new Error('请粘贴 GeoJSON 内容')
+            throw new Error('请粘�?GeoJSON 内容')
           }
 
           geoJson = JSON.parse(chartConfig.geoJsonText)
@@ -269,6 +298,28 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
 
     const chart = chartInstanceRef.current
     chart.setOption(chartOption, true)
+    chart.off('click')
+    chart.on('click', (params: any) => {
+      const payload = {
+        name: params?.name,
+        value: params?.value,
+        seriesName: params?.seriesName,
+        data: params?.data,
+        dataIndex: params?.dataIndex,
+      }
+      emitWidgetEvent('chart.click', payload, 'click')
+
+      if (chartPreset === 'pie' || chartPreset === 'donut') {
+        emitWidgetEvent('chart.sliceClick', payload, 'click')
+      } else if (chartPreset === 'area-map') {
+        emitWidgetEvent('chart.regionClick', payload, 'click')
+      } else if (chartPreset !== 'flow-map') {
+        emitWidgetEvent('chart.axisClick', {
+          ...payload,
+          axisValue: params?.name,
+        }, 'click')
+      }
+    })
     resizeChart()
 
     const resizeObserver = new ResizeObserver(() => {
@@ -299,8 +350,9 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
         window.clearTimeout(resizeTimerRef.current)
         resizeTimerRef.current = null
       }
+      chart.off('click')
     }
-  }, [chartOption, error, resetChartInstance, resizeChart])
+  }, [chartOption, chartPreset, emitWidgetEvent, error, resetChartInstance, resizeChart])
 
   useEffect(() => () => {
     if (resizeFrameRef.current != null) {

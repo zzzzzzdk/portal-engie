@@ -26,6 +26,8 @@ import { LocalComponentRegistry } from './components';
 import IconRenderer from '../IconRenderer';
 import type { DashboardConfig, Widget, FloatingModuleConfig } from '@/types';
 import { usePortalRuntime } from '@/runtime/portal-runtime-context';
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter';
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs';
 import './index.scss';
 
 const { confirm } = Modal;
@@ -248,6 +250,7 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
   } = useStore();
   const { themeMode } = useCanvasTheme();
   const { microAppMode } = usePortalRuntime();
+  const emitWidgetEvent = useWidgetEventEmitter(widget);
   const [containerEl, setContainerEl] = useState<ContainerElement>(initialContainer);
   const [viewport, setViewport] = useState<Viewport>(initialViewport);
   const [containerOffset, setContainerOffset] = useState<ContainerOffset>(initialOffset);
@@ -603,7 +606,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       }
     }
     debouncedSavePosition(finalPos);
-  }, [debouncedSavePosition, isExpanded]);
+    emitWidgetEvent('floating.moveEnd', { moduleId: widget.id, position: finalPos }, 'system');
+  }, [debouncedSavePosition, emitWidgetEvent, isExpanded, widget.id]);
 
   const handleResize = useCallback((_e: any, { size: nextSize }: ResizeCallbackData) => {
     setSize(nextSize);
@@ -614,7 +618,8 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
     debouncedSaveSize(nextSize);
     // Resize 后也要检查边界，防止溢出
     setPosition(prev => clampPosition(prev, nextSize, viewport));
-  }, [debouncedSaveSize, viewport]);
+    emitWidgetEvent('floating.resizeEnd', { moduleId: widget.id, size: nextSize }, 'system');
+  }, [debouncedSaveSize, emitWidgetEvent, viewport, widget.id]);
 
   const toggleExpand = useCallback((event?: React.MouseEvent) => {
     event?.stopPropagation();
@@ -658,7 +663,27 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
 
     toggleFloatingModuleExpanded(widget.id);
     debouncedSavePosition(nextPos);
-  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, config.expandAnchor, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition]);
+    emitWidgetEvent(nextExpanded ? 'floating.expand' : 'floating.collapse', {
+      moduleId: widget.id,
+      position: nextPos,
+      size: nextSize,
+    }, 'click');
+  }, [isExpanded, expandedMoved, config.width, config.height, config.collapsible, config.expandAnchor, collapsedWidth, collapsedHeight, position, size, viewport, widget.id, toggleFloatingModuleExpanded, debouncedSavePosition, emitWidgetEvent]);
+
+  useWidgetEventInputs(widget, {
+    open: () => {
+      if (!isExpanded) toggleExpand();
+    },
+    expand: () => {
+      if (!isExpanded) toggleExpand();
+    },
+    close: () => {
+      if (isExpanded) toggleExpand();
+    },
+    collapse: () => {
+      if (isExpanded) toggleExpand();
+    },
+  });
 
   const shellTransition = useMemo(
     () => ({ type: 'spring', stiffness: 260, damping: 28, mass: 1.1 }),
@@ -701,9 +726,12 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       okText: '确定',
       cancelText: '取消',
       okButtonProps: { danger: true },
-      onOk: () => removeFloatingModule(widget.id),
+      onOk: () => {
+        emitWidgetEvent('floating.close', { moduleId: widget.id }, 'system');
+        removeFloatingModule(widget.id);
+      },
     });
-  }, [widget.id, widget.title, removeFloatingModule]);
+  }, [emitWidgetEvent, widget.id, widget.title, removeFloatingModule]);
 
   const handleDelete = useCallback((event?: React.MouseEvent) => {
     event?.stopPropagation();
@@ -714,9 +742,12 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       okText: '删除',
       cancelText: '取消',
       okButtonProps: { danger: true },
-      onOk: () => removeFloatingModule(widget.id),
+      onOk: () => {
+        emitWidgetEvent('floating.close', { moduleId: widget.id }, 'system');
+        removeFloatingModule(widget.id);
+      },
     });
-  }, [widget.id, widget.title, removeFloatingModule]);
+  }, [emitWidgetEvent, widget.id, widget.title, removeFloatingModule]);
 
   const renderContent = useMemo(() => {
     if (config.contentType === 'microApp') {
@@ -753,10 +784,10 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
       if (!componentType) return <div className="error-message">未配置组件类型</div>;
       const Component = LocalComponentRegistry[componentType];
       if (!Component) return <div className="error-message">未找到组件 {componentType}</div>;
-      return <Component {...(config.localComponent?.componentProps || {})} />;
+      return <Component {...(config.localComponent?.componentProps || {})} emitWidgetEvent={emitWidgetEvent} />;
     }
     return <div className="error-message">未知内容类型</div>;
-  }, [config, dashboardConfig, microAppMode, widget.title]);
+  }, [config, dashboardConfig, emitWidgetEvent, microAppMode, widget.title]);
 
   return (
     <>
@@ -859,10 +890,12 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
                       </div>
                     </div>
                   ) : (
-                    isEditMode && (
-                      <div className="floating-module-header-transparent drag-handle">
-                        {isDraggable && <DragOutlined className="drag-icon-transparent" />}
-                        <div className="actions-transparent">
+                    <div
+                      className={`floating-module-header-transparent ${isEditMode ? 'drag-handle is-edit-mode' : 'is-preview-mode'}`}
+                    >
+                      {isDraggable && <DragOutlined className="drag-icon-transparent" />}
+                      <div className="actions-transparent">
+                        {isEditMode && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -872,17 +905,19 @@ const FloatingModule: React.FC<FloatingModuleProps> = memo(({ widget, dashboardC
                           >
                             <SettingOutlined />
                           </button>
-                          {config.collapsible !== false && (
-                            <button onClick={toggleExpand} className="action-btn-transparent">
-                              <MinusOutlined />
-                            </button>
-                          )}
+                        )}
+                        {config.collapsible !== false && (
+                          <button onClick={toggleExpand} className="action-btn-transparent minimize-btn">
+                            <MinusOutlined />
+                          </button>
+                        )}
+                        {isEditMode && (
                           <button onClick={handleDelete} className="action-btn-transparent delete-btn">
                             <CloseOutlined />
                           </button>
-                        </div>
+                        )}
                       </div>
-                    )
+                    </div>
                   ))}
 
                   <motion.div

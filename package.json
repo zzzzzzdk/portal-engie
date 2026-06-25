@@ -9,9 +9,12 @@
     "build:release": "tsc && vite build && node ./scripts/sync-release.mjs dist && vite build --config vite.export-runtime.config.ts",
     "build:export-runtime": "vite build --config vite.export-runtime.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "preview": "vite preview",
     "start": "concurrently \"npm run mock\" \"npm run dev\"",
-    "mock": "nodemon ./mock/bin/www"
+    "mock": "nodemon ./mock/bin/www",
+    "check:widget-events": "node ./scripts/check-widget-event-linkage.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.0",
@@ -62,6 +65,7 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@types/crypto-js": "^4.2.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20.10.0",

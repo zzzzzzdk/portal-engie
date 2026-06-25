@@ -12,7 +12,7 @@ interface BuildDataSourceSelectionFormValuesOptions {
 }
 
 export const UNIFIED_DATA_SOURCE_OPTIONS = [
-  { label: '手动配置', value: 'static' },
+  { label: '静态数据', value: 'static' },
   { label: '自定义接口', value: 'customApi' },
   { label: '数据源接口', value: 'dataSource' },
 ] as const;
@@ -28,6 +28,9 @@ export const normalizeDataSourceMode = (value?: string) => {
 
   return undefined;
 };
+
+export const isDataSourceSelectionLocked = (mode?: string, dataSourceId?: string) =>
+  mode === 'dataSource' && !!dataSourceId;
 
 export const validateJson = (_: any, value: string) => {
   if (!value) {

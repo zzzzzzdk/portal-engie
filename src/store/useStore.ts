@@ -14,13 +14,24 @@ import {
   WidgetGroupConfig,
   LayoutSyncOptions,
   GRID_DENSITY_PRESETS,
+  NativeFormFieldType,
 } from '@/types';
 import { Layout } from 'react-grid-layout';
 import { getToken, removeToken } from '@/utils/cookie';
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { createChartPresetConfig } from '@/components/widgets/chart/presets';
+import {
+  createDefaultNativeFormConfig,
+  createDefaultNativeFormFieldConfig,
+  normalizeNativeFormConfig,
+} from '@/native-form/shared/defaults';
 import { useGlobalConfigStore } from './useGlobalConfigStore';
 import { getGlobalMessageCopy } from '@/utils/global-config';
+import {
+  buildLocalTemplateSignature,
+  buildWidgetTemplateSnapshot,
+  createSystemTemplateSourceMeta,
+} from '@/utils/local-component-library';
 
 // cellHeight=30 时的默认布局尺寸
 // 各小部件默认尺寸配置 (w: 宽度列数, h: 高度行数)
@@ -28,6 +39,8 @@ const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: numb
   clock: { w: 4, h: 6, minW: 2, minH: 3 },
   stats: { w: 10, h: 6, minW: 4, minH: 3 },
   indicatorCard: { w: 8, h: 5, minW: 2, minH: 2 },
+  indicatorCardList: { w: 10, h: 6, minW: 4, minH: 3 },
+  recognitionCard: { w: 6, h: 10, minW: 4, minH: 7 },
   chart: { w: 8, h: 9, minW: 4, minH: 4 },
   carousel: { w: 40, h: 12, minW: 4, minH: 3 },
   link: { w: 5, h: 5, minW: 2, minH: 2 },
@@ -37,10 +50,50 @@ const WIDGET_DEFAULT_LAYOUTS: Record<string, { w: number; h: number; minW?: numb
   queryFilter: { w: 12, h: 5, minW: 6, minH: 3 },
   dataTable: { w: 10, h: 8, minW: 6, minH: 4 },
   customForm: { w: 8, h: 11, minW: 4, minH: 4 },
+  nativeForm: { w: 12, h: 12, minW: 8, minH: 8 },
   typography: { w: 4, h: 3, minW: 2, minH: 1 },
   richText: { w: 8, h: 6, minW: 4, minH: 3 },
   cardGrid: { w: 8, h: 6, minW: 4, minH: 3 },
 };
+
+// 表单字段作为独立 widget 时的默认 / 最小尺寸
+// 按控件实际高度 + widget wrapper 估算，确保拖入画布后能直接看到字段全貌
+const NATIVE_FORM_FIELD_DEFAULT_LAYOUTS: Record<NativeFormFieldType, { w: number; h: number; minW: number; minH: number }> = {
+  input: { w: 5, h: 4, minW: 3, minH: 3 },
+  password: { w: 5, h: 4, minW: 3, minH: 3 },
+  inputNumber: { w: 5, h: 4, minW: 3, minH: 3 },
+  select: { w: 5, h: 4, minW: 3, minH: 3 },
+  transfer: { w: 8, h: 8, minW: 5, minH: 5 },
+  checkableTag: { w: 5, h: 5, minW: 3, minH: 3 },
+  formPlate: { w: 6, h: 4, minW: 4, minH: 3 },
+  formVehicleModel: { w: 7, h: 5, minW: 4, minH: 3 },
+  treeSelect: { w: 5, h: 4, minW: 3, minH: 3 },
+  datePicker: { w: 5, h: 4, minW: 3, minH: 3 },
+  dateRangePicker: { w: 6, h: 4, minW: 4, minH: 3 },
+  timePicker: { w: 5, h: 4, minW: 3, minH: 3 },
+  timeRangePicker: { w: 6, h: 4, minW: 4, minH: 3 },
+  switch: { w: 3, h: 4, minW: 2, minH: 3 },
+  colorPicker: { w: 5, h: 4, minW: 3, minH: 3 },
+  slider: { w: 6, h: 4, minW: 4, minH: 3 },
+  rate: { w: 5, h: 5, minW: 3, minH: 3 },
+  button: { w: 3, h: 4, minW: 2, minH: 3 },
+  textarea: { w: 6, h: 6, minW: 4, minH: 4 },
+  radioGroup: { w: 5, h: 5, minW: 3, minH: 3 },
+  checkboxGroup: { w: 5, h: 5, minW: 3, minH: 3 },
+  cascader: { w: 5, h: 4, minW: 3, minH: 3 },
+  upload: { w: 6, h: 6, minW: 4, minH: 4 },
+  flex: { w: 8, h: 6, minW: 4, minH: 4 },
+  group: { w: 8, h: 6, minW: 4, minH: 4 },
+  grid: { w: 8, h: 6, minW: 4, minH: 4 },
+  subTable: { w: 10, h: 8, minW: 6, minH: 5 },
+};
+
+export const getNativeFormFieldDefaultLayout = (
+  fieldType: NativeFormFieldType,
+): { w: number; h: number; minW: number; minH: number } =>
+  NATIVE_FORM_FIELD_DEFAULT_LAYOUTS[fieldType] || { w: 5, h: 4, minW: 3, minH: 3 };
+
+
 
 const DEFAULT_LAYOUT = { w: 4, h: 3, x: 0, y: 0, minW: 1, minH: 1 };
 const DEFAULT_GROUP_LAYOUT = { w: 6, h: 5, x: 0, y: Infinity, minW: 2, minH: 2 };
@@ -104,6 +157,17 @@ const cloneConfigValue = <T,>(value: T): T => {
   }
 
   return value;
+};
+
+const sanitizeWidgetConfigByType = (widget: Widget): Widget => {
+  if (widget.type === 'nativeForm') {
+    return {
+      ...widget,
+      config: normalizeNativeFormConfig(widget.config as any),
+    };
+  }
+
+  return widget;
 };
 
 const getDuplicatedTitle = (title: string, existingTitles: string[]): string => {
@@ -212,6 +276,57 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         indicatorDescriptionFontSize: 18,
         indicatorValueColor: '#1890ff',
         indicatorDescriptionColor: '#95de64',
+      };
+    case 'indicatorCardList':
+      return {
+        ...baseConfig,
+        title: '指标列表卡',
+        dataSource: 'static',
+        staticItems: [
+          { id: 'indicator-card-list-1', value: '22,522.75', description: '总签约额' },
+          { id: 'indicator-card-list-2', value: '152', description: '今日新增' },
+          { id: 'indicator-card-list-3', value: '98.6%', description: '完成率' },
+        ],
+        valueField: 'value',
+        descriptionField: 'description',
+        columns: 2,
+        indicatorValueFontSize: 38,
+        indicatorDescriptionFontSize: 18,
+        indicatorValueColor: '#1890ff',
+        indicatorDescriptionColor: '#95de64',
+      };
+    case 'recognitionCard':
+      return {
+        ...baseConfig,
+        title: '识别卡片',
+        showTitle: false,
+        dataSource: 'static',
+        staticData: {
+          similarity: 98.79,
+          matchCount: 2,
+          imageUrl: '',
+          plateNo: '无牌',
+          personName: '未识别',
+          captureTime: '2023-12-21 18:55:12',
+          location: '供销社小区出口道闸',
+          quickLinks: [
+            { id: 'recognition-link-1', title: '以图搜索', url: '' },
+            { id: 'recognition-link-2', title: '实时跨镜追踪', url: '' },
+            { id: 'recognition-link-3', title: '车辆档案', url: '' },
+          ],
+        },
+        showSimilarity: true,
+        similarityField: 'similarity',
+        imageField: 'imageUrl',
+        showPlateNo: true,
+        plateNoField: 'plateNo',
+        showPersonName: true,
+        personNameField: 'personName',
+        infoItems: [
+          { id: 'recognition-info-1', field: 'captureTime', icon: 'ClockCircleOutlined' },
+          { id: 'recognition-info-2', field: 'location', icon: 'EnvironmentOutlined' },
+        ],
+        showQuickLinks: true,
       };
     case 'chart':
       return {
@@ -363,6 +478,10 @@ const getDefaultConfig = (type: WidgetType): WidgetConfig => {
         successMessage: getDefaultMessageCopy('form.success'),
         failureMessage: getDefaultMessageCopy('form.error'),
       };
+    case 'nativeForm':
+      return createDefaultNativeFormConfig();
+    case 'nativeFormField':
+      return createDefaultNativeFormFieldConfig();
     case 'queryFilter':
       return {
         ...baseConfig,
@@ -442,6 +561,7 @@ export const useStore = create<AppState>()(
       floatingModules: [] as Widget[], // 悬浮模块列表
       globalMicroApps: [] as Widget[], // 全局无边框微应用列表
       currentCoverUrl: '',
+      dashboardGridStackResetKey: 0,
       dashboardConfig: {
         backgroundType: 'color',
         backgroundColor: '',
@@ -450,7 +570,7 @@ export const useStore = create<AppState>()(
       },
       gridDensity: 'compact',
       setGridDensity: (density) => set({ gridDensity: density }),
-      floatingPanelPosition: { x: 100, y: 100 },
+      floatingPanelPosition: { x: -1, y: -1 },
       setFloatingPanelPosition: (position) => set({ floatingPanelPosition: position }),
 
       login: (userInfo?: UserInfo) => set({
@@ -465,7 +585,7 @@ export const useStore = create<AppState>()(
         });
       },
 
-      addWidget: (type: WidgetType, position?: { x: number; y: number; w?: number; h?: number; groupId?: string }) => {
+      addWidget: (type: WidgetType, position?: { x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; groupId?: string }) => {
         const id = uuidv4();
         const targetGroupId = position?.groupId && get().groups.some(group => group.id === position.groupId)
           ? position.groupId
@@ -498,10 +618,12 @@ export const useStore = create<AppState>()(
 
         // 如果指定了拖放位置，使用该位置；否则自动放置到底部
         if (position) {
-          layoutConfig.x = position.x;
-          layoutConfig.y = position.y;
+          if (position.x !== undefined) layoutConfig.x = position.x;
+          if (position.y !== undefined) layoutConfig.y = position.y;
           if (position.w !== undefined) layoutConfig.w = position.w;
           if (position.h !== undefined) layoutConfig.h = position.h;
+          if (position.minW !== undefined) layoutConfig.minW = position.minW;
+          if (position.minH !== undefined) layoutConfig.minH = position.minH;
         }
 
         const newWidget: Widget = {
@@ -511,6 +633,17 @@ export const useStore = create<AppState>()(
           layout: sanitizeLayout({ ...layoutConfig, i: id, y: position ? layoutConfig.y : Infinity }),
           config: getDefaultConfig(type),
           groupId: targetGroupId,
+        };
+
+        const sourceKey = type === 'chart'
+          ? 'chart:basic-line'
+          : `system-widget:${type}`;
+        newWidget.config = {
+          ...newWidget.config,
+          localTemplateMeta: createSystemTemplateSourceMeta(
+            sourceKey,
+            buildLocalTemplateSignature(buildWidgetTemplateSnapshot(newWidget)),
+          ),
         };
 
         set((state) => ({
@@ -1178,7 +1311,7 @@ export const useStore = create<AppState>()(
         _suppressDirtyMark = true;
         const sanitizedConfig = sanitizeDashboardConfig(data.dashboardConfig);
         set({
-          widgets: data.widgets?.map(w => ({
+          widgets: data.widgets?.map(w => sanitizeWidgetConfigByType({
             ...w,
             layout: sanitizeLayout(w.layout)
           })) || [],
@@ -1208,6 +1341,10 @@ export const useStore = create<AppState>()(
         })),
 
       setCurrentCoverUrl: (coverUrl) => set({ currentCoverUrl: coverUrl }),
+      resetDashboardGridStack: () =>
+        set((state) => ({
+          dashboardGridStackResetKey: state.dashboardGridStackResetKey + 1,
+        })),
 
       // ============================================
       // 悬浮模块相关方法

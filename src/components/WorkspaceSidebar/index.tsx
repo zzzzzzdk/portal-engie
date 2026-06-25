@@ -3,6 +3,7 @@ import { AppstoreOutlined, RobotOutlined } from '@ant-design/icons'
 import WidgetDrawer from '@/components/WidgetDrawer'
 import AIAssistantPanel from '@/components/AIAssistantPanel'
 import type { DashboardSnapshot } from '@/services/dashboard'
+import type { LocalTemplateCategory, LocalTemplateRecord } from '@/types/local-component-library'
 import './index.scss'
 
 export type WorkspaceSidebarTabKey = 'widget' | 'ai'
@@ -14,10 +15,19 @@ interface WorkspaceSidebarProps {
   onCloseWidget: () => void
   onCloseAi: () => void
   onWidgetSelect: (key: string) => void
+  onNativeFormFieldSelect?: (fieldType: string) => void
+  activeNativeFormWidgetId?: string | null
   currentSnapshot: DashboardSnapshot
   hasWorkspaceContent: boolean
+  workspaceKey: string
+  workspaceTitle?: string
   onApplySnapshot: (snapshot: DashboardSnapshot) => void
   onClearWorkspace: () => void
+  localCategories?: LocalTemplateCategory[]
+  localTemplates?: LocalTemplateRecord[]
+  onCreateLocalCategory?: (name: string) => Promise<void> | void
+  onDeleteLocalCategory?: (categoryId: string) => Promise<void> | void
+  onDeleteLocalTemplate?: (templateId: string) => Promise<void> | void
 }
 
 const tabItems: Array<{
@@ -44,10 +54,19 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onCloseWidget,
   onCloseAi,
   onWidgetSelect,
+  onNativeFormFieldSelect,
+  activeNativeFormWidgetId,
   currentSnapshot,
   hasWorkspaceContent,
+  workspaceKey,
+  workspaceTitle,
   onApplySnapshot,
   onClearWorkspace,
+  localCategories,
+  localTemplates,
+  onCreateLocalCategory,
+  onDeleteLocalCategory,
+  onDeleteLocalTemplate,
 }) => {
   return (
     <div className="workspace-sidebar">
@@ -60,7 +79,6 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             onClick={() => onTabChange(item.key)}
           >
             <span className="workspace-sidebar__tab-icon">{item.icon}</span>
-            {/* <span className="workspace-sidebar__tab-label">{item.label}</span> */}
           </button>
         ))}
       </div>
@@ -73,6 +91,13 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             open={open && activeTab === 'widget'}
             onClose={onCloseWidget}
             onSelect={onWidgetSelect}
+            onSelectNativeFormField={onNativeFormFieldSelect}
+            activeNativeFormWidgetId={activeNativeFormWidgetId}
+            localCategories={localCategories}
+            localTemplates={localTemplates}
+            onCreateLocalCategory={onCreateLocalCategory}
+            onDeleteLocalCategory={onDeleteLocalCategory}
+            onDeleteLocalTemplate={onDeleteLocalTemplate}
           />
         </div>
         <div
@@ -82,6 +107,8 @@ const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             currentSnapshot={currentSnapshot}
             hasWorkspaceContent={hasWorkspaceContent}
             visible={open && activeTab === 'ai'}
+            workspaceKey={workspaceKey}
+            workspaceTitle={workspaceTitle}
             onApplySnapshot={onApplySnapshot}
             onClearWorkspace={onClearWorkspace}
             onClose={onCloseAi}

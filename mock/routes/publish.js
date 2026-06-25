@@ -490,105 +490,105 @@ const ensureSeededDashboards = () => {
       id: 'pub_2',
       title: '22',
       widgets: [
-        {
-          "id": "882d2666-2a8d-4f77-97bd-927d3f748de7",
-          "type": "headerBar",
-          "title": "HeaderBar",
-          "layout": {
-            "w": 36,
-            "h": 2,
-            "x": 0,
-            "y": 0,
-            "minW": 1,
-            "minH": 1,
-            "i": "882d2666-2a8d-4f77-97bd-927d3f748de7"
-          },
-          "config": {
-            "title": "导航栏",
-            "showTitle": false,
-            "headerTitle": "导航栏",
-            "fontFamily": "YouSheBiaoTiHei",
-            "backgroundType": "gradient",
-            "showNavMenu": false,
-            "navDataSource": "static",
-            "titleColor": "rgb(255,255,255)",
-            "backgroundColor": "#ffffff",
-            "backgroundGradient": "linear-gradient(to top, #30cfd0 0%, #330867 100%)",
-            "headerAlignment": "left",
-            "textColor": "rgb(255,255,255)"
-          }
-        },
-        {
-          "id": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
-          "type": "microApp",
-          "title": "表单",
-          "layout": {
-            "i": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
-            "x": 0,
-            "y": 2,
-            "w": 36,
-            "h": 4,
-            "minW": 1,
-            "minH": 1
-          },
-          "config": {
-            "title": "表单",
-            "showTitle": true,
-            "refreshInterval": 60,
-            "systemId": "db_001",
-            "moduleId": "db_mod_001",
-            "microAppUrl": "http://localhost:8083/#/input-only",
-            "microAppEntry": "http://localhost:8083/#/input-only",
-            "sync": true,
-            "alive": true,
-            "icon": "http://192.168.13.31:8083/static/images/gongan.png"
-          }
-        },
-        {
-          "id": "19d9384c-48e4-49d4-a89f-49173cd5c28a",
-          "type": "dataTable",
-          "title": "DataTable",
-          "layout": {
-            "w": 8,
-            "h": 7,
-            "x": 0,
-            "y": 6,
-            "minW": 6,
-            "minH": 4,
-            "i": "19d9384c-48e4-49d4-a89f-49173cd5c28a"
-          },
-          "config": {
-            "title": "DataTable",
-            "showTitle": true,
-            "refreshInterval": 60
-          }
-        },
-        {
-          "id": "2433a113-03a1-4060-ae03-3ebb95471b84",
-          "type": "microApp",
-          "title": "结果页",
-          "layout": {
-            "i": "2433a113-03a1-4060-ae03-3ebb95471b84",
-            "x": 8,
-            "y": 6,
-            "w": 28,
-            "h": 11,
-            "minW": 1,
-            "minH": 1
-          },
-          "config": {
-            "title": "结果页",
-            "showTitle": true,
-            "refreshInterval": 60,
-            "systemId": "db_002",
-            "moduleId": "db_mod_002",
-            "microAppUrl": "http://192.168.13.31:8083/#/table-only",
-            "microAppEntry": "http://192.168.13.31:8083/",
-            "sync": true,
-            "alive": true,
-            "icon": "https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表"
-          }
-        }
+        // {
+        //   "id": "882d2666-2a8d-4f77-97bd-927d3f748de7",
+        //   "type": "headerBar",
+        //   "title": "HeaderBar",
+        //   "layout": {
+        //     "w": 36,
+        //     "h": 2,
+        //     "x": 0,
+        //     "y": 0,
+        //     "minW": 1,
+        //     "minH": 1,
+        //     "i": "882d2666-2a8d-4f77-97bd-927d3f748de7"
+        //   },
+        //   "config": {
+        //     "title": "导航栏",
+        //     "showTitle": false,
+        //     "headerTitle": "导航栏",
+        //     "fontFamily": "YouSheBiaoTiHei",
+        //     "backgroundType": "gradient",
+        //     "showNavMenu": false,
+        //     "navDataSource": "static",
+        //     "titleColor": "rgb(255,255,255)",
+        //     "backgroundColor": "#ffffff",
+        //     "backgroundGradient": "linear-gradient(to top, #30cfd0 0%, #330867 100%)",
+        //     "headerAlignment": "left",
+        //     "textColor": "rgb(255,255,255)"
+        //   }
+        // },
+        // {
+        //   "id": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
+        //   "type": "microApp",
+        //   "title": "表单",
+        //   "layout": {
+        //     "i": "de3d57d2-a135-42e9-87e7-fa191f9acbb4",
+        //     "x": 0,
+        //     "y": 2,
+        //     "w": 36,
+        //     "h": 4,
+        //     "minW": 1,
+        //     "minH": 1
+        //   },
+        //   "config": {
+        //     "title": "表单",
+        //     "showTitle": true,
+        //     "refreshInterval": 60,
+        //     "systemId": "db_001",
+        //     "moduleId": "db_mod_001",
+        //     "microAppUrl": "http://localhost:8083/#/input-only",
+        //     "microAppEntry": "http://localhost:8083/#/input-only",
+        //     "sync": true,
+        //     "alive": true,
+        //     "icon": "http://192.168.13.31:8083/static/images/gongan.png"
+        //   }
+        // },
+        // {
+        //   "id": "19d9384c-48e4-49d4-a89f-49173cd5c28a",
+        //   "type": "dataTable",
+        //   "title": "DataTable",
+        //   "layout": {
+        //     "w": 8,
+        //     "h": 7,
+        //     "x": 0,
+        //     "y": 6,
+        //     "minW": 6,
+        //     "minH": 4,
+        //     "i": "19d9384c-48e4-49d4-a89f-49173cd5c28a"
+        //   },
+        //   "config": {
+        //     "title": "DataTable",
+        //     "showTitle": true,
+        //     "refreshInterval": 60
+        //   }
+        // },
+        // {
+        //   "id": "2433a113-03a1-4060-ae03-3ebb95471b84",
+        //   "type": "microApp",
+        //   "title": "结果页",
+        //   "layout": {
+        //     "i": "2433a113-03a1-4060-ae03-3ebb95471b84",
+        //     "x": 8,
+        //     "y": 6,
+        //     "w": 28,
+        //     "h": 11,
+        //     "minW": 1,
+        //     "minH": 1
+        //   },
+        //   "config": {
+        //     "title": "结果页",
+        //     "showTitle": true,
+        //     "refreshInterval": 60,
+        //     "systemId": "db_002",
+        //     "moduleId": "db_mod_002",
+        //     "microAppUrl": "http://192.168.13.31:8083/#/table-only",
+        //     "microAppEntry": "http://192.168.13.31:8083/",
+        //     "sync": true,
+        //     "alive": true,
+        //     "icon": "https://via.placeholder.com/300x200/FF9800/FFFFFF?text=财务报表"
+        //   }
+        // }
       ],
       groups: [],
       floatingModules: [],
@@ -1218,7 +1218,8 @@ router.get('/v1/dashboard/homepage/current', async (req, res) => {
 
   ensureSeededDashboards();
   const setting = homepageStorage.user_001;
-  const dashboard = setting ? mockDashboards[setting.dashboardId] : null;
+  // const dashboard = setting ? mockDashboards[setting.dashboardId] : null;
+  const dashboard = mockDashboards["pub_1"]
   const record = dashboard ? formatDashboardRecord(dashboard, dashboard.id, 'published') : null;
 
   req.json.code = 20000;

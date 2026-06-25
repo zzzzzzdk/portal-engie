@@ -5,9 +5,9 @@ import ajax from '../utils/axios.config';
 export interface UploadImageResponse {
   url: string;
   filename: string;
-  originalName: string;
+  originalName?: string;
   size: number;
-  mimetype: string;
+  mimetype?: string;
 }
 
 /**

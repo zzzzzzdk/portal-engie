@@ -33,8 +33,10 @@ export default defineConfig({
       },
       // portal-engine mock 服务 (localhost:4001)
       '/api': {
-        target: 'http://localhost:4001/',
+        // target: 'http://192.168.5.60:29081',
+         target: 'http://localhost:4001/',
         changeOrigin: true,
+        // rewrite: (path) => path.replace(/^\/api/, '/canglan-trial/api')
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }

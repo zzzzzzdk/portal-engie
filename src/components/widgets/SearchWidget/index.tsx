@@ -7,6 +7,8 @@ import { WidgetConfig, Widget, EventRouteConfig, MicroAppEventType } from '@/typ
 import { parseJsonConfig } from '@/utils/widgetApi';
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
 import { getGlobalMessageCopy } from '@/utils/global-config';
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter';
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs';
 import './index.scss';
 
 const { bus } = WujieReact;
@@ -67,6 +69,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     searchConfig?.successMessage || getGlobalMessageCopy(globalConfigDetail, 'form.success');
   const failureMessage =
     searchConfig?.failureMessage || getGlobalMessageCopy(globalConfigDetail, 'form.error');
+  const emitWidgetEvent = useWidgetEventEmitter(widget);
 
   const [searchValue, setSearchValue] = useState('');
 
@@ -86,12 +89,55 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     return initial;
   });
 
+  const normalizeIncomingSearchParams = useCallback((params: Record<string, any>) => {
+    const values = params.values && typeof params.values === 'object' ? params.values : params;
+    return Object.entries(values).reduce<Record<string, string>>((result, [key, value]) => {
+      if (value !== undefined && value !== null) {
+        result[key] = String(value);
+      }
+      return result;
+    }, {});
+  }, []);
+
+  const getInitialFieldValues = useCallback(() => {
+    const initial: Record<string, string> = {};
+    searchFields?.forEach(field => {
+      if (field.defaultValue) {
+        initial[field.name] = field.defaultValue;
+      }
+    });
+    return initial;
+  }, [searchFields]);
+
+  const applyIncomingSearchParams = useCallback((params: Record<string, any>) => {
+    const nextValues = normalizeIncomingSearchParams(params);
+
+    if (!searchFields || searchFields.length === 0) {
+      const nextKeyword = nextValues.keyword ?? Object.values(nextValues)[0] ?? '';
+      setSearchValue(nextKeyword);
+      return;
+    }
+
+    setFieldValues(prev => ({ ...prev, ...nextValues }));
+  }, [normalizeIncomingSearchParams, searchFields]);
+
+  useWidgetEventInputs(widget, {
+    setValue: (params) => applyIncomingSearchParams(params),
+    clearValue: () => {
+      setSearchValue('');
+      setFieldValues(getInitialFieldValues());
+    },
+  });
+
   const emitSearchEvent = useCallback((searchParams: Record<string, any>) => {
     const enabledRoutes = eventRoutes.filter(route => route.enabled !== false);
+    const hasInternalOutputs = searchConfig?.eventOutputs?.some(output => output.enabled !== false && output.eventName === 'search.submit');
 
     if (enabledRoutes.length === 0) {
       console.log('搜索参数:', searchParams);
-      message.info('搜索参数已提交（未配置事件路由）');
+      if (!hasInternalOutputs) {
+        message.info('搜索参数已提交（未配置事件路由）');
+      }
       return;
     }
 
@@ -112,7 +158,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     });
 
     message.success(successMessage);
-  }, [eventRoutes, successMessage, widget?.id]);
+  }, [eventRoutes, searchConfig?.eventOutputs, successMessage, widget?.id]);
 
   const buildApiQuery = useCallback((searchParams: Record<string, any>) => {
     const configuredQuery = parseJsonConfig(apiQuery);
@@ -143,6 +189,8 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
   }, [apiBody]);
 
   const handleSearchSubmit = useCallback(async (searchParams: Record<string, any>) => {
+    emitWidgetEvent('search.submit', { keyword: searchParams.keyword, values: searchParams }, 'submit');
+
     if (submitMethod === 'api' && apiEndpoint) {
       try {
         const requestQuery = buildApiQuery(searchParams);
@@ -162,7 +210,7 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
     } else {
       emitSearchEvent(searchParams);
     }
-  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiQuery, buildApiPayload, emitSearchEvent, failureMessage, successMessage]);
+  }, [submitMethod, apiEndpoint, apiMethod, apiHeaders, buildApiQuery, buildApiPayload, emitSearchEvent, failureMessage, successMessage, emitWidgetEvent]);
 
   const handleSimpleSearch = (value: string) => {
     if (!value.trim()) {
@@ -191,17 +239,15 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
 
   const handleClear = () => {
     setSearchValue('');
-    const initial: Record<string, string> = {};
-    searchFields?.forEach(field => {
-      if (field.defaultValue) {
-        initial[field.name] = field.defaultValue;
-      }
-    });
-    setFieldValues(initial);
+    setFieldValues(getInitialFieldValues());
   };
 
   const handleFieldChange = (name: string, value: string) => {
     setFieldValues(prev => ({ ...prev, [name]: value }));
+    const changeOutputEnabled = searchConfig?.eventOutputs?.some(item => item.enabled !== false && item.eventName === 'search.change');
+    if (changeOutputEnabled) {
+      emitWidgetEvent('search.change', { field: name, value, values: { ...fieldValues, [name]: value } }, 'change');
+    }
   };
 
   if (!searchFields || searchFields.length === 0) {
@@ -211,7 +257,14 @@ const SearchWidget: React.FC<SearchWidgetProps> = ({ config, widget }) => {
           placeholder={placeholder}
           allowClear
           value={searchValue}
-          onChange={e => setSearchValue(e.target.value)}
+          onChange={e => {
+            const nextValue = e.target.value;
+            setSearchValue(nextValue);
+            const changeOutputEnabled = searchConfig?.eventOutputs?.some(item => item.enabled !== false && item.eventName === 'search.change');
+            if (changeOutputEnabled) {
+              emitWidgetEvent('search.change', { keyword: nextValue }, 'change');
+            }
+          }}
           enterButton={<Button type="primary" icon={<SearchOutlined />}>{buttonText}</Button>}
           onSearch={handleSimpleSearch}
         />

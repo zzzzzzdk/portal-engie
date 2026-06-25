@@ -5,6 +5,9 @@ import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { requestWidgetApi } from '@/utils/widgetApi'
 import { getWidgetDefaultFieldValue } from '@/utils/widgetApiDefaults'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
 
 interface StatItem {
   key: string
@@ -39,6 +42,8 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+  const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
   const statsConfig = config as StatsWidgetConfig
   const apiEndpoint = statsConfig?.apiEndpoint
@@ -63,8 +68,11 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
           body: statsConfig?.apiBody,
           dataField: statsConfig?.apiDataField || defaultDataField,
           timeout: statsConfig?.timeout,
+          runtimeParams: runtimeParamsRef.current,
         })
-        setStatsData(result.data || result.raw || {})
+        const nextData = result.data || result.raw || {}
+        setStatsData(nextData)
+        emitWidgetEvent('data.loaded', { data: nextData, raw: result.raw }, 'system')
       } else if (isStaticDataSource && staticData && typeof staticData === 'object' && !Array.isArray(staticData)) {
         setStatsData(staticData)
       } else {
@@ -76,7 +84,9 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
       }
     } catch (err: any) {
       console.error('加载统计数据失败:', err)
-      setError(err.message || '数据加载失败')
+      const message = err.message || '数据加载失败'
+      setError(message)
+      emitWidgetEvent('data.error', { message, error: err }, 'system')
     } finally {
       setLoading(false)
     }
@@ -88,9 +98,34 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
     statsConfig?.apiMethod,
     statsConfig?.apiQuery,
     defaultDataField,
+    emitWidgetEvent,
     isStaticDataSource,
+    runtimeParamsRef,
     staticData,
   ])
+
+  useWidgetEventInputs(widget, {
+    reload: () => {
+      loadData()
+    },
+    setParams: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+    },
+    setParamsAndReload: (params, message) => {
+      const input = widget?.config?.eventInputs?.find(item =>
+        item.listenWidgetId === message.sourceWidgetId && item.listenEventName === message.name,
+      )
+      setRuntimeParams(params, 'replace')
+      loadData()
+    },
+    clearParams: () => {
+      clearRuntimeParams()
+      loadData()
+    },
+  })
 
   useEffect(() => {
     loadData()
@@ -153,13 +188,17 @@ const StatsWidget: React.FC<StatsWidgetProps> = ({ config, widget }) => {
   return (
     <Spin spinning={loading}>
       <Row gutter={16} style={{ height: '100%', alignItems: 'center' }}>
-        {statsItems.map(item => {
+        {statsItems.map((item, index) => {
           const value = item.value ?? statsData[item.key] ?? 0
           const color = getTrendColor(item.trend, item.color)
 
           return (
             <Col span={colSpan} key={item.key}>
-              <Card variant="borderless">
+              <Card
+                variant="borderless"
+                onClick={() => emitWidgetEvent('stats.itemClick', { item, index, value, label: item.label }, 'click')}
+                style={{ cursor: 'pointer' }}
+              >
                 <Statistic
                   title={item.label}
                   value={value}

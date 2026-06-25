@@ -35,6 +35,8 @@ import {
 import './index.scss'
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { getGlobalMessageCopy } from '@/utils/global-config'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
 
 const { RangePicker } = DatePicker
 const { bus } = WujieReact
@@ -116,8 +118,21 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
     queryFilterConfig?.successMessage || getGlobalMessageCopy(globalConfigDetail, 'form.success')
   const failureMessage =
     queryFilterConfig?.failureMessage || getGlobalMessageCopy(globalConfigDetail, 'form.error')
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({})
   const fieldsJsonRef = useRef<string>('')
+
+  useWidgetEventInputs(widget, {
+    setValue: (params) => {
+      form.setFieldsValue(params)
+    },
+    clearValue: () => {
+      form.resetFields()
+    },
+    reset: () => {
+      form.resetFields()
+    },
+  })
   const formStyle = useMemo(() => {
     const alignSelfMap = {
       top: 'flex-start',
@@ -252,8 +267,12 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
 
   const emitSearchEvent = useCallback((searchParams: Record<string, any>) => {
     const enabledRoutes = eventRoutes.filter(route => route.enabled !== false)
+    const internalSubmitEnabled = queryFilterConfig?.eventOutputs?.some(output => output.enabled !== false && output.eventName === 'form.submit')
 
     if (enabledRoutes.length === 0) {
+      if (internalSubmitEnabled) {
+        return
+      }
       console.log('查询筛选参数:', searchParams)
       message.info('查询参数已提交，但未配置事件路由')
       return
@@ -276,7 +295,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
     })
 
     message.success(successMessage)
-  }, [eventRoutes, successMessage, widget?.id])
+  }, [eventRoutes, queryFilterConfig?.eventOutputs, successMessage, widget?.id])
 
   const buildApiQuery = useCallback((searchParams: Record<string, any>) => {
     const configuredQuery = parseJsonConfig(apiQuery)
@@ -310,6 +329,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
     try {
       const values = await form.validateFields()
       const searchParams = formatQueryFilterSubmitValues(fields, values)
+      emitWidgetEvent('form.submit', { values: searchParams, filters: searchParams }, 'submit')
 
       if (submitMethod === 'api') {
         if (!apiEndpoint) {
@@ -338,11 +358,12 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
       message.error(failureMessage)
       console.error('查询筛选提交失败:', error)
     }
-  }, [apiEndpoint, apiHeaders, apiMethod, buildApiPayload, buildApiQuery, emitSearchEvent, failureMessage, fields, form, submitMethod, successMessage])
+  }, [apiEndpoint, apiHeaders, apiMethod, buildApiPayload, buildApiQuery, emitSearchEvent, emitWidgetEvent, failureMessage, fields, form, submitMethod, successMessage])
 
   const handleReset = useCallback(() => {
     form.resetFields()
-  }, [form])
+    emitWidgetEvent('form.reset', {}, 'reset')
+  }, [emitWidgetEvent, form])
 
   const selectFilterOption = (input: string, option: any) => {
     const labelText = String(option?.label ?? '').trim().toLowerCase()
@@ -444,6 +465,18 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
         layout={formLayout === 'inline' ? 'inline' : formLayout}
         className={`query-filter-widget__form query-filter-widget__form--${formLayout}`}
         style={formStyle}
+        onValuesChange={(changedValues, values) => {
+          const changeOutputEnabled = queryFilterConfig?.eventOutputs?.some(item => item.enabled !== false && item.eventName === 'form.change')
+          if (!changeOutputEnabled) {
+            return
+          }
+          const changedField = Object.keys(changedValues)[0]
+          emitWidgetEvent('form.change', {
+            values: formatQueryFilterSubmitValues(fields, values),
+            changedField,
+            changedValue: changedValues[changedField],
+          }, 'change')
+        }}
         {...getFormLayoutProps(formLayout, labelWidth)}
       >
         <div className="query-filter-widget__fields" style={{ gap: `${fieldSpacing}px` }}>

@@ -72,16 +72,16 @@ const MODULE_OPTIONS: Array<{
     description: '统一维护我的文档组件依赖的数据源地址。',
     icon: <DatabaseOutlined />,
   },
-  {
-    key: 'message-copy',
-    title: '消息文案配置',
-    description: '维护自定义表单成功和失败的默认提示文案。',
-    icon: <MessageOutlined />,
-  },
+  // {
+  //   key: 'message-copy',
+  //   title: '消息文案配置',
+  //   description: '维护自定义表单成功和失败的默认提示文案。',
+  //   icon: <MessageOutlined />,
+  // },
   {
     key: 'opencode-service',
-    title: 'OpenCode 服务',
-    description: '统一维护 AI 助手通过后端代理访问的 OpenCode 服务地址。',
+    title: 'AI 服务',
+    description: '统一维护 AI 助手通过后端代理访问的 AI 服务地址。',
     icon: <ApiOutlined />,
   },
 ]
@@ -500,13 +500,13 @@ const GlobalConfigPage: React.FC = () => {
         return
       }
 
-      message.success('保存 OpenCode 服务配置成功')
+      message.success('保存 AI 服务配置成功')
       await fetchConfigDetail()
     } catch (error: any) {
       if (error?.errorFields) {
         return
       }
-      console.error('保存 OpenCode 服务配置失败', error)
+      console.error('保存 AI 服务配置失败', error)
     } finally {
       setOpenCodeSaving(false)
     }
@@ -718,10 +718,10 @@ const GlobalConfigPage: React.FC = () => {
   const renderOpenCodeServicePanel = () => (
     <div className="global-config-page__module-panel global-config-page__simple-panel">
       <div className="global-config-page__panel-intro">
-        <div className="global-config-page__panel-title">OpenCode 服务配置</div>
+        <div className="global-config-page__panel-title">AI 服务配置</div>
         <div className="global-config-page__panel-description">
-          <div>影响范围：AI 助手通过后端代理连接 OpenCode 服务。</div>
-          <div>影响策略：保存后 mock 与后续正式后端都复用该服务地址，不再维护自定义模型配置。</div>
+          <div>影响范围：AI 助手通过后端代理连接 AI 服务。</div>
+          <div>影响策略：保存后正式后端复用该服务地址，不再维护自定义模型配置。</div>
         </div>
       </div>
 
@@ -730,7 +730,7 @@ const GlobalConfigPage: React.FC = () => {
           <div className="global-config-page__editor-header">
             <div>
               <div className="global-config-page__card-title">服务地址</div>
-              <div className="global-config-page__card-tip">用于后端代理请求 OpenCode 服务的根地址</div>
+              <div className="global-config-page__card-tip">用于后端代理请求 AI 服务的根地址</div>
             </div>
             <Button
               type="primary"
@@ -748,13 +748,13 @@ const GlobalConfigPage: React.FC = () => {
                 name="serviceUrl"
                 label={(
                   <Space size={6}>
-                    <span>OpenCode 服务地址</span>
-                    <Tooltip title="例如：http://127.0.0.1:8096。后端代理会基于这个地址转发到 OpenCode 服务。">
+                    <span>AI 服务地址</span>
+                    <Tooltip title="例如：http://127.0.0.1:8096。后端代理会基于这个地址转发到 AI 服务。">
                       <InfoCircleOutlined />
                     </Tooltip>
                   </Space>
                 )}
-                rules={[{ required: true, whitespace: true, message: '请输入 OpenCode 服务地址' }]}
+                rules={[{ required: true, whitespace: true, message: '请输入 AI 服务地址' }]}
               >
                 <Input placeholder="例如：http://127.0.0.1:8096" />
               </Form.Item>

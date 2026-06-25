@@ -288,7 +288,7 @@ router.post('/v1/agent-chat/chat/stream', async (req, res) => {
     const errorPayload = buildStreamErrorPayload(
       error,
       conversation.id,
-      'OpenCode 会话执行失败。',
+      'AI 服务会话执行失败。',
     );
     writeSseEvent(res, 'error', {
       ...errorPayload,

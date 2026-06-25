@@ -307,11 +307,11 @@ const buildResultFromAssistantMessage = ({
         reasoningSteps,
       });
     }
-    throw new Error('OpenCode 未返回 publish_message_payload，无法恢复工作台快照。');
+    throw new Error('AI 服务未返回 publish_message_payload，无法恢复工作台快照。');
   }
 
   if (publishedPayload.ok !== true) {
-    const errorMessage = publishedPayload?.error?.message || 'OpenCode 正式结果发布失败。';
+    const errorMessage = publishedPayload?.error?.message || 'AI 服务正式结果发布失败。';
     throw new Error(errorMessage);
   }
 
@@ -342,7 +342,7 @@ const buildResultFromAssistantMessage = ({
         reasoningSteps,
       });
     }
-    throw new Error('OpenCode 正式结果中未包含可用的工作台快照。');
+    throw new Error('AI 服务正式结果中未包含可用的工作台快照。');
   }
 
   const summary = normalizeSummary(
@@ -403,7 +403,7 @@ const loadLatestAssistantMessage = async (sessionId, preferredMessageId, signal,
     .filter((item) => item?.info?.role === 'assistant');
 
   if (!assistantMessages.length) {
-    throw new Error('OpenCode 会话中未找到 assistant 消息。');
+    throw new Error('AI 服务会话中未找到 assistant 消息。');
   }
 
   const exactMatch = assistantMessages.find((item) => item?.info?.id === preferredMessageId);
@@ -561,7 +561,7 @@ const extractErrorText = (candidate) => {
 const buildStreamErrorPayload = (
   error,
   conversationId = '',
-  fallbackMessage = 'OpenCode 会话执行失败。',
+  fallbackMessage = 'AI 服务会话执行失败。',
 ) => {
   const rawPayload = error instanceof Error ? error.payload : null;
   const payload =
@@ -660,8 +660,8 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
   });
 
   await status('context', session?.id === payload?.conversationId
-    ? '已复用 OpenCode 会话，继续当前工作台对话。'
-    : '已创建 OpenCode 会话，准备提交工作台请求。');
+    ? '已复用 AI 服务会话，继续当前工作台对话。'
+    : '已创建 AI 服务会话，准备提交工作台请求。');
 
   const deferred = createDeferred();
   const eventController = new AbortController();
@@ -706,7 +706,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
     }
 
     try {
-      await status('validate', '正在解析 OpenCode 正式结果。');
+      await status('validate', '正在解析 AI 服务正式结果。');
       const latestAssistantMessage = await loadLatestAssistantMessage(
         session.id,
         state.assistantMessageId,
@@ -728,7 +728,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
           `结果已就绪，包含 ${result.summary.widgetCount} 个组件，准备应用到工作台。`,
         );
       } else {
-        await status('finalize', 'OpenCode 已返回文本回复，未包含工作台快照。');
+        await status('finalize', 'AI 服务已返回文本回复，未包含工作台快照。');
       }
       settleResolve(result);
     } catch (error) {
@@ -764,7 +764,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
         const errorPayload = buildStreamErrorPayload(
           eventPayload?.properties,
           session.id,
-          'OpenCode 会话执行失败。',
+          'AI 服务会话执行失败。',
         );
         const error = new Error(errorPayload.message);
         error.payload = errorPayload;
@@ -774,7 +774,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
 
       if (eventType === 'session.idle') {
         state.sessionIdle = true;
-        await status('finalize', 'OpenCode 当前回合已结束，正在整理结果。');
+        await status('finalize', 'AI 服务当前回合已结束，正在整理结果。');
         await tryResolveFinalResult();
         return;
       }
@@ -794,7 +794,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
           const errorPayload = buildStreamErrorPayload(
             info.error,
             session.id,
-            'OpenCode 返回消息失败。',
+            'AI 服务返回消息失败。',
           );
           const error = new Error(errorPayload.message);
           error.payload = errorPayload;
@@ -803,11 +803,11 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
         }
 
         if (!info?.time?.completed) {
-          await status('request', 'OpenCode 已开始生成工作台回复。');
+          await status('request', 'AI 服务已开始生成工作台回复。');
           return;
         }
 
-        await status('finalize', 'OpenCode 回复已完成，等待会话收口。');
+        await status('finalize', 'AI 服务回复已完成，等待会话收口。');
         await tryResolveFinalResult();
         return;
       }
@@ -833,7 +833,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
         }
 
         if (part?.type === 'step-start') {
-          await status('request', 'OpenCode 正在执行当前回合。');
+          await status('request', 'AI 服务正在执行当前回合。');
           return;
         }
 
@@ -924,7 +924,7 @@ const runOpenCodeConversation = async (payload, emit, options = {}) => {
 
     state.promptSubmitted = true;
     state.modelLabel = model?.label || FIXED_ASSISTANT_NAME;
-    await status('request', `请求已提交到 OpenCode，固定模型 ${state.modelLabel}。`);
+    await status('request', `请求已提交到 AI 服务，固定模型 ${state.modelLabel}。`);
 
     const result = await deferred.promise;
     closeEventStream();
@@ -950,8 +950,8 @@ const listModels = () => [{
   name: FIXED_ASSISTANT_NAME,
   provider: 'opencode',
   description: DEFAULT_AGENT
-    ? `固定接入 OpenCode agent：${DEFAULT_AGENT}`
-    : '固定接入 OpenCode 默认 agent 与 skill 链路',
+    ? `固定接入 AI 服务 agent：${DEFAULT_AGENT}`
+    : '固定接入 AI 服务默认 agent 与 skill 链路',
   recommended: true,
   isDefault: true,
   configured: true,

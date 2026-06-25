@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Form, Input, InputNumber, Switch, Select, Divider, Upload, Button, message, Tabs, ColorPicker, Radio, Slider, Collapse } from 'antd';
 import { UploadOutlined, LoadingOutlined, PlusOutlined, DeleteOutlined, CloseOutlined, SettingOutlined } from '@ant-design/icons';
-import { Widget, WidgetType, MicroAppModule, FloatingModuleConfig, FormField, QueryFilterFieldConfig } from '@/types';
+import { Widget, WidgetType, MicroAppModule, FloatingModuleConfig, QueryFilterFieldConfig } from '@/types';
 import { useStore } from '@/store/useStore';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
 import { REFRESHABLE_WIDGET_TYPES, MAX_REFRESH_INTERVAL } from '@/constants/dashboard';
 import { microAppCommunication } from '@/utils/microAppCommunication';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import { uploadImage } from '@/services';
-import FormFieldBuilder from '../FormFieldBuilder';
+import QueryFilterFieldBuilder from '@/components/QueryFilterFieldBuilder';
 import MicroAppSelector from '../MicroAppSelector';
 import EventRouteConfig from '../EventRouteConfig';
 import BackgroundSettings from '@/components/BackgroundSettings';
@@ -19,6 +19,7 @@ import WidgetApiDebugButton from '@/components/WidgetApiDebugButton';
 import WidgetApiConfigTabs from '@/components/WidgetApiConfigTabs';
 import WidgetTitleSettings from '@/components/WidgetTitleSettings';
 import RichTextEditor from '@/components/RichTextEditor';
+import EventLinkageConfig from './configs/EventLinkageConfig';
 import { getIconValueType } from '@/components/IconPicker/types';
 import { useGlobalConfigStore } from '@/store/useGlobalConfigStore';
 import {
@@ -34,6 +35,8 @@ import {
   ChartConfig,
   ChartDataConfig,
   IndicatorCardConfig,
+  IndicatorCardListConfig,
+  RecognitionCardConfig,
   ConfigDialogDataTab,
 } from './configs';
 import { normalizeDataSourceMode } from './configs/dataSourceHelpers';
@@ -56,7 +59,9 @@ import {
   hasGlobalThemeScheme,
 } from '@/utils/global-config';
 import { keyValueListToJsonString, keyValueListToObject, objectToKeyValueList } from '@/utils/widgetApi';
+import { isNativeFormContainerField } from '@/native-form/shared/field-factory';
 import {
+  getUnifiedFormFields,
   hydrateQueryFilterFields,
   normalizeQueryFilterFields,
   QUERY_FILTER_FIELD_NAME_MAX_LENGTH,
@@ -98,6 +103,82 @@ const stringifyJsonValue = (value: any): string => {
     return '';
   }
 };
+
+const parseJsonArrayValue = (value: any) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? JSON.parse(trimmed) : [];
+  }
+  return [];
+};
+
+const collectNativeFormFieldNames = (nodes: any[] = []): string[] => {
+  return nodes.flatMap((node) => {
+    const current = node?.field ? [node.field] : [];
+
+    if (node?.type === 'grid') {
+      const gridChildren = (node.gridCells || [])
+        .flatMap((cell: any) => cell.node ? collectNativeFormFieldNames([cell.node]) : []);
+      return [...current, ...gridChildren];
+    }
+
+    if (isNativeFormContainerField(node?.type) && Array.isArray(node.children)) {
+      return [...current, ...collectNativeFormFieldNames(node.children)];
+    }
+
+    return current;
+  });
+};
+
+export const normalizeEventInputsForForm = (items: any[] = []) => items.map(item => ({
+  ...item,
+  paramMappingList: item?.paramMapping && typeof item.paramMapping === 'object'
+    ? Object.entries(item.paramMapping).map(([target, source]) => ({ target, source }))
+    : item?.paramMappingList || [],
+}));
+
+export const normalizeEventOutputsForForm = (items: any[] = []) => items.map(item => ({
+  ...item,
+  payloadMappingList: item?.payloadMapping && typeof item.payloadMapping === 'object'
+    ? Object.entries(item.payloadMapping).map(([target, source]) => ({ target, source }))
+    : item?.payloadMappingList || [],
+}));
+
+export const mappingListToObject = (list: any[] = []) => list.reduce((result: Record<string, string>, pair: any) => {
+  const target = pair?.target?.trim();
+  const source = pair?.source?.trim();
+  if (target && source) {
+    result[target] = source;
+  }
+  return result;
+}, {});
+
+export const normalizeEventInputsForSave = (items: any[] = []) => items.map(item => {
+  const paramMapping = Array.isArray(item?.paramMappingList)
+    ? mappingListToObject(item.paramMappingList)
+    : item?.paramMapping;
+
+  const { paramMappingList, debounce, mergeMode: _mergeMode, ...rest } = item || {};
+  return {
+    ...rest,
+    debounce: debounce === '' || debounce == null ? undefined : Number(debounce),
+    paramMapping: Object.keys(paramMapping || {}).length ? paramMapping : undefined,
+  };
+});
+
+export const normalizeEventOutputsForSave = (items: any[] = []) => items.map(item => {
+  const payloadMapping = Array.isArray(item?.payloadMappingList)
+    ? mappingListToObject(item.payloadMappingList)
+    : item?.payloadMapping;
+  const { payloadMappingList, debounce, ...rest } = item || {};
+  return {
+    ...rest,
+    debounce: debounce === '' || debounce == null ? undefined : Number(debounce),
+    payloadMapping: Object.keys(payloadMapping || {}).length ? payloadMapping : undefined,
+  };
+});
 
 const getQueryFilterFieldsFormValue = (fields?: QueryFilterFieldConfig[]) => {
   const hydratedFields = hydrateQueryFilterFields(fields);
@@ -382,6 +463,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const prevWidgetIdRef = useRef<string | null>(null);
   const [bgUploading, setBgUploading] = useState(false);
   const globalThemeOptions = useMemo(() => getGlobalThemeOptions(globalConfigDetail), [globalConfigDetail]);
+  const canvasTitleColor = styleTokens?.widget?.titleColor;
   const genericStaticDataEditorMeta = useMemo(
     () =>
       getStaticDataEditorMeta(widget.type, {
@@ -665,6 +747,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           mapAreaColor: normalizeColorForForm(widget.config.mapAreaColor),
           mapBorderColor: normalizeColorForForm(widget.config.mapBorderColor),
           mapEmphasisAreaColor: normalizeColorForForm(widget.config.mapEmphasisAreaColor),
+          legendTextColor: normalizeColorForForm(widget.config.legendTextColor),
           flowLineColor: normalizeColorForForm(widget.config.flowLineColor),
           flowNodeColor: normalizeColorForForm(widget.config.flowNodeColor),
           visualMapStartColor: normalizeColorForForm(widget.config.visualMapStartColor),
@@ -709,6 +792,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             pageSizeField: widget.config.paginationConfig?.pageSizeField,
             showTotal: widget.config.paginationConfig?.showTotal,
           },
+          eventOutputsText: stringifyJsonValue(widget.config.eventOutputs || []),
+          eventInputsText: stringifyJsonValue(widget.config.eventInputs || []),
+          eventOutputs: normalizeEventOutputsForForm(widget.config.eventOutputs || []),
+          eventInputs: normalizeEventInputsForForm(widget.config.eventInputs || []),
           showTitle: widget.config.showTitle !== false,
           backgroundType: widget.config.backgroundType || 'color',
           backgroundImage: widget.config.backgroundImage,
@@ -742,6 +829,38 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             apiMethod: widget.config.apiMethod || 'GET',
             valueField: widget.config.valueField || 'value',
             descriptionField: widget.config.descriptionField || 'description',
+          });
+        }
+
+        if (widget.type === 'indicatorCardList') {
+          form.setFieldsValue({
+            dataSource:
+              normalizeDataSourceMode(widget.config.dataSource) ||
+              ((widget.config as any).dataSourceId ? 'dataSource' : (widget.config.apiEndpoint ? 'customApi' : 'static')),
+            apiMethod: widget.config.apiMethod || 'GET',
+            valueField: widget.config.valueField || 'value',
+            descriptionField: widget.config.descriptionField || 'description',
+            columns: widget.config.columns || 2,
+            staticItems: Array.isArray(widget.config.staticItems) ? widget.config.staticItems : [],
+          });
+        }
+
+        if (widget.type === 'recognitionCard') {
+          form.setFieldsValue({
+            dataSource:
+              normalizeDataSourceMode(widget.config.dataSource) ||
+              ((widget.config as any).dataSourceId ? 'dataSource' : (widget.config.apiEndpoint ? 'customApi' : 'static')),
+            apiMethod: widget.config.apiMethod || 'GET',
+            showSimilarity: widget.config.showSimilarity !== false,
+            similarityField: widget.config.similarityField || 'similarity',
+            imageField: widget.config.imageField || 'imageUrl',
+            showPlateNo: widget.config.showPlateNo !== false,
+            plateNoField: widget.config.plateNoField || 'plateNo',
+            showPersonName: widget.config.showPersonName !== false,
+            personNameField: widget.config.personNameField || 'personName',
+            showQuickLinks: widget.config.showQuickLinks !== false,
+            infoItems: widget.config.infoItems || [],
+            staticData: stringifyJsonValue(widget.config.staticData),
           });
         }
 
@@ -783,7 +902,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         }
 
         // 通用接口请求头初始化（dataTable/topList/news/navGroup/chart/stats）
-        if (['chart', 'stats', 'indicatorCard', 'dataTable', 'news', 'topList', 'navGroup'].includes(widget.type) && widget.config.apiHeaders) {
+        if (['chart', 'stats', 'indicatorCard', 'indicatorCardList', 'dataTable', 'news', 'topList', 'navGroup'].includes(widget.type) && widget.config.apiHeaders) {
           form.setFieldsValue({
             apiHeadersList: Object.entries(widget.config.apiHeaders).map(([key, value]) => ({ key, value })),
           });
@@ -832,6 +951,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         // customForm 特有配置初始化
         if (widget.type === 'customForm') {
           form.setFieldsValue({
+            fields: getQueryFilterFieldsFormValue(getUnifiedFormFields(widget.config.fields)),
             submitButtonText: widget.config.submitButtonText || '提交',
             submitButtonSize: widget.config.submitButtonSize || 'middle',
             submitButtonColor: normalizeColorForForm(widget.config.submitButtonColor),
@@ -1066,6 +1186,50 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         ])
       }
 
+      values.eventOutputs = normalizeEventOutputsForSave(
+        Array.isArray(values.eventOutputs)
+          ? values.eventOutputs
+          : parseJsonArrayValue(values.eventOutputsText),
+      );
+      values.eventInputs = normalizeEventInputsForSave(
+        Array.isArray(values.eventInputs)
+          ? values.eventInputs
+          : parseJsonArrayValue(values.eventInputsText),
+      );
+      delete values.eventOutputsText;
+      delete values.eventInputsText;
+
+      if (widget?.type === 'nativeForm') {
+        const fieldNames = new Set(collectNativeFormFieldNames(values.formSchema?.children || widget.config?.formSchema?.children));
+        const invalidInput = (values.eventInputs || []).find((input: any) => {
+          if (!['setValue', 'clearValue'].includes(input?.action)) {
+            return false;
+          }
+
+          return Object.keys(input.paramMapping || {})
+            .filter(target => target && target !== 'fields')
+            .some(target => !fieldNames.has(target));
+        });
+
+        if (invalidInput) {
+          const invalidTarget = Object.keys(invalidInput.paramMapping || {})
+            .filter(target => target && target !== 'fields')
+            .find(target => !fieldNames.has(target));
+          message.warning(`表单联动目标字段「${invalidTarget}」不存在，请修改`);
+          return false;
+        }
+
+        const changeOutputWithoutDebounce = (values.eventOutputs || []).some((output: any) =>
+          output?.enabled !== false &&
+          output?.eventName === 'form.change' &&
+          (!output?.debounce || Number(output.debounce) <= 0),
+        );
+
+        if (changeOutputWithoutDebounce) {
+          message.info(`form.change 是高频事件，建议设置 ${values.linkageRuntime?.defaultChangeDebounce || 300}ms 防抖`);
+        }
+      }
+
       if (widget?.type === 'queryFilter') {
         const rawQueryFields = form.getFieldValue('queryFields') || values.queryFields;
         values.queryFields = Array.isArray(rawQueryFields)
@@ -1078,39 +1242,56 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           : rawQueryFields;
       }
 
-      // customForm: 校验字段名及 Select/Radio 选项
+      // customForm: 校验共享字段配置
       if (widget?.type === 'customForm' && values.fields) {
-        const formFields = values.fields as FormField[];
+        const formFields = values.fields as QueryFilterFieldConfig[];
         let fieldError = '';
+        const fieldNameCountMap: Record<string, number> = {};
 
-        // 校验字段名不能为空或重复
-        const nameCountMap: Record<string, number> = {};
         for (const field of formFields) {
-          if (!field.name || !field.name.trim()) {
-            fieldError = `字段「${field.label}」的字段名不能为空`;
+          const trimmedFieldName = field.field?.trim();
+
+          if (!trimmedFieldName) {
+            fieldError = `字段「${field.label || '未命名字段'}」的 field 名不能为空`;
             break;
           }
-          nameCountMap[field.name] = (nameCountMap[field.name] || 0) + 1;
+          if (trimmedFieldName.length > QUERY_FILTER_FIELD_NAME_MAX_LENGTH) {
+            fieldError = `字段「${field.label || '未命名字段'}」的 field 名不能超过 ${QUERY_FILTER_FIELD_NAME_MAX_LENGTH} 个字符`;
+            break;
+          }
+          fieldNameCountMap[trimmedFieldName] = (fieldNameCountMap[trimmedFieldName] || 0) + 1;
         }
+
         if (!fieldError) {
-          const dupName = Object.keys(nameCountMap).find(k => nameCountMap[k] > 1);
-          if (dupName) {
-            fieldError = `字段名「${dupName}」重复，请修改`;
+          const duplicatedField = Object.keys(fieldNameCountMap).find(key => fieldNameCountMap[key] > 1);
+          if (duplicatedField) {
+            fieldError = `字段名「${duplicatedField}」重复，请修改`;
           }
         }
 
-        // 校验 Select/Radio 选项的 value 不能为空或重复
         if (!fieldError) {
           for (const field of formFields) {
-            if (['select', 'radio'].includes(field.type) && field.options?.length) {
-              const hasEmpty = field.options.some((o: { label: string; value: string | number }) => !String(o.value).trim());
-              if (hasEmpty) {
-                fieldError = `字段「${field.label}」的选项值不能为空`;
-                break;
+            if (['checkboxGroup', 'radioGroup', 'select'].includes(field.type)) {
+              const options = field.manualOptions || [];
+              if (field.dataSourceType === 'manual' && options.length > 0) {
+                const hasEmpty = options.some(option => !String(option.value ?? '').trim());
+                if (hasEmpty) {
+                  fieldError = `字段「${field.label}」的选项值不能为空`;
+                  break;
+                }
+                const valuesSet = options.map(option => String(option.value));
+                if (valuesSet.length !== new Set(valuesSet).size) {
+                  fieldError = `字段「${field.label}」的选项值不能重复`;
+                  break;
+                }
               }
-              const vals = field.options.map((o: { label: string; value: string | number }) => String(o.value));
-              if (vals.length !== new Set(vals).size) {
-                fieldError = `字段「${field.label}」的选项值不能重复`;
+            }
+
+            if (field.type === 'cascader' && field.dataMode === 'json' && field.jsonData?.trim()) {
+              try {
+                JSON.parse(field.jsonData);
+              } catch {
+                fieldError = `字段「${field.label}」的级联 JSON 格式不正确`;
                 break;
               }
             }
@@ -1648,6 +1829,10 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             normalizedRestConfig.apiListField = normalizedRestConfig.apiListField.trim() || undefined;
           }
 
+          if (widget.type === 'customForm') {
+            normalizedRestConfig.fields = normalizeQueryFilterFields(normalizedRestConfig.fields);
+          }
+
           if (widget.type === 'queryFilter') {
             normalizedRestConfig.queryFields = normalizeQueryFilterFields(normalizedRestConfig.queryFields);
             normalizedRestConfig.formLayout = ['vertical', 'horizontal', 'inline'].includes(normalizedRestConfig.formLayout)
@@ -1792,6 +1977,122 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             }
           }
 
+          if (widget.type === 'indicatorCardList') {
+            normalizedRestConfig.indicatorValueColor = normalizeColorValue(normalizedRestConfig.indicatorValueColor);
+            normalizedRestConfig.indicatorDescriptionColor = normalizeColorValue(normalizedRestConfig.indicatorDescriptionColor);
+            normalizedRestConfig.indicatorValueFontSize = typeof normalizedRestConfig.indicatorValueFontSize === 'number'
+              ? normalizedRestConfig.indicatorValueFontSize
+              : undefined;
+            normalizedRestConfig.indicatorDescriptionFontSize = typeof normalizedRestConfig.indicatorDescriptionFontSize === 'number'
+              ? normalizedRestConfig.indicatorDescriptionFontSize
+              : undefined;
+            normalizedRestConfig.columns = typeof normalizedRestConfig.columns === 'number'
+              ? Math.min(Math.max(normalizedRestConfig.columns, 1), 4)
+              : 2;
+            normalizedRestConfig.valueField = typeof normalizedRestConfig.valueField === 'string'
+              ? normalizedRestConfig.valueField.trim() || 'value'
+              : 'value';
+            normalizedRestConfig.descriptionField = typeof normalizedRestConfig.descriptionField === 'string'
+              ? normalizedRestConfig.descriptionField.trim() || 'description'
+              : 'description';
+            normalizedRestConfig.staticItems = Array.isArray(normalizedRestConfig.staticItems)
+              ? normalizedRestConfig.staticItems
+                .map((item: any, index: number) => ({
+                  id: item?.id || `indicator-card-list-${index + 1}`,
+                  value: typeof item?.value === 'string' ? item.value.trim() : item?.value,
+                  description: typeof item?.description === 'string' ? item.description.trim() : item?.description,
+                  valueColor: normalizeColorValue(item?.valueColor),
+                  descriptionColor: normalizeColorValue(item?.descriptionColor),
+                }))
+                .filter((item: any) => item.value !== undefined && item.value !== null && item.value !== '')
+              : [];
+
+            const dataSource = normalizeDataSourceMode(normalizedRestConfig.dataSource) || 'static';
+
+            if (dataSource === 'static') {
+              normalizedRestConfig.dataSourceId = undefined;
+              normalizedRestConfig.timeout = undefined;
+              normalizedRestConfig.apiEndpoint = undefined;
+              normalizedRestConfig.apiMethod = undefined;
+              normalizedRestConfig.apiHeaders = undefined;
+              normalizedRestConfig.apiQuery = undefined;
+              normalizedRestConfig.apiBody = undefined;
+              normalizedRestConfig.apiListField = undefined;
+            } else {
+              normalizedRestConfig.staticItems = undefined;
+
+              if (dataSource === 'customApi') {
+                normalizedRestConfig.dataSourceId = undefined;
+                normalizedRestConfig.timeout = undefined;
+              }
+
+              if (typeof normalizedRestConfig.apiListField === 'string') {
+                normalizedRestConfig.apiListField = normalizedRestConfig.apiListField.trim() || undefined;
+              }
+
+              if (normalizedRestConfig.apiMethod !== 'POST') {
+                normalizedRestConfig.apiBody = undefined;
+              }
+            }
+          }
+
+
+          if (widget.type === 'recognitionCard') {
+            normalizedRestConfig.showSimilarity = normalizedRestConfig.showSimilarity !== false;
+            normalizedRestConfig.similarityField = typeof normalizedRestConfig.similarityField === 'string'
+              ? normalizedRestConfig.similarityField.trim() || 'similarity'
+              : 'similarity';
+            normalizedRestConfig.imageField = typeof normalizedRestConfig.imageField === 'string'
+              ? normalizedRestConfig.imageField.trim() || 'imageUrl'
+              : 'imageUrl';
+            normalizedRestConfig.showPlateNo = normalizedRestConfig.showPlateNo !== false;
+            normalizedRestConfig.plateNoField = typeof normalizedRestConfig.plateNoField === 'string'
+              ? normalizedRestConfig.plateNoField.trim() || 'plateNo'
+              : 'plateNo';
+            normalizedRestConfig.showPersonName = normalizedRestConfig.showPersonName !== false;
+            normalizedRestConfig.personNameField = typeof normalizedRestConfig.personNameField === 'string'
+              ? normalizedRestConfig.personNameField.trim() || 'personName'
+              : 'personName';
+            normalizedRestConfig.showQuickLinks = normalizedRestConfig.showQuickLinks !== false;
+            normalizedRestConfig.infoItems = Array.isArray(normalizedRestConfig.infoItems)
+              ? normalizedRestConfig.infoItems
+                .map((item: any, index: number) => ({
+                  id: item?.id || `recognition-info-${index + 1}`,
+                  field: typeof item?.field === 'string' ? item.field.trim() : '',
+                  icon: typeof item?.icon === 'string' ? item.icon.trim() || undefined : undefined,
+                }))
+                .filter((item: any) => item.field)
+              : [];
+
+            const dataSource = normalizeDataSourceMode(normalizedRestConfig.dataSource) || 'static';
+            const staticDataText = typeof normalizedRestConfig.staticData === 'string'
+              ? normalizedRestConfig.staticData.trim()
+              : '';
+
+            if (dataSource === 'static') {
+              normalizedRestConfig.staticData = staticDataText ? JSON.parse(staticDataText) : undefined;
+              normalizedRestConfig.dataSourceId = undefined;
+              normalizedRestConfig.timeout = undefined;
+              normalizedRestConfig.apiEndpoint = undefined;
+              normalizedRestConfig.apiMethod = undefined;
+              normalizedRestConfig.apiHeaders = undefined;
+              normalizedRestConfig.apiQuery = undefined;
+              normalizedRestConfig.apiBody = undefined;
+              normalizedRestConfig.apiDataField = undefined;
+            } else {
+              normalizedRestConfig.staticData = undefined;
+
+              if (dataSource === 'customApi') {
+                normalizedRestConfig.dataSourceId = undefined;
+                normalizedRestConfig.timeout = undefined;
+              }
+
+              if (normalizedRestConfig.apiMethod !== 'POST') {
+                normalizedRestConfig.apiBody = undefined;
+              }
+            }
+          }
+
           if (widget.type === 'chart') {
             normalizedRestConfig.emitInteraction = undefined;
             normalizedRestConfig.listenInteraction = undefined;
@@ -1807,6 +2108,18 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             normalizedRestConfig.gridRight = typeof normalizedRestConfig.gridRight === 'string'
               ? normalizedRestConfig.gridRight.trim() || undefined
               : normalizedRestConfig.gridRight;
+            normalizedRestConfig.chartTitleLeft = typeof normalizedRestConfig.chartTitleLeft === 'string'
+              ? normalizedRestConfig.chartTitleLeft.trim() || undefined
+              : normalizedRestConfig.chartTitleLeft;
+            normalizedRestConfig.chartTitleTop = typeof normalizedRestConfig.chartTitleTop === 'string'
+              ? normalizedRestConfig.chartTitleTop.trim() || undefined
+              : normalizedRestConfig.chartTitleTop;
+            normalizedRestConfig.chartTitleRight = typeof normalizedRestConfig.chartTitleRight === 'string'
+              ? normalizedRestConfig.chartTitleRight.trim() || undefined
+              : normalizedRestConfig.chartTitleRight;
+            normalizedRestConfig.chartTitleBottom = typeof normalizedRestConfig.chartTitleBottom === 'string'
+              ? normalizedRestConfig.chartTitleBottom.trim() || undefined
+              : normalizedRestConfig.chartTitleBottom;
             normalizedRestConfig.geoJsonText = typeof normalizedRestConfig.geoJsonText === 'string'
               ? normalizedRestConfig.geoJsonText.trim() || undefined
               : normalizedRestConfig.geoJsonText;
@@ -1828,6 +2141,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             normalizedRestConfig.mapAreaColor = normalizeColorValue(normalizedRestConfig.mapAreaColor);
             normalizedRestConfig.mapBorderColor = normalizeColorValue(normalizedRestConfig.mapBorderColor);
             normalizedRestConfig.mapEmphasisAreaColor = normalizeColorValue(normalizedRestConfig.mapEmphasisAreaColor);
+            normalizedRestConfig.legendTextColor = normalizeColorValue(normalizedRestConfig.legendTextColor);
             normalizedRestConfig.flowLineColor = normalizeColorValue(normalizedRestConfig.flowLineColor);
             normalizedRestConfig.flowNodeColor = normalizeColorValue(normalizedRestConfig.flowNodeColor);
             normalizedRestConfig.visualMapStartColor = normalizeColorValue(normalizedRestConfig.visualMapStartColor);
@@ -2132,7 +2446,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         options={globalThemeOptions}
         hint="开启后会自动填充全局主题中的组件标题设置，引用期间不可编辑。"
       />
-      <WidgetTitleSettings disabled={titleUseGlobalConfig} />
+      <WidgetTitleSettings disabled={titleUseGlobalConfig} defaultTitleColor={canvasTitleColor} />
 
       <div className="form-row-2">
         <Form.Item
@@ -2174,7 +2488,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
   const renderComponentTab = () => {
     // 检查是否有特定组件配置
     const hasComponentConfig = [
-      'typography', 'headerBar', 'link', 'dataTable', 'chart', 'indicatorCard',
+      'typography', 'headerBar', 'link', 'dataTable', 'chart', 'indicatorCard', 'indicatorCardList',
+      'recognitionCard',
       'customForm', 'queryFilter', 'pageNavigator', 'microApp', 'richText',
       'iconNav', 'navGroup', 'carousel', 'myDocuments'
     ].includes(widget.type) || isAssistantHub;
@@ -2354,6 +2669,8 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         {widget.type === 'link' && <LinkConfig form={form} widget={widget} />}
         {widget.type === 'chart' && <ChartConfig form={form} widget={widget} />}
         {widget.type === 'indicatorCard' && <IndicatorCardConfig form={form} widget={widget} />}
+        {widget.type === 'indicatorCardList' && <IndicatorCardListConfig form={form} widget={widget} />}
+        {widget.type === 'recognitionCard' && <RecognitionCardConfig form={form} widget={widget} />}
         {widget.type === 'carousel' && <CarouselConfig form={form} widget={widget} />}
 
         {widget.type === 'dataTable' && <DataTableConfig form={form} widget={widget} />}
@@ -2362,7 +2679,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
           <>
             <Divider>表单字段</Divider>
             <Form.Item name="fields" label="字段">
-              <FormFieldBuilder />
+              <QueryFilterFieldBuilder form={form} name="fields" mode="customForm" />
             </Form.Item>
             <CustomFormStyleConfig form={form} widget={widget} />
           </>
@@ -2427,6 +2744,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                           <Form.Item {...restField} name={[name, 'icon']} label="图标" style={{ marginBottom: 0 }}>
                             <IconPicker mode="simple" />
                           </Form.Item>
+                          {/* 暂时停用所属系统配置，保留实现以便后续恢复
                           <Form.Item
                             {...restField}
                             name={[name, 'systemId']}
@@ -2436,6 +2754,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                           >
                             <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                           </Form.Item>
+                          */}
                         </div>
                         <Form.Item {...restField} name={[name, 'openInNew']} label="打开方式" initialValue={false} style={{ marginBottom: 0 }}>
                           <Select options={[
@@ -2520,6 +2839,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
             <Form.Item name="url" label="跳转链接">
               <Input placeholder="请输入跳转链接" />
             </Form.Item>
+            {/* 暂时停用所属系统配置，保留实现以便后续恢复
             <Form.Item name="systemId" label="所属系统">
               <Select
                 placeholder="请选择所属系统"
@@ -2527,6 +2847,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                 allowClear
               />
             </Form.Item>
+            */}
             <div className="form-row-2">
               <Form.Item name="openInNew" label="新窗口打开" valuePropName="checked">
                 <Switch />
@@ -2889,6 +3210,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                   >
                                     <Input placeholder="/dashboard 或 https://example.com" />
                                   </Form.Item>
+                                  {/* 暂时停用所属系统配置，保留实现以便后续恢复
                                   <Form.Item
                                     {...restField}
                                     name={[name, 'systemId']}
@@ -2897,6 +3219,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                   >
                                     <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                                   </Form.Item>
+                                  */}
                                   <Form.Item
                                     {...restField}
                                     name={[name, 'openInNew']}
@@ -3004,7 +3327,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
   const renderDataTab = () => {
     const hasDataConfig = [
-      'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
+      'chart', 'stats', 'indicatorCard', 'indicatorCardList', 'recognitionCard', 'customForm', 'dataTable',
       'microApp', 'search', 'queryFilter', 'navGroup', 'carousel', 'headerBar',
       'news', 'topList'
     ].includes(widget.type);
@@ -3677,6 +4000,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                   >
                                     <ColorPicker showText allowClear />
                                   </Form.Item>
+                                  {/* 暂时停用所属系统配置，保留实现以便后续恢复
                                   <Form.Item
                                     {...restField}
                                     name={[name, 'systemId']}
@@ -3686,6 +4010,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
                                   >
                                     <Select placeholder="请选择所属系统" options={JUMP_SYSTEM_OPTIONS} />
                                   </Form.Item>
+                                  */}
                                 </div>
                                 <Form.Item
                                   {...restField}
@@ -3819,7 +4144,7 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
         options={globalThemeOptions}
         hint="开启后会自动填充分组标题样式，引用期间不可编辑。"
       />
-      <WidgetTitleSettings disabled={titleUseGlobalConfig} />
+      <WidgetTitleSettings disabled={titleUseGlobalConfig} defaultTitleColor={canvasTitleColor} />
 
       <Divider>边框设置</Divider>
       <div className="form-row-2">
@@ -3861,14 +4186,14 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
 
   // 判断是否有组件配置
   const hasComponentConfig = [
-    'typography', 'headerBar', 'link', 'chart', 'dataTable', 'indicatorCard',
-    'customForm', 'queryFilter', 'pageNavigator', 'microApp', 'richText',
+    'typography', 'headerBar', 'link', 'chart', 'dataTable', 'indicatorCard', 'indicatorCardList',
+    'recognitionCard', 'customForm', 'queryFilter', 'pageNavigator', 'microApp', 'richText',
     'iconNav', 'navGroup', 'carousel', 'myDocuments'
   ].includes(widget.type) || isAssistantHub;
 
   // 判断是否有数据与交互配置
   const hasDataConfig = [
-    'chart', 'stats', 'indicatorCard', 'customForm', 'dataTable',
+    'chart', 'stats', 'indicatorCard', 'indicatorCardList', 'recognitionCard', 'customForm', 'dataTable',
     'microApp', 'search', 'queryFilter', 'navGroup', 'carousel', 'headerBar',
     'news', 'topList'
   ].includes(widget.type);
@@ -3886,6 +4211,20 @@ const ConfigDialog: React.FC<ConfigDialogProps> = ({ isOpen, onClose, widget, on
       ...(hasComponentConfig ? [{ key: 'component', label: '组件配置', children: renderComponentTab(), forceRender: true }] : []),
       ...headerNavTabs,
       ...(hasDataConfig ? [{ key: 'data', label: '数据与交互', children: renderDataTab(), forceRender: true }] : []),
+      {
+        key: 'event-linkage',
+        label: '联动',
+        children: (
+          <EventLinkageConfig
+            form={form}
+            widget={widget}
+            widgets={useStore.getState().widgets}
+            groups={groups}
+            floatingModules={floatingModules}
+          />
+        ),
+        forceRender: true,
+      },
     ];
 
   if (isFloatingModule) {

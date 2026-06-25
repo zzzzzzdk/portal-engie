@@ -274,7 +274,27 @@ export const EVENT_NAMES: Record<string, string> = {
 export default eventBus;
 
 // 导出便捷方法
-export const { on, once, off, emit, clear, hasListeners } = eventBus;
+export const on = <T = any>(
+  eventName: string,
+  callback: (data: T) => void,
+  options: { once?: boolean; context?: any } = {},
+) => eventBus.on<T>(eventName, callback, options)
+
+export const once = <T = any>(
+  eventName: string,
+  callback: (data: T) => void,
+  options: { context?: any } = {},
+) => eventBus.once<T>(eventName, callback, options)
+
+export const off = <T = any>(eventName: string, callback?: (data: T) => void) =>
+  eventBus.off<T>(eventName, callback)
+
+export const emit = <T = any>(eventName: string, data: T) =>
+  eventBus.emit<T>(eventName, data)
+
+export const clear = () => eventBus.clear()
+
+export const hasListeners = (eventName: string) => eventBus.hasListeners(eventName)
 
 /**
  * 创建自定义事件名称

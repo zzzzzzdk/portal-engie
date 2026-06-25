@@ -17,6 +17,20 @@ import { getPublishedDashboard, parseDashboardSnapshot } from '@/services/dashbo
 import sanitizeDashboardConfig from '@/utils/dashboardConfig';
 import { createChartWidgetByPreset, isChartPresetWidgetKey } from '@/utils/chartWidgetPreset';
 import { isValidCssGradient } from '@/components/BackgroundSettings';
+import { createNativeFormFieldNode } from '@/native-form/shared/field-factory';
+import { createDefaultNativeFormFieldConfig } from '@/native-form/shared/defaults';
+import { getNativeFormFieldDefaultLayout } from '@/store/useStore';
+import {
+  clearCurrentNativeFormFieldDragType,
+  getCurrentNativeFormFieldDragType,
+  getNativeFormFieldDragType,
+  hasNativeFormFieldDragType,
+} from '@/native-form/shared/drag-transfer';
+import {
+  applyLocalTemplateRecordToStore,
+  parseLocalTemplateDragContent,
+} from '@/utils/local-component-library';
+import { resolveLocalTemplateRecord } from '@/utils/local-component-library-runtime';
 import WidgetAdapter from './WidgetAdapter';
 import GroupAdapter from './GroupAdapter';
 import FloatingModule from '@/components/FloatingModule';
@@ -32,6 +46,15 @@ type DropPayload =
   | { source: 'widget'; widgetId: string; widgetType?: WidgetType }
   | { source: 'group'; groupId: string }
   | { source: 'unknown' };
+
+type NativeFormFieldDropPlacement = {
+  widgetPosition: {
+    x: number;
+    y: number;
+    groupId?: string;
+  };
+  previewStyle: React.CSSProperties;
+};
 
 type PersistHelpers = {
   hasHydrated?: () => boolean;
@@ -88,6 +111,8 @@ const DashboardInner: React.FC = () => {
     cellHeight: densityPreset.cellHeight,
     margin: densityPreset.margin,
   });
+  const [nativeFormFieldPreviewStyle, setNativeFormFieldPreviewStyle] =
+    useState<React.CSSProperties | null>(null);
 
   const {
     gridStack,
@@ -134,6 +159,29 @@ const DashboardInner: React.FC = () => {
     return style;
   }, [isEditMode, gridVisualMetrics, dashboardConfig, isDark]);
 
+  const addNativeFormFieldWidget = useCallback((
+    fieldType: string,
+    position: { x: number; y: number; groupId?: string }
+  ) => {
+    const fieldNode = createNativeFormFieldNode(fieldType as any);
+    if (fieldNode.type === 'group' || fieldNode.type === 'grid' || fieldNode.type === 'flex' || fieldNode.type === 'subTable') {
+      message.warning('分组、栅格、子表格仅支持在原生表单内部使用，请先拖入原生表单容器');
+      return;
+    }
+    const fieldLayout = getNativeFormFieldDefaultLayout(fieldNode.type);
+    const newWidget = addWidget('nativeFormField', {
+      ...position,
+      w: fieldLayout.w,
+      h: fieldLayout.h,
+      minW: fieldLayout.minW,
+      minH: fieldLayout.minH,
+    });
+    updateWidget(newWidget.id, {
+      title: fieldNode.label || newWidget.title,
+      config: createDefaultNativeFormFieldConfig(fieldNode),
+    });
+  }, [addWidget, updateWidget]);
+
   const findParentGroupIdByGrid = useCallback((targetGrid: GridStack | null): string | null => {
     if (!gridStack || !targetGrid || targetGrid === gridStack) {
       return null;
@@ -164,6 +212,90 @@ const DashboardInner: React.FC = () => {
 
     return findInNodes(gridStack.engine?.nodes);
   }, [gridStack]);
+
+  const clearNativeFormFieldPreview = useCallback(() => {
+    setNativeFormFieldPreviewStyle(null);
+  }, []);
+
+  const resolveNativeFormFieldDropPlacement = useCallback((
+    target: HTMLElement | null,
+    clientX: number,
+    clientY: number,
+    fieldType?: string,
+  ): NativeFormFieldDropPlacement | null => {
+    const resolvedFieldType = fieldType || getCurrentNativeFormFieldDragType();
+    const fieldLayout = resolvedFieldType
+      ? getNativeFormFieldDefaultLayout(resolvedFieldType as any)
+      : getNativeFormFieldDefaultLayout('input');
+    if (!gridStack || !canvasContainerRef.current) {
+      return null;
+    }
+
+    const groupItemElement = target?.closest('[gs-id]') as HTMLElement | null;
+    const groupItemId = groupItemElement?.getAttribute('gs-id') || null;
+    const groupNode = groupItemId && groupMap.has(groupItemId)
+      ? findGridNodeById(gridStack, groupItemId)
+      : null;
+
+    const gridElement = target?.closest('.grid-stack') as (HTMLElement & {
+      gridstack?: GridStack;
+    }) | null;
+    const ownerGrid = groupNode?.subGrid || gridElement?.gridstack || gridStack;
+    const targetGroupId = findParentGroupIdByGrid(ownerGrid);
+    const targetGroup = targetGroupId ? groupMap.get(targetGroupId) : undefined;
+    const ownerGridElement = ownerGrid.el;
+    const ownerGridRect = ownerGridElement?.getBoundingClientRect();
+    const containerRect = canvasContainerRef.current.getBoundingClientRect();
+
+    if (!ownerGridElement || !ownerGridRect) {
+      return null;
+    }
+
+    const cellWidth = ownerGrid.cellWidth();
+    const cellHeight = ownerGrid.getCellHeight(true);
+    const margin = Number(ownerGrid.opts.margin) || 0;
+    const columnCount = ownerGrid.getColumn();
+    const unitWidth = cellWidth + margin;
+    const unitHeight = cellHeight + margin;
+    const localX = Math.min(
+      Math.max(Math.floor(Math.max(clientX - ownerGridRect.left, 0) / unitWidth), 0),
+      Math.max(columnCount - fieldLayout.w, 0),
+    );
+    const localY = Math.max(
+      Math.floor(Math.max(clientY - ownerGridRect.top, 0) / unitHeight),
+      0,
+    );
+    const widgetPosition = targetGroup
+      ? {
+        x: (targetGroup.layout.x || 0) + localX,
+        y: (targetGroup.layout.y || 0) + localY,
+        groupId: targetGroupId || undefined,
+      }
+      : { x: localX, y: localY };
+    const previewStyle: React.CSSProperties = {
+      left:
+        ownerGridRect.left -
+        containerRect.left +
+        canvasContainerRef.current.scrollLeft +
+        localX * unitWidth,
+      top:
+        ownerGridRect.top -
+        containerRect.top +
+        canvasContainerRef.current.scrollTop +
+        localY * unitHeight,
+      width:
+        fieldLayout.w * cellWidth +
+        Math.max(0, fieldLayout.w - 1) * margin,
+      height:
+        fieldLayout.h * cellHeight +
+        Math.max(0, fieldLayout.h - 1) * margin,
+    };
+
+    return {
+      widgetPosition,
+      previewStyle,
+    };
+  }, [findParentGroupIdByGrid, gridStack, groupMap]);
 
   const resolveDropPayload = useCallback((newNode: GridStackNode): DropPayload => {
     const nodeId = newNode.id ? String(newNode.id) : '';
@@ -250,6 +382,7 @@ const DashboardInner: React.FC = () => {
 
     if (!widgetType) return;
     const resolvedWidgetType = widgetType as string;
+    const templateId = parseLocalTemplateDragContent(resolvedWidgetType);
 
     const targetGroupId = findParentGroupIdByGrid(ownerGrid);
     const targetGroup = targetGroupId ? groupMap.get(targetGroupId) : undefined;
@@ -262,6 +395,31 @@ const DashboardInner: React.FC = () => {
         groupId: targetGroupId || undefined,
       }
       : { x: dropX, y: dropY };
+
+    if (templateId) {
+      void (async () => {
+        const template = await resolveLocalTemplateRecord(templateId);
+        if (!template) {
+          message.error('组件模板不存在或已删除');
+          return;
+        }
+
+        if (template.scope === 'group' && targetGroupId) {
+          message.warning('分组模板只能添加到根画布');
+          return;
+        }
+
+        applyLocalTemplateRecordToStore(
+          template,
+          useStore.getState(),
+          targetGroupId
+            ? { ...widgetPosition, groupId: targetGroupId }
+            : widgetPosition,
+        );
+        message.success(`已添加组件模板：${template.name}`);
+      })();
+      return;
+    }
 
     if (resolvedWidgetType === 'create-group') {
       createEmptyGroup(undefined, {
@@ -305,6 +463,17 @@ const DashboardInner: React.FC = () => {
       return;
     }
 
+    if (resolvedWidgetType.startsWith('nativeFormField:')) {
+      const fieldType = resolvedWidgetType.split(':')[1];
+      const fieldNode = createNativeFormFieldNode(fieldType as any);
+      if (fieldNode.type === 'group' || fieldNode.type === 'grid' || fieldNode.type === 'flex' || fieldNode.type === 'subTable') {
+        message.warning('分组、栅格、子表格仅支持在原生表单内部使用，请先拖入原生表单容器');
+        return;
+      }
+      addNativeFormFieldWidget(fieldType, widgetPosition);
+      return;
+    }
+
     if (isChartPresetWidgetKey(resolvedWidgetType)) {
       createChartWidgetByPreset({
         widgetKey: resolvedWidgetType,
@@ -318,6 +487,7 @@ const DashboardInner: React.FC = () => {
     addWidget(resolvedWidgetType as WidgetType, widgetPosition);
   }, [
     addFloatingModuleLocal,
+    addNativeFormFieldWidget,
     addWidget,
     updateWidget,
     canvasContainerRef,
@@ -329,6 +499,94 @@ const DashboardInner: React.FC = () => {
     setPendingMicroAppDrop,
   ]);
 
+  const handleNativeFormFieldDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasNativeFormFieldDragType(event.dataTransfer)) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.native-form-canvas')) {
+      clearNativeFormFieldPreview();
+      return;
+    }
+
+    const dragType = getNativeFormFieldDragType(event.dataTransfer) || getCurrentNativeFormFieldDragType();
+    const placement = resolveNativeFormFieldDropPlacement(
+      target,
+      event.clientX,
+      event.clientY,
+      dragType || undefined,
+    );
+    if (!placement) {
+      clearNativeFormFieldPreview();
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setNativeFormFieldPreviewStyle((prev) => {
+      const next = placement.previewStyle;
+      if (
+        prev &&
+        prev.left === next.left &&
+        prev.top === next.top &&
+        prev.width === next.width &&
+        prev.height === next.height
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [clearNativeFormFieldPreview, resolveNativeFormFieldDropPlacement]);
+
+  const handleNativeFormFieldDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const fieldType = getNativeFormFieldDragType(event.dataTransfer) || getCurrentNativeFormFieldDragType();
+    if (!fieldType || !gridStack || !isEditMode) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.native-form-canvas')) {
+      clearNativeFormFieldPreview();
+      return;
+    }
+
+    const placement = resolveNativeFormFieldDropPlacement(
+      target,
+      event.clientX,
+      event.clientY,
+      fieldType,
+    );
+    if (!placement) {
+      clearNativeFormFieldPreview();
+      return;
+    }
+
+    event.preventDefault();
+    clearNativeFormFieldPreview();
+    clearCurrentNativeFormFieldDragType();
+    addNativeFormFieldWidget(fieldType, placement.widgetPosition);
+  }, [
+    addNativeFormFieldWidget,
+    clearNativeFormFieldPreview,
+    gridStack,
+    isEditMode,
+    resolveNativeFormFieldDropPlacement,
+  ]);
+
+  const handleNativeFormFieldDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasNativeFormFieldDragType(event.dataTransfer)) {
+      return;
+    }
+
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    clearNativeFormFieldPreview();
+  }, [clearNativeFormFieldPreview]);
+
   const syncLayoutFromGrid = useCallback(() => {
     if (pendingSyncFrameRef.current !== null) {
       return;
@@ -336,6 +594,11 @@ const DashboardInner: React.FC = () => {
 
     // 🔧 延迟到下一帧，确保 GridStack 的 DOM 更新完成（特别是 SubGrid）
     pendingSyncFrameRef.current = requestAnimationFrame(() => {
+      if (!gridStack?.el?.isConnected) {
+        pendingSyncFrameRef.current = null;
+        return;
+      }
+
       const currentLayout = saveOptions();
 
       // 🔧 从 engine.nodes 构建 ID -> node 映射，用于获取准确的 w/h
@@ -471,6 +734,15 @@ const DashboardInner: React.FC = () => {
       pendingSyncFrameRef.current = null;
     });
   }, [saveOptions, updateLayout, _rawWidgetMetaMap, widgetMap, gridStack]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingSyncFrameRef.current !== null) {
+        cancelAnimationFrame(pendingSyncFrameRef.current);
+        pendingSyncFrameRef.current = null;
+      }
+    };
+  }, []);
 
   // 只监听用户拖拽和缩放事件，不监听 change（避免 addWidget 触发循环）
   useEffect(() => {
@@ -936,6 +1208,18 @@ const DashboardInner: React.FC = () => {
     };
   }, [gridStack, handleExternalDrop]);
 
+  useEffect(() => {
+    const handleDragEnd = () => {
+      clearNativeFormFieldPreview();
+      clearCurrentNativeFormFieldDragType();
+    };
+
+    document.addEventListener('dragend', handleDragEnd, true);
+    return () => {
+      document.removeEventListener('dragend', handleDragEnd, true);
+    };
+  }, [clearNativeFormFieldPreview]);
+
   return (
     <CanvasThemeProvider containerRef={canvasContainerRef}>
       <div
@@ -945,7 +1229,16 @@ const DashboardInner: React.FC = () => {
           'fullscreen': isFullScreen,
         })}
         style={backgroundStyle}
+        onDragLeave={handleNativeFormFieldDragLeave}
+        onDragOver={handleNativeFormFieldDragOver}
+        onDrop={handleNativeFormFieldDrop}
       >
+        {nativeFormFieldPreviewStyle ? (
+          <div
+            className="native-form-field-drop-preview"
+            style={nativeFormFieldPreviewStyle}
+          />
+        ) : null}
 
         {/* GridStack 渲染器 */}
         <GridStackRenderProvider>
@@ -969,7 +1262,14 @@ const DashboardInner: React.FC = () => {
  */
 
 const DashboardGridStack: React.FC = () => {
-  const { widgets, groups, gridDensity, loadDashboardFromData, setEditMode } = useStore();
+  const {
+    widgets,
+    groups,
+    gridDensity,
+    dashboardGridStackResetKey,
+    loadDashboardFromData,
+    setEditMode,
+  } = useStore();
   const persistApi = (useStore as typeof useStore & { persist?: PersistHelpers }).persist;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -999,10 +1299,18 @@ const DashboardGridStack: React.FC = () => {
       children,
     };
   }, [widgets, groups, gridDensity]);
+  const buildGridOptionsRef = useRef(buildGridOptions);
+
+  useEffect(() => {
+    buildGridOptionsRef.current = buildGridOptions;
+  }, [buildGridOptions]);
 
   // 如果没有 editId，直接使用 localStorage 数据初始化
   // 如果有 editId，等待 API 数据加载完成后再初始化
-  const [initialOptions, setInitialOptions] = useState<GridStackOptions | null>(null);
+  const [gridStackConfig, setGridStackConfig] = useState<{
+    resetKey: number;
+    options: GridStackOptions;
+  } | null>(null);
 
   const [isHydrated, setIsHydrated] = useState<boolean>(() => {
     if (!persistApi?.hasHydrated) {
@@ -1062,7 +1370,7 @@ const DashboardGridStack: React.FC = () => {
 
       // 加载新的远程数据时，重置 GridStack 初始化选项
       // 确保 GridStack 使用新数据重新初始化，而不是复用旧的 children
-      setInitialOptions(null);
+      setGridStackConfig(null);
       setRemoteDataLoaded(false);
 
       try {
@@ -1112,11 +1420,30 @@ const DashboardGridStack: React.FC = () => {
   }, [editId, isHydrated, loadDashboardFromData, setEditMode, applyGlobalColorsFromConfig, navigate]);
 
   useEffect(() => {
-    if (!isHydrated || !remoteDataLoaded || initialOptions) {
+    if (!isHydrated || !remoteDataLoaded) {
       return;
     }
-    setInitialOptions(buildGridOptions());
-  }, [isHydrated, remoteDataLoaded, initialOptions, buildGridOptions]);
+    if (gridStackConfig?.resetKey === dashboardGridStackResetKey) {
+      return;
+    }
+
+    setGridStackConfig(null);
+    const frameId = window.requestAnimationFrame(() => {
+      setGridStackConfig({
+        resetKey: dashboardGridStackResetKey,
+        options: buildGridOptionsRef.current(),
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [
+    dashboardGridStackResetKey,
+    gridStackConfig?.resetKey,
+    isHydrated,
+    remoteDataLoaded,
+  ]);
 
   if (isLoadingRemoteData) {
     return (
@@ -1126,7 +1453,7 @@ const DashboardGridStack: React.FC = () => {
     );
   }
 
-  if (!initialOptions) {
+  if (!gridStackConfig || gridStackConfig.resetKey !== dashboardGridStackResetKey) {
     return (
       <div className="dashboard-container dashboard-loading">
         正在加载布局...
@@ -1135,7 +1462,10 @@ const DashboardGridStack: React.FC = () => {
   }
 
   return (
-    <GridStackProvider initialOptions={initialOptions}>
+    <GridStackProvider
+      key={`gridstack-${editId || 'draft'}-${gridStackConfig.resetKey}`}
+      initialOptions={gridStackConfig.options}
+    >
       <DashboardInner />
     </GridStackProvider>
   );

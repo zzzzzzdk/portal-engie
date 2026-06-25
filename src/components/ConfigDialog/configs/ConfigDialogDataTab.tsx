@@ -10,6 +10,7 @@ import CommonWidgetDataConfigSection from './CommonWidgetDataConfigSection';
 import CustomFormConfig from './CustomFormConfig';
 import HeaderBarNavDataConfigSection from './HeaderBarNavDataConfigSection';
 import IndicatorCardDataConfigSection from './IndicatorCardDataConfigSection';
+import IndicatorCardListDataConfigSection from './IndicatorCardListDataConfigSection';
 import NavGroupDataConfigSection from './NavGroupDataConfigSection';
 import QueryFilterDataConfig from './QueryFilterDataConfig';
 import SearchConfig from './SearchConfig';
@@ -74,7 +75,7 @@ const ConfigDialogDataTab: React.FC<ConfigDialogDataTabProps> = ({
 
   return (
     <>
-      {['chart', 'stats', 'dataTable', 'news', 'topList'].includes(widget.type) && (
+      {['chart', 'stats', 'recognitionCard', 'dataTable', 'news', 'topList'].includes(widget.type) && (
         <CommonWidgetDataConfigSection
           form={form}
           widget={widget}
@@ -166,6 +167,14 @@ const ConfigDialogDataTab: React.FC<ConfigDialogDataTabProps> = ({
 
       {widget.type === 'indicatorCard' && (
         <IndicatorCardDataConfigSection
+          form={form}
+          apiPlaceholder={apiPlaceholder}
+          apiFieldMeta={apiFieldMeta}
+        />
+      )}
+
+      {widget.type === 'indicatorCardList' && (
+        <IndicatorCardListDataConfigSection
           form={form}
           apiPlaceholder={apiPlaceholder}
           apiFieldMeta={apiFieldMeta}

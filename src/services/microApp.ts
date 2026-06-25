@@ -48,6 +48,22 @@ export interface DeleteParams {
   type: 'app' | 'module' | 'event';
 }
 
+export interface MicroAppReference {
+  dashboardId: string;
+  dashboardTitle: string;
+  version: 'draft' | 'published' | string;
+  type: 'widget' | 'floatingModule' | string;
+  refId: string;
+  refTitle: string;
+  systemId: string;
+  moduleId: string;
+}
+
+export interface DeleteMicroAppResult {
+  success: boolean;
+  references?: MicroAppReference[];
+}
+
 export interface ImportConfigResult {
   success: boolean;
   version?: string;
@@ -136,10 +152,11 @@ export const saveEvent = (data: EventSaveParams) => {
  * @returns 删除结果
  */
 export const deleteMicroAppItem = (data: DeleteParams) => {
-  return ajax<{ success: boolean }>({
+  return ajax<DeleteMicroAppResult>({
     method: 'post',
     url: '/v1/micro_apps/delete',
     data,
+    silentErrorCodes: [43709],
   });
 };
 

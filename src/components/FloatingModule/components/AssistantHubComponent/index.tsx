@@ -6,9 +6,12 @@ import './index.scss';
 
 type ViewState = 'list' | 'panel' | 'transitioning-to-panel' | 'transitioning-to-list';
 
-const AssistantHubComponent: React.FC<AssistantHubProps> = ({
+type EmitWidgetEvent = (eventName: string, payload: Record<string, any>, trigger?: 'click' | 'change' | 'submit' | 'reset' | 'system') => void;
+
+const AssistantHubComponent: React.FC<AssistantHubProps & { emitWidgetEvent?: EmitWidgetEvent }> = ({
   entries = [],
   onEntrySelect,
+  emitWidgetEvent,
 }) => {
   const [selectedEntry, setSelectedEntry] = useState<AssistantEntry | null>(null);
   const [viewState, setViewState] = useState<ViewState>('list');
@@ -27,6 +30,8 @@ const AssistantHubComponent: React.FC<AssistantHubProps> = ({
   }, []);
 
   const handleEntrySelect = useCallback((entry: AssistantEntry) => {
+    emitWidgetEvent?.('assistant.select', { item: entry }, 'click');
+    emitWidgetEvent?.('assistant.openEntry', { entry }, 'click');
     pendingEntryRef.current = entry;
     setViewState('transitioning-to-panel');
 
@@ -36,7 +41,7 @@ const AssistantHubComponent: React.FC<AssistantHubProps> = ({
       setViewState('panel');
       onEntrySelect?.(entry);
     }, TRANSITION_DURATION);
-  }, [onEntrySelect]);
+  }, [emitWidgetEvent, onEntrySelect]);
 
   const handleClosePanel = useCallback(() => {
     setViewState('transitioning-to-list');

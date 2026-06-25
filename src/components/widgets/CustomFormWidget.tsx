@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button,
+  Cascader,
   Checkbox,
   DatePicker,
   Form,
@@ -15,17 +16,29 @@ import dayjs from 'dayjs'
 import axios from 'axios'
 import WujieReact from 'wujie-react'
 import {
-  WidgetConfig,
-  FormConfig,
-  FormField,
-  Widget,
   EventRouteConfig,
+  FormConfig,
   MicroAppEventType,
+  QueryFilterFieldConfig,
+  Widget,
+  WidgetConfig,
 } from '@/types'
-import { parseJsonConfig } from '@/utils/widgetApi'
-import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { getGlobalMessageCopy } from '@/utils/global-config'
+import {
+  buildQueryFilterInitialValues,
+  formatQueryFilterSubmitValues,
+  getUnifiedFormFields,
+  mapQueryFilterCascaderOptions,
+  mapQueryFilterOptions,
+  QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION,
+  resolveQueryFilterOptionList,
+} from '@/utils/queryFilter'
+import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
+import { getValueByPath, parseJsonConfig } from '@/utils/widgetApi'
+import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
+import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
 
+const { RangePicker } = DatePicker
 const { bus } = WujieReact
 
 interface CustomFormWidgetConfig extends FormConfig {
@@ -58,25 +71,68 @@ interface CustomFormWidgetProps {
   widget?: Widget
 }
 
-const DEFAULT_FIELDS: FormField[] = [
-  { id: '1', type: 'text', label: '姓名', name: 'name', required: true },
+const DEFAULT_FIELDS: QueryFilterFieldConfig[] = [
   {
-    id: '2',
+    id: 'custom-form-name',
+    type: 'input',
+    label: '姓名',
+    field: 'name',
+    required: true,
+    placeholder: '请输入姓名',
+  },
+  {
+    id: 'custom-form-role',
     type: 'select',
     label: '角色',
-    name: 'role',
-    options: [
+    field: 'role',
+    placeholder: '请选择角色',
+    dataSourceType: 'manual',
+    manualOptions: [
       { label: '管理员', value: 'admin' },
       { label: '用户', value: 'user' },
     ],
   },
 ]
 
+const getFieldPlaceholder = (field: QueryFilterFieldConfig) => {
+  if (!['input', 'textarea', 'select', 'datePicker', 'inputNumber'].includes(field.type)) {
+    return undefined
+  }
+
+  if (field.placeholder) {
+    return field.placeholder
+  }
+
+  if (['select', 'datePicker'].includes(field.type)) {
+    return `请选择${field.label}`
+  }
+
+  return `请输入${field.label}`
+}
+
+const getLayoutProps = (
+  layout: 'horizontal' | 'vertical' | 'inline',
+  labelWidth?: number,
+) => {
+  if (layout !== 'horizontal') {
+    return {}
+  }
+
+  return {
+    labelCol: { flex: `0 0 ${labelWidth || 96}px` },
+    wrapperCol: { flex: '1 1 0' },
+  }
+}
+
 const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) => {
   const [form] = Form.useForm()
-
   const formConfig = config as CustomFormWidgetConfig
-  const fields = formConfig.fields || DEFAULT_FIELDS
+  const fields = useMemo(() => {
+    const nextFields = getUnifiedFormFields(formConfig.fields)
+    return nextFields.length > 0 ? nextFields : DEFAULT_FIELDS
+  }, [formConfig.fields])
+  const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({})
+  const fieldsJsonRef = useRef<string>('')
   const eventRoutes = formConfig.eventRoutes || []
   const submitButtonText = formConfig.submitButtonText || '提交'
   const resetButtonText = formConfig.resetButtonText || '重置'
@@ -103,6 +159,17 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   const successAction =
     formConfig.successAction || (formConfig.successResetForm ? 'resetForm' : 'none')
   const failureAction = formConfig.failureAction || 'none'
+  const emitWidgetEvent = useWidgetEventEmitter(widget)
+
+  useEffect(() => {
+    const nextFieldsJson = JSON.stringify(fields)
+    if (nextFieldsJson === fieldsJsonRef.current) {
+      return
+    }
+    fieldsJsonRef.current = nextFieldsJson
+    form.resetFields()
+    form.setFieldsValue(buildQueryFilterInitialValues(fields))
+  }, [fields, form])
 
   useEffect(() => {
     if (!formConfig.successMessage || !formConfig.failureMessage) {
@@ -110,9 +177,101 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     }
   }, [ensureGlobalConfigLoaded, formConfig.failureMessage, formConfig.successMessage])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadFieldOptions = async () => {
+      const nextOptionsMap: Record<string, any[]> = {}
+
+      for (const field of fields) {
+        if (['checkboxGroup', 'radioGroup', 'select'].includes(field.type)) {
+          if (field.dataSourceType === 'manual') {
+            nextOptionsMap[field.id] = field.manualOptions || []
+            continue
+          }
+
+          if (!field.requestConfig?.endpoint) {
+            nextOptionsMap[field.id] = []
+            continue
+          }
+
+          try {
+            const method = field.requestConfig.method || 'GET'
+            const response = await axios({
+              method,
+              url: field.requestConfig.endpoint,
+              headers: field.requestConfig.headers,
+              params: parseJsonConfig(field.requestConfig.query),
+              ...(method === 'GET'
+                ? {}
+                : { data: parseJsonConfig(field.requestConfig.body) }),
+            })
+            const rawData = resolveQueryFilterOptionList(response.data, field.requestConfig)
+            nextOptionsMap[field.id] = Array.isArray(rawData)
+              ? mapQueryFilterOptions(rawData, field.requestConfig)
+              : []
+          } catch (error) {
+            console.error('自定义表单字段选项请求失败:', error)
+            nextOptionsMap[field.id] = []
+          }
+
+          continue
+        }
+
+        if (field.type === 'cascader') {
+          if (field.dataMode === 'json') {
+            const jsonOptions = parseJsonConfig(field.jsonData)
+            nextOptionsMap[field.id] = Array.isArray(jsonOptions) ? jsonOptions : []
+            continue
+          }
+
+          if (!field.requestConfig?.endpoint) {
+            nextOptionsMap[field.id] = []
+            continue
+          }
+
+          try {
+            const method = field.requestConfig.method || 'GET'
+            const response = await axios({
+              method,
+              url: field.requestConfig.endpoint,
+              headers: field.requestConfig.headers,
+              params: parseJsonConfig(field.requestConfig.query),
+              ...(method === 'GET'
+                ? {}
+                : { data: parseJsonConfig(field.requestConfig.body) }),
+            })
+            const rawData = field.requestConfig.listField
+              ? getValueByPath(response.data, field.requestConfig.listField)
+              : response.data
+
+            nextOptionsMap[field.id] = Array.isArray(rawData)
+              ? mapQueryFilterCascaderOptions(rawData, field.requestConfig)
+              : []
+          } catch (error) {
+            console.error('自定义表单级联字段数据请求失败:', error)
+            nextOptionsMap[field.id] = []
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setFieldOptionsMap(nextOptionsMap)
+      }
+    }
+
+    void loadFieldOptions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fields])
+
   const emitRoutes = useCallback((routes: EventRouteConfig[], values: Record<string, any>) => {
     const enabledRoutes = routes.filter(route => route.enabled !== false)
-    if (enabledRoutes.length === 0) return
+    if (enabledRoutes.length === 0) {
+      return
+    }
 
     const fromAppId = widget?.id || 'custom-form-widget'
     enabledRoutes.forEach(route => {
@@ -141,12 +300,8 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   }, [formConfig.apiBody])
 
   const onFinish = async (values: Record<string, any>) => {
-    const formattedValues = { ...values }
-    for (const key in formattedValues) {
-      if (dayjs.isDayjs(formattedValues[key])) {
-        formattedValues[key] = formattedValues[key].format('YYYY-MM-DD')
-      }
-    }
+    const formattedValues = formatQueryFilterSubmitValues(fields, values)
+    emitWidgetEvent('form.submit', { values: formattedValues }, 'submit')
 
     try {
       if (submitMethod === 'api' && formConfig.apiEndpoint) {
@@ -167,11 +322,13 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
       message.success(successMessage)
       if (successAction === 'resetForm') {
         form.resetFields()
+        form.setFieldsValue(buildQueryFilterInitialValues(fields))
       }
     } catch (error) {
       message.error(failureMessage)
       if (failureAction === 'resetForm') {
         form.resetFields()
+        form.setFieldsValue(buildQueryFilterInitialValues(fields))
       }
       console.error('表单提交失败:', error)
     }
@@ -183,38 +340,134 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
 
   const handleReset = () => {
     form.resetFields()
+    form.setFieldsValue(buildQueryFilterInitialValues(fields))
+    emitWidgetEvent('form.reset', {}, 'reset')
     message.info('表单已重置')
   }
 
-  const renderField = (field: FormField) => {
-    switch (field.type) {
-      case 'text':
-        return <Input placeholder={`请输入${field.label}`} />
-      case 'textarea':
-        return <Input.TextArea rows={3} placeholder={`请输入${field.label}`} />
-      case 'number':
-        return <InputNumber style={{ width: '100%' }} placeholder={`请输入${field.label}`} />
-      case 'select':
-        return <Select options={field.options} placeholder={`请选择${field.label}`} allowClear />
-      case 'radio':
-        return <Radio.Group options={field.options} />
-      case 'date':
-        return <DatePicker style={{ width: '100%' }} placeholder={`请选择${field.label}`} />
-      case 'checkbox':
-        return <Checkbox>{field.label}</Checkbox>
-      default:
-        return <Input placeholder={`请输入${field.label}`} />
-    }
+  useWidgetEventInputs(widget, {
+    setValue: (params) => {
+      form.setFieldsValue(params)
+    },
+    clearValue: (params) => {
+      const keys = Object.keys(params || {})
+      if (keys.length > 0) {
+        form.setFieldsValue(keys.reduce<Record<string, undefined>>((result, key) => {
+          result[key] = undefined
+          return result
+        }, {}))
+        return
+      }
+      form.resetFields()
+      form.setFieldsValue(buildQueryFilterInitialValues(fields))
+    },
+    reset: () => {
+      form.resetFields()
+      form.setFieldsValue(buildQueryFilterInitialValues(fields))
+    },
+  })
+
+  const selectFilterOption = (input: string, option: any) => {
+    const labelText = String(option?.label ?? '').trim().toLowerCase()
+    return labelText.includes(input.trim().toLowerCase())
   }
 
-  const getFormLayout = () => {
-    if (layout === 'horizontal') {
-      return {
-        labelCol: { span: labelWidth || 6 },
-        wrapperCol: { span: 24 - (labelWidth || 6) },
-      }
+  const renderField = (field: QueryFilterFieldConfig) => {
+    const options = fieldOptionsMap[field.id] || []
+
+    switch (field.type) {
+      case 'input':
+        return (
+          <Input
+            placeholder={getFieldPlaceholder(field)}
+            maxLength={field.maxLength}
+            addonBefore={field.addonBefore}
+            addonAfter={field.addonAfter}
+            allowClear
+          />
+        )
+      case 'textarea':
+        return (
+          <Input.TextArea
+            rows={4}
+            placeholder={getFieldPlaceholder(field)}
+            maxLength={field.maxLength}
+            allowClear
+          />
+        )
+      case 'checkboxGroup':
+        return (
+          <Checkbox.Group
+            className={`query-filter-widget__group query-filter-widget__group--${field.direction || 'horizontal'}`}
+            options={options}
+          />
+        )
+      case 'cascader':
+        return (
+          <Cascader
+            style={{ width: '100%' }}
+            options={options}
+            placeholder={field.placeholder || `请选择${field.label}`}
+            allowClear
+          />
+        )
+      case 'datePicker':
+        if (field.pickerType === 'range') {
+          return (
+            <RangePicker
+              style={{ width: '100%' }}
+              placeholder={[
+                field.rangeStartPlaceholder || field.placeholder || '开始日期',
+                field.rangeEndPlaceholder || field.placeholder || '结束日期',
+              ]}
+              disabledDate={field.disablePastDates
+                ? current => !!current && current < dayjs().startOf('day')
+                : undefined}
+            />
+          )
+        }
+
+        return (
+          <DatePicker
+            style={{ width: '100%' }}
+            placeholder={getFieldPlaceholder(field)}
+            disabledDate={field.disablePastDates
+              ? current => !!current && current < dayjs().startOf('day')
+              : undefined}
+          />
+        )
+      case 'inputNumber':
+        return (
+          <InputNumber
+            style={{ width: '100%' }}
+            placeholder={getFieldPlaceholder(field)}
+            min={field.min}
+            max={field.max}
+            precision={Math.min(field.precision ?? 0, QUERY_FILTER_INPUT_NUMBER_MAX_PRECISION)}
+            addonAfter={field.unit}
+          />
+        )
+      case 'radioGroup':
+        return (
+          <Radio.Group
+            className={`query-filter-widget__group query-filter-widget__group--${field.direction || 'horizontal'}`}
+            options={options}
+          />
+        )
+      case 'select':
+        return (
+          <Select
+            options={options}
+            placeholder={getFieldPlaceholder(field)}
+            allowClear
+            showSearch={field.showSearch}
+            filterOption={selectFilterOption as any}
+            mode={field.mode === 'multiple' ? 'multiple' : undefined}
+          />
+        )
+      default:
+        return <Input placeholder={getFieldPlaceholder(field)} allowClear />
     }
-    return {}
   }
 
   const buttonAlignStyle: React.CSSProperties = {
@@ -250,19 +503,34 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
     >
       <Form
         form={form}
-        layout={layout}
+        layout={layout === 'inline' ? 'inline' : layout}
         onFinish={onFinish}
         onFinishFailed={onFinishFailed}
-        {...getFormLayout()}
+        onValuesChange={(changedValues, values) => {
+          const changeOutputEnabled = formConfig.eventOutputs?.some(item => item.enabled !== false && item.eventName === 'form.change')
+          if (!changeOutputEnabled) return
+          const changedField = Object.keys(changedValues)[0]
+          emitWidgetEvent('form.change', {
+            values: formatQueryFilterSubmitValues(fields, values),
+            changedField,
+            changedValue: changedValues[changedField],
+          }, 'change')
+        }}
+        {...getLayoutProps(layout, labelWidth)}
       >
         {fields.map(field => (
           <Form.Item
             key={field.id}
-            name={field.name}
-            label={field.type === 'checkbox' ? undefined : field.label}
-            rules={[{ required: field.required, message: `请输入${field.label}` }]}
-            valuePropName={field.type === 'checkbox' ? 'checked' : 'value'}
-            initialValue={field.defaultValue}
+            name={field.field}
+            label={field.label}
+            rules={[
+              {
+                required: field.required,
+                message: ['select', 'cascader', 'datePicker'].includes(field.type)
+                  ? `请选择${field.label}`
+                  : `请输入${field.label}`,
+              },
+            ]}
             style={fieldSpacing !== undefined ? { marginBottom: fieldSpacing } : undefined}
           >
             {renderField(field)}

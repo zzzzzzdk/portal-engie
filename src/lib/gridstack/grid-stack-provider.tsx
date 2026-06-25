@@ -97,7 +97,10 @@ export function GridStackProvider({
   );
 
   const saveOptions = useCallback(() => {
-    return gridStack?.save(true, true, (_, widget) => widget);
+    if (!gridStack?.el?.isConnected) {
+      return undefined;
+    }
+    return gridStack.save(true, true, (_, widget) => widget);
   }, [gridStack]);
 
   const removeAll = useCallback(() => {

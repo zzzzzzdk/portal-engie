@@ -10,6 +10,7 @@ import { FullscreenExitOutlined } from '@ant-design/icons';
 import ClockWidget from '@/components/widgets/ClockWidget';
 import StatsWidget from '@/components/widgets/StatsWidget';
 import IndicatorCardWidget from '@/components/widgets/IndicatorCardWidget';
+import IndicatorCardListWidget from '@/components/widgets/IndicatorCardListWidget';
 import ChartWidget from '@/components/widgets/ChartWidget/index.';
 import LinkWidget from '@/components/widgets/LinkWidget';
 import NewsWidget from '@/components/widgets/NewsWidget';
@@ -19,6 +20,8 @@ import QueryFilterWidget from '@/components/widgets/QueryFilterWidget';
 import DataTableWidget from '@/components/widgets/DataTableWidget';
 import CardGridWidget from '@/components/widgets/CardGridWidget';
 import CustomFormWidget from '@/components/widgets/CustomFormWidget';
+import NativeFormWidget from '@/components/widgets/NativeFormWidget';
+import NativeFormFieldWidget from '@/components/widgets/NativeFormFieldWidget';
 import MicroAppWidget from '@/components/widgets/MicroAppWidget';
 import MyDocumentsWidget from '@/components/widgets/MyDocumentsWidget';
 import CarouselWidget from '@/components/widgets/CarouselWidget';
@@ -66,6 +69,8 @@ const Dashboard: React.FC = () => {
         return <StatsWidget {...commonProps} />;
       case 'indicatorCard':
         return <IndicatorCardWidget {...commonProps} />;
+      case 'indicatorCardList':
+        return <IndicatorCardListWidget {...commonProps} />;
       case 'chart':
         return <ChartWidget {...commonProps} />;
       case 'link':
@@ -84,6 +89,10 @@ const Dashboard: React.FC = () => {
         return <CardGridWidget {...commonProps} />;
       case 'customForm':
         return <CustomFormWidget {...commonProps} />;
+      case 'nativeForm':
+        return <NativeFormWidget {...commonProps} />;
+      case 'nativeFormField':
+        return <NativeFormFieldWidget {...commonProps} />;
       case 'microApp':
         return <MicroAppWidget {...commonProps} />;
       case 'myDocuments':

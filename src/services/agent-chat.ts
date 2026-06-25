@@ -1,3 +1,4 @@
+import ajax from '@/utils/axios.config'
 import { getApiBaseUrl } from '@/config/env'
 import { getToken } from '@/utils/cookie'
 import type { DashboardSnapshot } from './dashboard'
@@ -7,6 +8,14 @@ export interface AgentChatReasoningStep {
   content: string
 }
 
+export interface AgentChatNextAction {
+  id: string
+  label: string
+  prompt: string
+  mode: 'fill' | 'send'
+  destructive?: boolean
+}
+
 export interface AgentChatSnapshotSummary {
   title: string
   widgetCount: number
@@ -14,12 +23,51 @@ export interface AgentChatSnapshotSummary {
   mode: 'create' | 'edit'
 }
 
+export interface AgentChatConversationSummary {
+  id: string
+  title: string
+  status: string
+  scene: string
+  bizKey: string
+  bizTitle: string
+  summaryText: string
+  upstreamSessionId: string
+  lastMessageAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AgentChatStoredMessage {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  status: string
+  sequence: number
+  upstreamMessageId?: string | null
+  errorMessage?: string | null
+  model?: string
+  snapshotRecovered?: boolean
+  reasoning?: AgentChatReasoningStep[]
+  summary?: AgentChatSnapshotSummary | null
+  snapshot?: DashboardSnapshot | null
+  nextActions?: AgentChatNextAction[]
+  appliable?: boolean
+  createdAt: string
+}
+
 export interface AgentChatMessagePayload {
   role: 'user' | 'assistant'
   content: string
 }
 
-export interface AgentChatStreamParams {
+export interface AgentChatScenePayload {
+  scene: string
+  bizKey: string
+  bizTitle?: string
+}
+
+export interface AgentChatStreamParams extends AgentChatScenePayload {
   prompt: string
   mode: 'create' | 'edit'
   currentSnapshot?: DashboardSnapshot | null
@@ -35,6 +83,8 @@ export interface AgentChatStreamResponse {
   reasoning: AgentChatReasoningStep[]
   snapshot: DashboardSnapshot | null
   summary: AgentChatSnapshotSummary | null
+  nextActions: AgentChatNextAction[]
+  appliable: boolean
 }
 
 export type AgentChatStreamPhase =
@@ -48,6 +98,10 @@ export interface AgentChatStreamStatusEvent {
   phase: AgentChatStreamPhase
   message: string
   conversationId?: string
+}
+
+export interface AgentChatConversationCreateParams extends AgentChatScenePayload {
+  title?: string
 }
 
 export interface AgentChatStreamHandlers {
@@ -76,6 +130,8 @@ const pickFirstText = (...values: unknown[]) => {
   }
   return ''
 }
+
+const unwrapApiData = <T>(response: any) => response?.data as T
 
 const resolveStreamErrorMessage = (payload: any) => {
   const message = pickFirstText(
@@ -164,6 +220,42 @@ const parseSseBlocks = (buffer: string) => {
   }
 }
 
+export const getAgentChatConversations = async (params: AgentChatScenePayload) => {
+  const response = await ajax<AgentChatConversationSummary[]>({
+    method: 'get',
+    url: '/v1/agent-chat/conversations',
+    data: params,
+  })
+  return unwrapApiData<AgentChatConversationSummary[]>(response) || []
+}
+
+export const createAgentChatConversation = async (
+  data: AgentChatConversationCreateParams,
+) => {
+  const response = await ajax<AgentChatConversationSummary>({
+    method: 'post',
+    url: '/v1/agent-chat/conversations',
+    data,
+  })
+  return unwrapApiData<AgentChatConversationSummary>(response)
+}
+
+export const getAgentChatMessages = async (conversationId: string) => {
+  const response = await ajax<AgentChatStoredMessage[]>({
+    method: 'get',
+    url: `/v1/agent-chat/conversations/${conversationId}/messages`,
+  })
+  return unwrapApiData<AgentChatStoredMessage[]>(response) || []
+}
+
+export const deleteAgentChatConversation = async (conversationId: string) => {
+  const response = await ajax<{ conversationId: string; deleted: boolean }>({
+    method: 'post',
+    url: `/v1/agent-chat/conversations/${conversationId}/delete`,
+  })
+  return unwrapApiData<{ conversationId: string; deleted: boolean }>(response)
+}
+
 export const streamAgentChatMessage = async (
   data: AgentChatStreamParams,
   handlers: AgentChatStreamHandlers = {},
@@ -233,6 +325,8 @@ export const streamAgentChatMessage = async (
           reasoning: Array.isArray(payload?.reasoning) ? payload.reasoning : [],
           snapshot: payload?.snapshot || null,
           summary: payload?.summary || null,
+          nextActions: Array.isArray(payload?.nextActions) ? payload.nextActions : [],
+          appliable: payload?.appliable === true,
         }
         handlers.onMessage?.(result)
         return
