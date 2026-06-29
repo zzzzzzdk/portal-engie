@@ -37,6 +37,7 @@ import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { getValueByPath, parseJsonConfig } from '@/utils/widgetApi'
 import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { usePortalRuntime } from '@/runtime/portal-runtime-context'
 
 const { RangePicker } = DatePicker
 const { bus } = WujieReact
@@ -125,6 +126,8 @@ const getLayoutProps = (
 }
 
 const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) => {
+  const { mode: runtimeMode } = usePortalRuntime()
+  const isMobileRuntime = runtimeMode === 'mobile-runtime'
   const [form] = Form.useForm()
   const formConfig = config as CustomFormWidgetConfig
   const fields = useMemo(() => {
@@ -137,7 +140,7 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   const submitButtonText = formConfig.submitButtonText || '提交'
   const resetButtonText = formConfig.resetButtonText || '重置'
   const showResetButton = formConfig.showResetButton ?? true
-  const layout = formConfig.layout || 'vertical'
+  const layout = isMobileRuntime ? 'vertical' : formConfig.layout || 'vertical'
   const labelWidth = formConfig.labelWidth
   const submitButtonColor = formConfig.submitButtonColor
   const submitButtonTextColor = formConfig.submitButtonTextColor
@@ -471,7 +474,7 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
   }
 
   const buttonAlignStyle: React.CSSProperties = {
-    textAlign: buttonAlign,
+    textAlign: isMobileRuntime ? 'left' : buttonAlign,
   }
 
   const submitBtnStyle: React.CSSProperties | undefined = (submitButtonColor || submitButtonTextColor)
@@ -494,8 +497,9 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
 
   return (
     <div
+      className={isMobileRuntime ? 'custom-form-widget custom-form-widget--mobile' : 'custom-form-widget'}
       style={{
-        padding: '16px',
+        padding: isMobileRuntime ? 0 : '16px',
         height: '100%',
         overflow: 'auto',
         ...(borderRadius !== undefined ? { borderRadius } : {}),
@@ -538,7 +542,7 @@ const CustomFormWidget: React.FC<CustomFormWidgetProps> = ({ config, widget }) =
         ))}
 
         <Form.Item style={buttonAlignStyle}>
-          <Space>
+          <Space className={isMobileRuntime ? 'custom-form-widget__actions' : undefined}>
             <Button
               htmlType="submit"
               type={submitButtonColor ? 'default' : 'primary'}

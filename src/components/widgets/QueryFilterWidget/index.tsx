@@ -37,6 +37,7 @@ import { useGlobalConfigStore } from '@/store/useGlobalConfigStore'
 import { getGlobalMessageCopy } from '@/utils/global-config'
 import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
+import { usePortalRuntime } from '@/runtime/portal-runtime-context'
 
 const { RangePicker } = DatePicker
 const { bus } = WujieReact
@@ -88,6 +89,8 @@ const getFormLayoutProps = (
 }
 
 const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget }) => {
+  const { mode: runtimeMode } = usePortalRuntime()
+  const isMobileRuntime = runtimeMode === 'mobile-runtime'
   const [form] = Form.useForm()
   const queryFilterConfig = config as QueryFilterWidgetConfig
   const fields = useMemo(
@@ -97,13 +100,13 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
   const submitButtonText = queryFilterConfig?.submitButtonText || '查询'
   const resetButtonText = queryFilterConfig?.resetButtonText || '重置'
   const showResetButton = queryFilterConfig?.showResetButton ?? true
-  const formLayout = queryFilterConfig?.formLayout || 'vertical'
+  const formLayout = isMobileRuntime ? 'vertical' : queryFilterConfig?.formLayout || 'vertical'
   const isHorizontalLayout = formLayout === 'horizontal'
   const labelAlignSelf = queryFilterConfig?.labelVerticalAlign || 'top'
   const labelTextAlign = queryFilterConfig?.labelTextAlign || 'left'
   const labelWidth = queryFilterConfig?.labelWidth ?? 96
-  const layoutCols = queryFilterConfig?.layoutCols || 4
-  const buttonAlign = queryFilterConfig?.buttonAlign || 'right'
+  const layoutCols = isMobileRuntime ? 1 : queryFilterConfig?.layoutCols || 4
+  const buttonAlign = isMobileRuntime ? 'left' : queryFilterConfig?.buttonAlign || 'right'
   const fieldSpacing = queryFilterConfig?.fieldSpacing ?? 16
   const submitMethod = queryFilterConfig?.submitMethod || 'eventRoute'
   const apiEndpoint = queryFilterConfig?.apiEndpoint
@@ -459,7 +462,7 @@ const QueryFilterWidget: React.FC<QueryFilterWidgetProps> = ({ config, widget })
   }, [fieldOptionsMap])
 
   return (
-    <div className="query-filter-widget">
+    <div className={`query-filter-widget${isMobileRuntime ? ' query-filter-widget--mobile' : ''}`}>
       <Form
         form={form}
         layout={formLayout === 'inline' ? 'inline' : formLayout}

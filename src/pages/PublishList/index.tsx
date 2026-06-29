@@ -28,6 +28,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
   HomeOutlined,
+  MobileOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
@@ -136,6 +137,12 @@ const PublishList: React.FC = () => {
     return `${window.location.origin + window.location.pathname}#/preview/${record.id}${versionQuery}`
   }, [getStatusMeta])
 
+  const buildMobilePreviewUrl = useCallback((record: PublishListItem) => {
+    const statusMeta = getStatusMeta(record)
+    const versionQuery = statusMeta.previewVersion === 'draft' ? '?version=draft' : ''
+    return `${window.location.origin + window.location.pathname}#/mobile-preview/${record.id}${versionQuery}`
+  }, [getStatusMeta])
+
   const handlePaginationChange = (page: number, pageSize: number = pagination.pageSize) => {
     void fetchList(page, pageSize, searchText || undefined)
   }
@@ -204,6 +211,10 @@ const PublishList: React.FC = () => {
 
   const handlePreview = (record: PublishListItem) => {
     window.open(buildPreviewUrl(record), '_blank')
+  }
+
+  const handleMobilePreview = (record: PublishListItem) => {
+    window.open(buildMobilePreviewUrl(record), '_blank')
   }
 
   const handleExportStatic = async (record: PublishListItem) => {
@@ -328,6 +339,44 @@ const PublishList: React.FC = () => {
 
     fallbackCopy(url)
   }
+
+  const copyTextToClipboard = (text: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          message.success('访问地址已复制到剪贴板')
+        })
+        .catch(() => {
+          fallbackCopy(text)
+        })
+      return
+    }
+
+    fallbackCopy(text)
+  }
+
+  const handleCopyMobileUrl = (record: PublishListItem) => {
+    copyTextToClipboard(buildMobilePreviewUrl(record))
+  }
+
+  const renderSharePopover = (record: PublishListItem) => (
+    <div className="publish-list-share-popover">
+      <div className="publish-list-share-popover__label">桌面端</div>
+      <div className="publish-list-share-popover__url" title={buildShareUrl(record)}>
+        {buildShareUrl(record)}
+      </div>
+      <Button type="primary" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(record)}>
+        复制桌面链接
+      </Button>
+      <div className="publish-list-share-popover__label">移动端</div>
+      <div className="publish-list-share-popover__url" title={buildMobilePreviewUrl(record)}>
+        {buildMobilePreviewUrl(record)}
+      </div>
+      <Button size="small" icon={<CopyOutlined />} onClick={() => handleCopyMobileUrl(record)}>
+        复制移动链接
+      </Button>
+    </div>
+  )
 
   const handleSetHomepage = (record: PublishListItem) => {
     Modal.confirm({
@@ -570,16 +619,7 @@ const PublishList: React.FC = () => {
               <Popover
                 trigger="hover"
                 placement="top"
-                content={(
-                  <div className="publish-list-share-popover">
-                    <div className="publish-list-share-popover__url" title={buildShareUrl(record)}>
-                      {buildShareUrl(record)}
-                    </div>
-                    <Button type="primary" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(record)}>
-                      复制链接
-                    </Button>
-                  </div>
-                )}
+                content={renderSharePopover(record)}
               >
                 <Button
                   type="text"
@@ -596,6 +636,14 @@ const PublishList: React.FC = () => {
                 onClick={() => handlePreview(record)}
               />
             </Tooltip>
+            {/* <Tooltip title="手机预览">
+              <Button
+                type="text"
+                size="small"
+                icon={<MobileOutlined />}
+                onClick={() => handleMobilePreview(record)}
+              />
+            </Tooltip> */}
             <Tooltip title="导出">
               <Dropdown menu={getExportMenu(record)} trigger={['click']}>
                 <Button
@@ -634,6 +682,7 @@ const PublishList: React.FC = () => {
     handleCopyUrl,
     handleDelete,
     handleEdit,
+    handleMobilePreview,
     getExportMenu,
     handlePreview,
     handleSetHomepage,
@@ -641,6 +690,7 @@ const PublishList: React.FC = () => {
     isRecordExporting,
     pagination.current,
     pagination.pageSize,
+    renderSharePopover,
   ])
 
   const handleViewModeChange = (mode: 'table' | 'card') => {
@@ -661,16 +711,7 @@ const PublishList: React.FC = () => {
           <Popover
             trigger="hover"
             placement="top"
-            content={(
-              <div className="publish-list-share-popover">
-                <div className="publish-list-share-popover__url" title={buildShareUrl(item)}>
-                  {buildShareUrl(item)}
-                </div>
-                <Button type="primary" size="small" icon={<CopyOutlined />} onClick={() => handleCopyUrl(item)}>
-                  复制链接
-                </Button>
-              </div>
-            )}
+            content={renderSharePopover(item)}
           >
             <Button type="text" icon={<ShareAltOutlined />} />
           </Popover>
@@ -678,6 +719,9 @@ const PublishList: React.FC = () => {
         <Tooltip title="预览">
           <Button type="text" icon={<EyeOutlined />} onClick={() => handlePreview(item)} />
         </Tooltip>
+        {/* <Tooltip title="手机预览">
+          <Button type="text" icon={<MobileOutlined />} onClick={() => handleMobilePreview(item)} />
+        </Tooltip> */}
         <Tooltip title="导出">
           <Dropdown menu={getExportMenu(item)} trigger={['click']}>
             <Button

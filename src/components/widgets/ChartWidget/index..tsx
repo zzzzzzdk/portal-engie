@@ -19,6 +19,7 @@ import type { ChartPreset, ChartWidgetConfig } from '../chart/types'
 import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
 import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
+import { usePortalRuntime } from '@/runtime/portal-runtime-context'
 import './index.scss'
 
 interface ChartWidgetProps {
@@ -49,12 +50,15 @@ const mergeRequestConfig = (
 const isMapPreset = (preset: ChartPreset) => preset === 'area-map' || preset === 'flow-map'
 
 const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
+  const { mode: runtimeMode } = usePortalRuntime()
+  const isMobileRuntime = runtimeMode === 'mobile-runtime'
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstanceRef = useRef<echarts.ECharts | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const resizeFrameRef = useRef<number | null>(null)
   const resizeTimerRef = useRef<number | null>(null)
+  const mobileResizeTimersRef = useRef<number[]>([])
   const emitWidgetEvent = useWidgetEventEmitter(widget)
   const { runtimeParamsRef, setRuntimeParams, clearRuntimeParams } = useWidgetRuntimeParams()
 
@@ -342,6 +346,15 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
       resizeChart()
     }, 120)
 
+    if (isMobileRuntime) {
+      mobileResizeTimersRef.current.forEach(timer => window.clearTimeout(timer))
+      mobileResizeTimersRef.current = [80, 240, 600].map(delay =>
+        window.setTimeout(() => {
+          resizeChart()
+        }, delay),
+      )
+    }
+
     return () => {
       window.removeEventListener('resize', handleWindowResize)
       resizeObserver.disconnect()
@@ -350,9 +363,11 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
         window.clearTimeout(resizeTimerRef.current)
         resizeTimerRef.current = null
       }
+      mobileResizeTimersRef.current.forEach(timer => window.clearTimeout(timer))
+      mobileResizeTimersRef.current = []
       chart.off('click')
     }
-  }, [chartOption, chartPreset, emitWidgetEvent, error, resetChartInstance, resizeChart])
+  }, [chartOption, chartPreset, emitWidgetEvent, error, isMobileRuntime, resetChartInstance, resizeChart])
 
   useEffect(() => () => {
     if (resizeFrameRef.current != null) {
@@ -364,6 +379,9 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
       window.clearTimeout(resizeTimerRef.current)
       resizeTimerRef.current = null
     }
+
+    mobileResizeTimersRef.current.forEach(timer => window.clearTimeout(timer))
+    mobileResizeTimersRef.current = []
 
     resetChartInstance()
   }, [resetChartInstance])
@@ -387,7 +405,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ config, widget }) => {
   }
 
   return (
-    <div ref={containerRef} className="chart-widget">
+    <div ref={containerRef} className={`chart-widget${isMobileRuntime ? ' chart-widget--mobile' : ''}`}>
       {(loading || geoLoading) ? (
         <div className="chart-widget__loading">
           <Spin spinning />

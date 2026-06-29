@@ -99,6 +99,14 @@ const routeConfig: RouteConfig[] = [
     },
   },
   {
+    path: '/mobile-preview/:id',
+    element: () => import('@/pages/MobileDashboardPreview'),
+    meta: {
+      requiresAuth: false,
+      title: '移动端预览 - Portal Engine',
+    },
+  },
+  {
     path: '/portal-home',
     element: () => import('@/pages/PortalHome'),
     meta: {

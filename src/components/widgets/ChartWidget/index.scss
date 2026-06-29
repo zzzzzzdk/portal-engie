@@ -24,4 +24,8 @@
     justify-content: center;
     background: rgba(255, 255, 255, 0.01);
   }
+
+  &--mobile {
+    min-height: 280px;
+  }
 }

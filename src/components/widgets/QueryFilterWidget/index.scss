@@ -96,6 +96,41 @@
   }
 }
 
+.query-filter-widget--mobile {
+  height: auto;
+  padding: 0;
+
+  .query-filter-widget__form {
+    height: auto;
+  }
+
+  .query-filter-widget__fields {
+    flex-direction: column;
+    gap: 10px !important;
+  }
+
+  .query-filter-widget__field {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ant-form-item {
+    margin-bottom: 0;
+  }
+
+  .query-filter-widget__actions {
+    margin-top: 12px;
+    text-align: left;
+
+    .ant-space {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .query-filter-widget {
     &__form--horizontal {

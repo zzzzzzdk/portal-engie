@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react'
 
-export type PortalRuntimeMode = 'app' | 'export-runtime'
+export type PortalRuntimeMode = 'app' | 'export-runtime' | 'mobile-runtime'
 export type PortalMicroAppMode = 'live' | 'degrade'
 
 interface PortalRuntimeContextValue {

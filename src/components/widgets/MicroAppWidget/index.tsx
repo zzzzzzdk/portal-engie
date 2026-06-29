@@ -9,6 +9,7 @@ import type { WidgetSizeInfo } from '@/types/widget-size';
 import { microAppConfigLoader } from '@/utils/microAppConfig';
 import lifecycles from './lifecycles';
 import { useCanvasTheme } from '@/hooks/useCanvasTheme';
+import { usePortalRuntime } from '@/runtime/portal-runtime-context';
 import './index.scss';
 
 const { bus, preloadApp } = WujieReact;
@@ -81,6 +82,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({
   widget,
   dashboardConfig,
 }) => {
+  const { microAppMode } = usePortalRuntime();
   const { themeMode, styleMode, styleTokens } = useCanvasTheme(dashboardConfig);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +123,7 @@ const MicroAppWidget: React.FC<MicroAppWidgetProps> = ({
   const exportState: ExportMicroAppState = loading ? 'loading' : error ? 'error' : 'ready';
   const isGlobalMode = config.mode === 'global';
   const degrade =
+    microAppMode === 'degrade' ||
     window.localStorage.getItem('degrade') === 'true' ||
     !window.Proxy ||
     !window.CustomElementRegistry;

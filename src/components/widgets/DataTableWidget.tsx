@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Table, Tag, Spin, Empty, Typography } from 'antd'
+import { Table, Tag, Spin, Empty, Typography, Pagination } from 'antd'
 import { WidgetConfig, Widget } from '@/types'
 import { safeIntervalMs } from '@/constants/dashboard'
 import { getPaginationSizeOptions } from '@/constants/pagination'
@@ -9,6 +9,8 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import { useWidgetEventEmitter } from '@/hooks/useWidgetEventEmitter'
 import { useWidgetEventInputs } from '@/hooks/useWidgetEventInputs'
 import { useWidgetRuntimeParams } from '@/hooks/useWidgetRuntimeParams'
+import { usePortalRuntime } from '@/runtime/portal-runtime-context'
+import './DataTableWidget.scss'
 
 interface ColumnConfig {
   key: string
@@ -182,6 +184,8 @@ const stopPointerEventPropagation = (event: React.MouseEvent<HTMLElement>) => {
 }
 
 const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => {
+  const { mode: runtimeMode } = usePortalRuntime()
+  const isMobileRuntime = runtimeMode === 'mobile-runtime'
   const tableConfig = config as DataTableWidgetConfig
   const apiEndpoint = tableConfig?.apiEndpoint
   const isStaticDataSource = tableConfig?.dataSource === 'static'
@@ -730,10 +734,70 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
     }
   }
 
+  const handleRowClick = (record: any, index?: number) => {
+    emitWidgetEvent('table.rowClick', {
+      row: record,
+      rowKey: getColumnValue(record, rowKey),
+      index,
+    }, 'click')
+  }
+
   if (error) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Empty description={error} />
+      </div>
+    )
+  }
+
+  if (isMobileRuntime) {
+    const pagination = getPagination()
+
+    return (
+      <div
+        ref={tableContainerRef}
+        className="data-table-widget data-table-widget--mobile"
+        onMouseDown={stopPointerEventPropagation}
+        onClick={stopEventPropagation}
+      >
+        <Spin spinning={loading}>
+          {tableData.length ? (
+            <div className="data-table-widget__mobile-list">
+              {tableData.map((record, rowIndex) => (
+                <button
+                  key={String(getColumnValue(record, rowKey) ?? rowIndex)}
+                  type="button"
+                  className="data-table-widget__mobile-card"
+                  onClick={() => handleRowClick(record, rowIndex)}
+                >
+                  {columnsConfig.map(column => (
+                    <div className="data-table-widget__mobile-field" key={column.key || column.dataIndex}>
+                      <div className="data-table-widget__mobile-label">{column.title}</div>
+                      <div className="data-table-widget__mobile-value">
+                        {renderColumnContent(column, getColumnValue(record, column.dataIndex))}
+                      </div>
+                    </div>
+                  ))}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty />
+          )}
+          {pagination ? (
+            <div className="data-table-widget__mobile-pagination">
+              <Pagination
+                simple
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                onChange={(current, pageSize) => {
+                  pagination.onChange?.(current, pageSize)
+                }}
+              />
+            </div>
+          ) : null}
+        </Spin>
       </div>
     )
   }
@@ -755,13 +819,7 @@ const DataTableWidget: React.FC<DataTableWidgetProps> = ({ config, widget }) => 
           showHeader={showTableHeader}
           scroll={{ y: scrollY, x: scrollX }}
           onRow={(record, index) => ({
-            onClick: () => {
-              emitWidgetEvent('table.rowClick', {
-                row: record,
-                rowKey: getColumnValue(record, rowKey),
-                index,
-              }, 'click')
-            },
+            onClick: () => handleRowClick(record, index),
           })}
         />
       </Spin>
